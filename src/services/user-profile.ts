@@ -48,8 +48,32 @@ const demoProfile: UserProfile = {
   updatedAt: new Date().toISOString(),
 }
 
-// Mutable demo store
-let demoProfileStore: UserProfile = { ...demoProfile }
+// Mutable demo store with localStorage persistence
+const DEMO_PROFILE_STORAGE_KEY = 'ontyx_demo_profile'
+
+function getDemoProfileStore(): UserProfile {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(DEMO_PROFILE_STORAGE_KEY)
+      if (stored) {
+        return { ...demoProfile, ...JSON.parse(stored) }
+      }
+    } catch (e) {
+      console.error('Error reading demo profile from localStorage:', e)
+    }
+  }
+  return { ...demoProfile }
+}
+
+function saveDemoProfileStore(profile: UserProfile): void {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(DEMO_PROFILE_STORAGE_KEY, JSON.stringify(profile))
+    } catch (e) {
+      console.error('Error saving demo profile to localStorage:', e)
+    }
+  }
+}
 
 // ============================================================================
 // SERVICE
@@ -63,7 +87,7 @@ export const userProfileService = {
     const supabase = createClient()
     
     if (!supabase || !isSupabaseConfigured() || !userId || userId === 'demo') {
-      return demoProfileStore
+      return getDemoProfileStore()
     }
 
     const { data, error } = await supabase
@@ -87,12 +111,14 @@ export const userProfileService = {
     const supabase = createClient()
     
     if (!supabase || !isSupabaseConfigured() || userId === 'demo') {
-      demoProfileStore = {
-        ...demoProfileStore,
+      const currentProfile = getDemoProfileStore()
+      const updatedProfile = {
+        ...currentProfile,
         ...updates,
         updatedAt: new Date().toISOString(),
       }
-      return demoProfileStore
+      saveDemoProfileStore(updatedProfile)
+      return updatedProfile
     }
 
     const { data, error } = await supabase
@@ -126,8 +152,11 @@ export const userProfileService = {
     const supabase = createClient()
     
     if (!supabase || !isSupabaseConfigured() || userId === 'demo') {
-      // Return a fake URL for demo
-      return URL.createObjectURL(file)
+      // For demo mode, create blob URL and persist reference
+      const blobUrl = URL.createObjectURL(file)
+      const currentProfile = getDemoProfileStore()
+      saveDemoProfileStore({ ...currentProfile, avatarUrl: blobUrl, updatedAt: new Date().toISOString() })
+      return blobUrl
     }
 
     const fileExt = file.name.split('.').pop()
