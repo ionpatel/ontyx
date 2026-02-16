@@ -21,13 +21,17 @@
   - Address, phone, email
   - GST/HST number for invoices
   - Default currency, timezone
+- [x] **User profile page** ✅
+  - Avatar upload
+  - Name, phone, job title
+  - Timezone preference
+  - Password change
 - [ ] **Google OAuth** - complete backend setup
 - [ ] **Email verification** - working flow
-- [ ] **User profile page** - name, avatar, preferences
 
 ### Week 2: Complete Invoice Flow
-- [ ] **Email invoices** - send PDF via email
-- [ ] **Payment recording** - mark partial/full payments
+- [x] **Email invoices** ✅ - send PDF via Resend
+- [x] **Payment recording** ✅ - mark partial/full payments
 - [ ] **Invoice templates** - customizable branding
 - [ ] **Recurring invoices** - auto-generate monthly
 
@@ -64,13 +68,15 @@
 ---
 
 ## Current Focus
-**Email Invoice Sending** - send PDF invoices to customers
+**Recurring Invoices** - auto-generate monthly invoices
 
 ## Quick Wins Queue
 1. ~~Org settings page~~ ✅
-2. Email invoice sending
-3. Payment recording on invoices
-4. User profile page
+2. ~~Email invoice sending~~ ✅
+3. ~~Payment recording~~ ✅
+4. ~~User profile page~~ ✅
+5. Invoice templates (branding)
+6. Recurring invoices
 
 ---
 
@@ -82,4 +88,6 @@
 - ✅ Invoice creation flow complete
 - ✅ Contacts CRUD working
 - ✅ Organization settings page complete (Company, Billing, Alerts, Account tabs)
-- 🔄 Starting email invoice sending
+- ✅ Email invoice sending (Resend API integration)
+- ✅ User profile page with avatar, name, password change
+- 🔄 Moving to recurring invoices
