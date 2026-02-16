@@ -19,6 +19,7 @@ import { useOrganization } from "@/hooks/use-organization"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { useAuth } from "@/hooks/use-auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useToast } from "@/components/ui/toast"
 
 const PROVINCES = [
   { value: "ON", label: "Ontario" },
@@ -49,6 +50,7 @@ export default function SettingsPage() {
   const { organization, loading: orgLoading, saving: orgSaving, updateOrganization, uploadLogo } = useOrganization()
   const { profile, loading: profileLoading, saving: profileSaving, updateProfile, uploadAvatar, changePassword } = useUserProfile()
   const { user } = useAuth()
+  const { success: showSuccess, error: showError } = useToast()
   
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [profileSaveSuccess, setProfileSaveSuccess] = useState(false)
@@ -130,14 +132,22 @@ export default function SettingsPage() {
     const success = await updateOrganization(formData)
     if (success) {
       setSaveSuccess(true)
+      showSuccess('Settings Saved', 'Your company settings have been updated')
       setTimeout(() => setSaveSuccess(false), 2000)
+    } else {
+      showError('Save Failed', 'Could not save settings. Please try again.')
     }
   }
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      await uploadLogo(file)
+      const url = await uploadLogo(file)
+      if (url) {
+        showSuccess('Logo Uploaded', 'Your company logo has been updated')
+      } else {
+        showError('Upload Failed', 'Could not upload logo. Please try again.')
+      }
     }
   }
   
@@ -145,14 +155,20 @@ export default function SettingsPage() {
     const success = await updateProfile(profileData)
     if (success) {
       setProfileSaveSuccess(true)
+      showSuccess('Profile Saved', 'Your profile has been updated')
       setTimeout(() => setProfileSaveSuccess(false), 2000)
+    } else {
+      showError('Save Failed', 'Could not save profile. Please try again.')
     }
   }
   
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      await uploadAvatar(file)
+      const url = await uploadAvatar(file)
+      if (url) {
+        showSuccess('Photo Updated', 'Your profile photo has been changed')
+      }
     }
   }
   
