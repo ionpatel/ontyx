@@ -117,7 +117,7 @@ const config: Config = {
       
       fontFamily: {
         sans: ["Inter", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
-        display: ["var(--font-display)", "Comfortaa", "Quicksand", "sans-serif"],
+        display: ["var(--font-display)", "Poppins", "Inter", "sans-serif"],
         mono: ["JetBrains Mono", "Fira Code", "monospace"],
       },
       

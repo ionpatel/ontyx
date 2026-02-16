@@ -148,8 +148,8 @@ export default function LandingPage() {
               height={40}
               className="rounded-lg"
             />
-            <span className="text-2xl font-display font-bold tracking-wide group-hover:opacity-90 transition-opacity">
-              <span className="bg-gradient-to-r from-slate-700 to-slate-500 bg-clip-text text-transparent">Onty</span><span className="bg-gradient-to-r from-primary to-rose-500 bg-clip-text text-transparent">X</span>
+            <span className="text-2xl font-display font-semibold tracking-tight text-slate-800 group-hover:text-slate-900 transition-colors">
+              Onty<span className="text-primary">X</span>
             </span>
           </Link>
 
@@ -526,8 +526,8 @@ export default function LandingPage() {
                   height={32}
                   className="rounded-lg"
                 />
-                <span className="text-xl font-display font-bold tracking-wide">
-                  <span className="bg-gradient-to-r from-slate-700 to-slate-500 bg-clip-text text-transparent">Onty</span><span className="bg-gradient-to-r from-primary to-rose-500 bg-clip-text text-transparent">X</span>
+                <span className="text-xl font-display font-semibold tracking-tight text-slate-800">
+                  Onty<span className="text-primary">X</span>
                 </span>
               </Link>
               <p className="text-sm text-text-secondary max-w-xs leading-relaxed">

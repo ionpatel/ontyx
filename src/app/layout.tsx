@@ -1,9 +1,9 @@
 import type { Metadata } from "next"
-import { Inter, Comfortaa } from "next/font/google"
+import { Inter, Poppins } from "next/font/google"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-geist-sans" })
-const comfortaa = Comfortaa({ 
+const poppins = Poppins({ 
   subsets: ["latin"], 
   variable: "--font-display",
   weight: ["400", "500", "600", "700"]
@@ -22,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${comfortaa.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} ${poppins.variable} font-sans antialiased`}>
         {children}
       </body>
     </html>
