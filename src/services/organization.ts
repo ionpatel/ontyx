@@ -123,9 +123,14 @@ function saveDemoOrgStore(org: Organization): void {
 export const organizationService = {
   // Get organization by ID
   async getOrganization(organizationId: string): Promise<Organization | null> {
+    // Demo mode check FIRST
+    if (organizationId === 'demo') {
+      return getDemoOrgStore()
+    }
+    
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() ) {
+    if (!supabase || !isSupabaseConfigured()) {
       return getDemoOrgStore()
     }
 
@@ -137,7 +142,7 @@ export const organizationService = {
 
     if (error) {
       console.error('Error fetching organization:', error)
-      return demoOrgStore
+      return getDemoOrgStore()
     }
 
     return mapOrgFromDb(data)
@@ -148,9 +153,21 @@ export const organizationService = {
     organizationId: string, 
     updates: UpdateOrganizationInput
   ): Promise<Organization | null> {
+    // Demo mode check FIRST
+    if (organizationId === 'demo') {
+      const currentOrg = getDemoOrgStore()
+      const updatedOrg = { 
+        ...currentOrg, 
+        ...updates, 
+        updatedAt: new Date().toISOString() 
+      }
+      saveDemoOrgStore(updatedOrg)
+      return updatedOrg
+    }
+    
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() ) {
+    if (!supabase || !isSupabaseConfigured()) {
       const currentOrg = getDemoOrgStore()
       const updatedOrg = { 
         ...currentOrg, 
@@ -197,10 +214,25 @@ export const organizationService = {
 
   // Upload logo
   async uploadLogo(organizationId: string, file: File): Promise<string | null> {
+    // Demo mode check FIRST - use base64 for localStorage persistence
+    if (organizationId === 'demo') {
+      return new Promise((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const base64Url = reader.result as string
+          const currentOrg = getDemoOrgStore()
+          saveDemoOrgStore({ ...currentOrg, logoUrl: base64Url, updatedAt: new Date().toISOString() })
+          resolve(base64Url)
+        }
+        reader.onerror = () => resolve(null)
+        reader.readAsDataURL(file)
+      })
+    }
+    
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() ) {
-      // For demo mode, convert to base64 data URL (survives page refresh)
+    if (!supabase || !isSupabaseConfigured()) {
+      // Fallback to base64 if Supabase not configured
       return new Promise((resolve) => {
         const reader = new FileReader()
         reader.onloadend = () => {
