@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Trash2, Calculator, Save, Send, Eye } from "lucide-react"
-import { Invoice, InvoiceLineItem, Contact } from "@/types/finance"
+import { Plus, Trash2, Save, Send, Eye, Loader2 } from "lucide-react"
 import { formatCurrency, cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,64 +16,126 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { mockContacts } from "@/lib/mock-data"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { useCustomers } from "@/hooks/use-contacts"
+import { type CreateInvoiceInput } from "@/services/invoices"
+import { downloadInvoicePDF, type InvoicePDFData } from "@/services/pdf"
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface LineItem {
+  id: string
+  description: string
+  quantity: number
+  unitPrice: number
+  taxRate: number
+  amount: number
+}
+
+interface InvoiceFormData {
+  invoiceNumber: string
+  customerId: string
+  customerName: string
+  customerEmail: string
+  customerAddress: string
+  customerCity: string
+  customerProvince: string
+  customerPostalCode: string
+  issueDate: string
+  dueDate: string
+  currency: string
+  notes: string
+  terms: string
+}
 
 interface InvoiceFormProps {
-  invoice?: Partial<Invoice>
-  onSave: (invoice: Partial<Invoice>) => void
-  onSend?: (invoice: Partial<Invoice>) => void
-  onPreview?: (invoice: Partial<Invoice>) => void
+  invoice?: Partial<InvoiceFormData & { lineItems: LineItem[] }>
+  onSave: (input: CreateInvoiceInput) => Promise<void>
+  onSend?: (input: CreateInvoiceInput) => Promise<void>
+  saving?: boolean
 }
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
 
 const TAX_RATES = [
   { value: "0", label: "No Tax (0%)" },
-  { value: "5", label: "5%" },
-  { value: "10", label: "10%" },
-  { value: "13", label: "HST (13%)" },
-  { value: "15", label: "15%" },
-  { value: "20", label: "VAT (20%)" },
+  { value: "5", label: "GST (5%)" },
+  { value: "7", label: "PST (7%)" },
+  { value: "12", label: "GST+PST (12%)" },
+  { value: "13", label: "HST ON (13%)" },
+  { value: "15", label: "HST Atlantic (15%)" },
+]
+
+const PROVINCES = [
+  { value: "ON", label: "Ontario" },
+  { value: "QC", label: "Quebec" },
+  { value: "BC", label: "British Columbia" },
+  { value: "AB", label: "Alberta" },
+  { value: "MB", label: "Manitoba" },
+  { value: "SK", label: "Saskatchewan" },
+  { value: "NS", label: "Nova Scotia" },
+  { value: "NB", label: "New Brunswick" },
+  { value: "NL", label: "Newfoundland" },
+  { value: "PE", label: "Prince Edward Island" },
 ]
 
 const generateInvoiceNumber = () => {
   const year = new Date().getFullYear()
-  const random = Math.floor(Math.random() * 1000).toString().padStart(3, "0")
+  const random = Math.floor(Math.random() * 9999).toString().padStart(4, "0")
   return `INV-${year}-${random}`
 }
 
-const createEmptyLineItem = (): InvoiceLineItem => ({
+const createEmptyLineItem = (): LineItem => ({
   id: crypto.randomUUID(),
   description: "",
   quantity: 1,
   unitPrice: 0,
-  taxRate: 10,
+  taxRate: 13, // Default to HST ON
   amount: 0,
 })
 
-export function InvoiceForm({ invoice, onSave, onSend, onPreview }: InvoiceFormProps) {
-  const router = useRouter()
-  const isEditing = !!invoice?.id
+// ============================================================================
+// COMPONENT
+// ============================================================================
 
-  const [formData, setFormData] = useState({
+export function InvoiceForm({ invoice, onSave, onSend, saving }: InvoiceFormProps) {
+  const router = useRouter()
+  const { contacts: customers, loading: contactsLoading } = useCustomers()
+  const [showPreview, setShowPreview] = useState(false)
+
+  const [formData, setFormData] = useState<InvoiceFormData>({
     invoiceNumber: invoice?.invoiceNumber || generateInvoiceNumber(),
     customerId: invoice?.customerId || "",
     customerName: invoice?.customerName || "",
     customerEmail: invoice?.customerEmail || "",
     customerAddress: invoice?.customerAddress || "",
+    customerCity: invoice?.customerCity || "",
+    customerProvince: invoice?.customerProvince || "ON",
+    customerPostalCode: invoice?.customerPostalCode || "",
     issueDate: invoice?.issueDate || new Date().toISOString().split("T")[0],
     dueDate: invoice?.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    currency: invoice?.currency || "USD",
+    currency: invoice?.currency || "CAD",
     notes: invoice?.notes || "",
-    terms: invoice?.terms || "Net 30",
+    terms: invoice?.terms || "Payment due within 30 days of invoice date.",
   })
 
-  const [lineItems, setLineItems] = useState<InvoiceLineItem[]>(
+  const [lineItems, setLineItems] = useState<LineItem[]>(
     invoice?.lineItems?.length ? invoice.lineItems : [createEmptyLineItem()]
   )
 
   const [totals, setTotals] = useState({ subtotal: 0, taxTotal: 0, total: 0 })
 
-  // Recalculate line item amount and totals
-  const calculateTotals = useCallback(() => {
+  // Calculate totals when line items change
+  useEffect(() => {
     let subtotal = 0
     let taxTotal = 0
 
@@ -87,34 +148,31 @@ export function InvoiceForm({ invoice, onSave, onSend, onPreview }: InvoiceFormP
       return { ...item, amount }
     })
 
-    setLineItems(updatedItems)
-    setTotals({
-      subtotal,
-      taxTotal,
-      total: subtotal + taxTotal,
-    })
-  }, [lineItems])
-
-  useEffect(() => {
-    // Debounced recalculation
-    const timer = setTimeout(calculateTotals, 100)
-    return () => clearTimeout(timer)
+    // Only update if values actually changed
+    const newTotal = { subtotal, taxTotal, total: subtotal + taxTotal }
+    if (newTotal.subtotal !== totals.subtotal || newTotal.taxTotal !== totals.taxTotal) {
+      setLineItems(updatedItems)
+      setTotals(newTotal)
+    }
   }, [lineItems.map(i => `${i.quantity}-${i.unitPrice}-${i.taxRate}`).join(",")])
 
   const handleCustomerChange = (customerId: string) => {
-    const customer = mockContacts.find(c => c.id === customerId)
+    const customer = customers.find(c => c.id === customerId)
     if (customer) {
       setFormData(prev => ({
         ...prev,
         customerId,
         customerName: customer.name,
         customerEmail: customer.email || "",
-        customerAddress: [customer.address, customer.city, customer.country].filter(Boolean).join(", "),
+        customerAddress: customer.street || "",
+        customerCity: customer.city || "",
+        customerProvince: customer.province || "ON",
+        customerPostalCode: customer.postalCode || "",
       }))
     }
   }
 
-  const updateLineItem = (index: number, field: keyof InvoiceLineItem, value: any) => {
+  const updateLineItem = (index: number, field: keyof LineItem, value: any) => {
     setLineItems(items => {
       const newItems = [...items]
       newItems[index] = { ...newItems[index], [field]: value }
@@ -132,45 +190,85 @@ export function InvoiceForm({ invoice, onSave, onSend, onPreview }: InvoiceFormP
     }
   }
 
-  const handleSubmit = (action: "save" | "send") => {
-    const invoiceData: Partial<Invoice> = {
-      ...invoice,
-      ...formData,
-      lineItems,
-      subtotal: totals.subtotal,
-      taxTotal: totals.taxTotal,
-      total: totals.total,
-      amountPaid: invoice?.amountPaid || 0,
-      amountDue: totals.total - (invoice?.amountPaid || 0),
-      status: action === "send" ? "sent" : (invoice?.status || "draft"),
-    }
+  const buildInput = (): CreateInvoiceInput => ({
+    customerId: formData.customerId,
+    invoiceDate: formData.issueDate,
+    dueDate: formData.dueDate,
+    paymentTerms: formData.terms,
+    notes: formData.notes,
+    items: lineItems.map(item => ({
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      taxRate: item.taxRate,
+    })),
+  })
 
-    if (action === "send" && onSend) {
-      onSend(invoiceData)
-    } else {
-      onSave(invoiceData)
+  const handleSave = async () => {
+    if (!formData.customerId) {
+      alert("Please select a customer")
+      return
+    }
+    if (lineItems.every(i => !i.description)) {
+      alert("Please add at least one line item")
+      return
+    }
+    await onSave(buildInput())
+  }
+
+  const handleSend = async () => {
+    if (!formData.customerId) {
+      alert("Please select a customer")
+      return
+    }
+    if (onSend) {
+      await onSend(buildInput())
     }
   }
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey) {
-        if (e.key === "s") {
-          e.preventDefault()
-          handleSubmit("save")
-        } else if (e.key === "Enter") {
-          e.preventDefault()
-          handleSubmit("send")
-        }
-      }
+  const handlePreview = () => {
+    setShowPreview(true)
+  }
+
+  const handleDownloadPDF = () => {
+    const pdfData: InvoicePDFData = {
+      invoiceNumber: formData.invoiceNumber,
+      issueDate: formData.issueDate,
+      dueDate: formData.dueDate,
+      status: 'draft',
+      companyName: 'Your Company', // Would come from org settings
+      companyAddress: '123 Business St',
+      companyCity: 'Toronto',
+      companyProvince: 'ON',
+      companyPostalCode: 'M5V 1A1',
+      customerName: formData.customerName,
+      customerEmail: formData.customerEmail,
+      customerAddress: formData.customerAddress,
+      customerCity: formData.customerCity,
+      customerProvince: formData.customerProvince,
+      customerPostalCode: formData.customerPostalCode,
+      items: lineItems.map(item => ({
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        total: item.amount,
+      })),
+      subtotal: totals.subtotal,
+      taxBreakdown: [{
+        name: formData.customerProvince === 'ON' ? 'HST' : 'Tax',
+        rate: lineItems[0]?.taxRate / 100 || 0.13,
+        amount: totals.taxTotal,
+      }],
+      total: totals.total,
+      amountPaid: 0,
+      balanceDue: totals.total,
+      notes: formData.notes,
+      terms: formData.terms,
     }
+    downloadInvoicePDF(pdfData)
+  }
 
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [formData, lineItems, totals])
-
-  const customers = mockContacts.filter(c => c.type === "customer" || c.type === "both")
+  // customers already filtered by useCustomers() hook
 
   return (
     <div className="space-y-6">
@@ -201,10 +299,8 @@ export function InvoiceForm({ invoice, onSave, onSend, onPreview }: InvoiceFormP
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="USD">USD - US Dollar</SelectItem>
-                    <SelectItem value="EUR">EUR - Euro</SelectItem>
-                    <SelectItem value="GBP">GBP - British Pound</SelectItem>
                     <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
+                    <SelectItem value="USD">USD - US Dollar</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -230,25 +326,6 @@ export function InvoiceForm({ invoice, onSave, onSend, onPreview }: InvoiceFormP
                 />
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="terms">Payment Terms</Label>
-              <Select 
-                value={formData.terms} 
-                onValueChange={v => setFormData(prev => ({ ...prev, terms: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Due on Receipt">Due on Receipt</SelectItem>
-                  <SelectItem value="Net 15">Net 15</SelectItem>
-                  <SelectItem value="Net 30">Net 30</SelectItem>
-                  <SelectItem value="Net 45">Net 45</SelectItem>
-                  <SelectItem value="Net 60">Net 60</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </CardContent>
         </Card>
 
@@ -259,13 +336,14 @@ export function InvoiceForm({ invoice, onSave, onSend, onPreview }: InvoiceFormP
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="customer">Customer</Label>
+              <Label htmlFor="customer">Customer *</Label>
               <Select 
                 value={formData.customerId} 
                 onValueChange={handleCustomerChange}
+                disabled={contactsLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a customer" />
+                  <SelectValue placeholder={contactsLoading ? "Loading..." : "Select a customer"} />
                 </SelectTrigger>
                 <SelectContent>
                   {customers.map(customer => (
@@ -287,14 +365,49 @@ export function InvoiceForm({ invoice, onSave, onSend, onPreview }: InvoiceFormP
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="customerAddress">Address</Label>
-              <Textarea
-                id="customerAddress"
-                value={formData.customerAddress}
-                onChange={e => setFormData(prev => ({ ...prev, customerAddress: e.target.value }))}
-                rows={3}
-              />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Address</Label>
+                <Input
+                  value={formData.customerAddress}
+                  onChange={e => setFormData(prev => ({ ...prev, customerAddress: e.target.value }))}
+                  placeholder="Street address"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>City</Label>
+                <Input
+                  value={formData.customerCity}
+                  onChange={e => setFormData(prev => ({ ...prev, customerCity: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Province</Label>
+                <Select 
+                  value={formData.customerProvince} 
+                  onValueChange={v => setFormData(prev => ({ ...prev, customerProvince: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROVINCES.map(p => (
+                      <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Postal Code</Label>
+                <Input
+                  value={formData.customerPostalCode}
+                  onChange={e => setFormData(prev => ({ ...prev, customerPostalCode: e.target.value }))}
+                  placeholder="A1A 1A1"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -336,7 +449,7 @@ export function InvoiceForm({ invoice, onSave, onSend, onPreview }: InvoiceFormP
                   <Input
                     type="number"
                     min="0"
-                    step="0.01"
+                    step="1"
                     value={item.quantity}
                     onChange={e => updateLineItem(index, "quantity", parseFloat(e.target.value) || 0)}
                     className="text-right"
@@ -408,7 +521,7 @@ export function InvoiceForm({ invoice, onSave, onSend, onPreview }: InvoiceFormP
             </div>
             <div className="flex justify-between text-lg font-semibold border-t pt-2">
               <span>Total</span>
-              <span>{formatCurrency(totals.total, formData.currency)}</span>
+              <span className="text-primary">{formatCurrency(totals.total, formData.currency)}</span>
             </div>
           </div>
         </CardFooter>
@@ -417,15 +530,26 @@ export function InvoiceForm({ invoice, onSave, onSend, onPreview }: InvoiceFormP
       {/* Notes */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Notes</CardTitle>
+          <CardTitle className="text-lg">Notes & Terms</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Textarea
-            value={formData.notes}
-            onChange={e => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-            placeholder="Add any notes or payment instructions for the customer..."
-            rows={4}
-          />
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Notes</Label>
+            <Textarea
+              value={formData.notes}
+              onChange={e => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              placeholder="Add any notes for the customer..."
+              rows={3}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Terms & Conditions</Label>
+            <Textarea
+              value={formData.terms}
+              onChange={e => setFormData(prev => ({ ...prev, terms: e.target.value }))}
+              rows={2}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -435,23 +559,104 @@ export function InvoiceForm({ invoice, onSave, onSend, onPreview }: InvoiceFormP
           Cancel
         </Button>
         <div className="flex gap-2">
-          {onPreview && (
-            <Button variant="outline" onClick={() => onPreview({ ...formData, lineItems, ...totals })}>
-              <Eye className="mr-2 h-4 w-4" /> Preview
-            </Button>
-          )}
-          <Button variant="secondary" onClick={() => handleSubmit("save")}>
-            <Save className="mr-2 h-4 w-4" /> Save Draft
-            <span className="ml-2 text-xs text-muted-foreground">(⌘S)</span>
+          <Button variant="outline" onClick={handlePreview}>
+            <Eye className="mr-2 h-4 w-4" /> Preview
+          </Button>
+          <Button variant="outline" onClick={handleDownloadPDF}>
+            Download PDF
+          </Button>
+          <Button variant="secondary" onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Save Draft
           </Button>
           {onSend && (
-            <Button onClick={() => handleSubmit("send")}>
-              <Send className="mr-2 h-4 w-4" /> Send Invoice
-              <span className="ml-2 text-xs text-muted-foreground">(⌘↵)</span>
+            <Button onClick={handleSend} disabled={saving} className="shadow-maple">
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+              Send Invoice
             </Button>
           )}
         </div>
       </div>
+
+      {/* Preview Dialog */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Invoice Preview</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 p-6 bg-white rounded-lg border">
+            {/* Invoice Header */}
+            <div className="flex justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-primary">INVOICE</h2>
+                <p className="text-muted-foreground">{formData.invoiceNumber}</p>
+              </div>
+              <div className="text-right text-sm">
+                <p>Issue Date: {formData.issueDate}</p>
+                <p>Due Date: {formData.dueDate}</p>
+              </div>
+            </div>
+            
+            {/* Bill To */}
+            <div>
+              <p className="text-sm font-semibold text-primary mb-1">BILL TO</p>
+              <p className="font-medium">{formData.customerName || "—"}</p>
+              <p className="text-sm text-muted-foreground">{formData.customerEmail}</p>
+              <p className="text-sm text-muted-foreground">
+                {[formData.customerAddress, formData.customerCity, formData.customerProvince, formData.customerPostalCode].filter(Boolean).join(", ")}
+              </p>
+            </div>
+
+            {/* Line Items */}
+            <table className="w-full text-sm">
+              <thead className="border-b">
+                <tr>
+                  <th className="text-left py-2">Description</th>
+                  <th className="text-right py-2">Qty</th>
+                  <th className="text-right py-2">Price</th>
+                  <th className="text-right py-2">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lineItems.map(item => (
+                  <tr key={item.id} className="border-b">
+                    <td className="py-2">{item.description || "—"}</td>
+                    <td className="text-right py-2">{item.quantity}</td>
+                    <td className="text-right py-2">{formatCurrency(item.unitPrice, formData.currency)}</td>
+                    <td className="text-right py-2">{formatCurrency(item.amount, formData.currency)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Totals */}
+            <div className="flex justify-end">
+              <div className="w-64 space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>{formatCurrency(totals.subtotal, formData.currency)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tax</span>
+                  <span>{formatCurrency(totals.taxTotal, formData.currency)}</span>
+                </div>
+                <div className="flex justify-between font-bold border-t pt-2">
+                  <span>Total</span>
+                  <span>{formatCurrency(totals.total, formData.currency)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            {formData.notes && (
+              <div>
+                <p className="text-sm font-semibold mb-1">Notes</p>
+                <p className="text-sm text-muted-foreground">{formData.notes}</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

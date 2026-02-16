@@ -1,35 +1,51 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { InvoiceForm } from "@/components/modules/finance/invoice-form"
-import { Invoice } from "@/types/finance"
+import { useInvoices } from "@/hooks/use-invoices"
+import { type CreateInvoiceInput } from "@/services/invoices"
 
 export default function NewInvoicePage() {
   const router = useRouter()
+  const { createInvoice } = useInvoices()
+  const [saving, setSaving] = useState(false)
 
-  const handleSave = (invoice: Partial<Invoice>) => {
-    // In a real app, this would save to the database
-    console.log("Saving invoice:", invoice)
-    // Simulate save
-    setTimeout(() => {
-      router.push("/invoices")
-    }, 500)
+  const handleSave = async (input: CreateInvoiceInput) => {
+    setSaving(true)
+    try {
+      const invoice = await createInvoice(input)
+      if (invoice) {
+        router.push(`/invoices/${invoice.id}`)
+      } else {
+        alert("Failed to create invoice. Please try again.")
+      }
+    } catch (error) {
+      console.error("Error creating invoice:", error)
+      alert("Failed to create invoice. Please try again.")
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const handleSend = (invoice: Partial<Invoice>) => {
-    // In a real app, this would save and send the invoice
-    console.log("Sending invoice:", invoice)
-    setTimeout(() => {
-      router.push("/invoices")
-    }, 500)
-  }
-
-  const handlePreview = (invoice: Partial<Invoice>) => {
-    // Open preview modal or navigate to preview page
-    console.log("Preview:", invoice)
+  const handleSend = async (input: CreateInvoiceInput) => {
+    setSaving(true)
+    try {
+      const invoice = await createInvoice(input)
+      if (invoice) {
+        // In production: would also send email here
+        alert(`Invoice ${invoice.invoiceNumber} created and ready to send!`)
+        router.push(`/invoices/${invoice.id}`)
+      }
+    } catch (error) {
+      console.error("Error creating invoice:", error)
+      alert("Failed to create invoice.")
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -53,7 +69,7 @@ export default function NewInvoicePage() {
       <InvoiceForm
         onSave={handleSave}
         onSend={handleSend}
-        onPreview={handlePreview}
+        saving={saving}
       />
     </div>
   )

@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { formatCurrency, cn } from "@/lib/utils"
-import { invoiceService, type Invoice } from "@/services/invoices"
+import { invoicesService, type Invoice } from "@/services/invoices"
 import { downloadInvoicePDF, type InvoicePDFData } from "@/services/pdf"
 import { useAuth } from "@/hooks/use-auth"
 
@@ -22,6 +22,31 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   paid: { label: "Paid", color: "bg-green-100 text-green-700" },
   overdue: { label: "Overdue", color: "bg-red-100 text-red-700" },
   cancelled: { label: "Cancelled", color: "bg-gray-100 text-gray-700" },
+}
+
+// Helper to build tax breakdown for PDF
+function buildTaxBreakdown(invoice: Invoice): Array<{ name: string; rate: number; amount: number }> {
+  const breakdown: Array<{ name: string; rate: number; amount: number }> = []
+  
+  if (invoice.gstAmount && invoice.gstAmount > 0) {
+    breakdown.push({ name: 'GST', rate: 0.05, amount: invoice.gstAmount })
+  }
+  if (invoice.hstAmount && invoice.hstAmount > 0) {
+    breakdown.push({ name: 'HST', rate: 0.13, amount: invoice.hstAmount })
+  }
+  if (invoice.pstAmount && invoice.pstAmount > 0) {
+    breakdown.push({ name: 'PST', rate: 0.07, amount: invoice.pstAmount })
+  }
+  if (invoice.qstAmount && invoice.qstAmount > 0) {
+    breakdown.push({ name: 'QST', rate: 0.09975, amount: invoice.qstAmount })
+  }
+  
+  // If no specific taxes, use generic tax
+  if (breakdown.length === 0 && invoice.taxTotal > 0) {
+    breakdown.push({ name: 'Tax', rate: invoice.taxTotal / invoice.subtotal, amount: invoice.taxTotal })
+  }
+  
+  return breakdown
 }
 
 export default function InvoiceDetailPage() {
@@ -40,7 +65,7 @@ export default function InvoiceDetailPage() {
     const orgId = organizationId || 'demo'
     setLoading(true)
     
-    invoiceService.getById(orgId, invoiceId)
+    invoicesService.getInvoice(invoiceId, orgId)
       .then(setInvoice)
       .catch(console.error)
       .finally(() => setLoading(false))
@@ -79,7 +104,7 @@ export default function InvoiceDetailPage() {
       // Build PDF data from invoice
       const pdfData: InvoicePDFData = {
         invoiceNumber: invoice.invoiceNumber,
-        issueDate: invoice.issueDate,
+        issueDate: invoice.invoiceDate,
         dueDate: invoice.dueDate,
         status: invoice.status,
         
@@ -96,9 +121,9 @@ export default function InvoiceDetailPage() {
         // Customer
         customerName: invoice.customerName,
         customerEmail: invoice.customerEmail,
-        customerAddress: invoice.billingAddress?.line1,
+        customerAddress: invoice.billingAddress?.street,
         customerCity: invoice.billingAddress?.city,
-        customerProvince: invoice.billingAddress?.state,
+        customerProvince: invoice.billingAddress?.province,
         customerPostalCode: invoice.billingAddress?.postalCode,
         
         // Items
@@ -106,19 +131,15 @@ export default function InvoiceDetailPage() {
           description: item.description,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
-          total: item.total,
+          total: item.amount,
         })),
         
         // Totals
         subtotal: invoice.subtotal,
-        taxBreakdown: invoice.taxDetails?.map(tax => ({
-          name: tax.name,
-          rate: tax.rate,
-          amount: tax.amount,
-        })) || [],
+        taxBreakdown: buildTaxBreakdown(invoice),
         total: invoice.total,
         amountPaid: invoice.amountPaid,
-        balanceDue: invoice.balanceDue,
+        balanceDue: invoice.amountDue,
         
         notes: invoice.notes,
         terms: invoice.terms,
@@ -150,12 +171,15 @@ export default function InvoiceDetailPage() {
     setActionLoading('paid')
     try {
       const orgId = organizationId || 'demo'
-      await invoiceService.update(orgId, invoice.id, {
-        status: 'paid',
-        amountPaid: invoice.total,
-        balanceDue: 0,
-      })
-      setInvoice(prev => prev ? { ...prev, status: 'paid', amountPaid: prev.total, balanceDue: 0 } : null)
+      const today = new Date().toISOString().split('T')[0]
+      await invoicesService.updateInvoiceStatus(invoice.id, 'paid', orgId, today)
+      setInvoice(prev => prev ? { 
+        ...prev, 
+        status: 'paid', 
+        amountPaid: prev.total, 
+        amountDue: 0,
+        paidDate: today,
+      } : null)
     } catch (error) {
       console.error('Error marking paid:', error)
       alert('Failed to update invoice')
@@ -219,7 +243,7 @@ export default function InvoiceDetailPage() {
             </p>
           </div>
           <div className="text-right text-sm">
-            <p><span className="text-muted-foreground">Issue Date:</span> {new Date(invoice.issueDate).toLocaleDateString('en-CA')}</p>
+            <p><span className="text-muted-foreground">Issue Date:</span> {new Date(invoice.invoiceDate).toLocaleDateString('en-CA')}</p>
             <p><span className="text-muted-foreground">Due Date:</span> {new Date(invoice.dueDate).toLocaleDateString('en-CA')}</p>
           </div>
         </CardHeader>
@@ -232,9 +256,8 @@ export default function InvoiceDetailPage() {
               <p className="font-medium">{invoice.customerName}</p>
               {invoice.billingAddress && (
                 <div className="text-sm text-muted-foreground">
-                  <p>{invoice.billingAddress.line1}</p>
-                  {invoice.billingAddress.line2 && <p>{invoice.billingAddress.line2}</p>}
-                  <p>{invoice.billingAddress.city}, {invoice.billingAddress.state} {invoice.billingAddress.postalCode}</p>
+                  <p>{invoice.billingAddress.street}</p>
+                  <p>{invoice.billingAddress.city}, {invoice.billingAddress.province} {invoice.billingAddress.postalCode}</p>
                 </div>
               )}
               {invoice.customerEmail && (
@@ -263,7 +286,7 @@ export default function InvoiceDetailPage() {
                   </TableCell>
                   <TableCell className="text-right">{item.quantity}</TableCell>
                   <TableCell className="text-right">{formatCurrency(item.unitPrice, 'CAD')}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(item.total, 'CAD')}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(item.amount, 'CAD')}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -277,12 +300,36 @@ export default function InvoiceDetailPage() {
                 <span>{formatCurrency(invoice.subtotal, 'CAD')}</span>
               </div>
               
-              {invoice.taxDetails?.map((tax, idx) => (
-                <div key={idx} className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{tax.name} ({(tax.rate * 100).toFixed(2)}%)</span>
-                  <span>{formatCurrency(tax.amount, 'CAD')}</span>
+              {invoice.gstAmount && invoice.gstAmount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">GST (5%)</span>
+                  <span>{formatCurrency(invoice.gstAmount, 'CAD')}</span>
                 </div>
-              ))}
+              )}
+              {invoice.hstAmount && invoice.hstAmount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">HST (13%)</span>
+                  <span>{formatCurrency(invoice.hstAmount, 'CAD')}</span>
+                </div>
+              )}
+              {invoice.pstAmount && invoice.pstAmount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">PST</span>
+                  <span>{formatCurrency(invoice.pstAmount, 'CAD')}</span>
+                </div>
+              )}
+              {invoice.qstAmount && invoice.qstAmount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">QST</span>
+                  <span>{formatCurrency(invoice.qstAmount, 'CAD')}</span>
+                </div>
+              )}
+              {invoice.taxTotal > 0 && !invoice.gstAmount && !invoice.hstAmount && !invoice.pstAmount && !invoice.qstAmount && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Tax</span>
+                  <span>{formatCurrency(invoice.taxTotal, 'CAD')}</span>
+                </div>
+              )}
               
               <Separator />
               
@@ -300,7 +347,7 @@ export default function InvoiceDetailPage() {
               
               <div className="flex justify-between text-lg font-bold bg-primary text-primary-foreground p-3 rounded-lg -mx-3">
                 <span>Balance Due</span>
-                <span>{formatCurrency(invoice.balanceDue, 'CAD')}</span>
+                <span>{formatCurrency(invoice.amountDue, 'CAD')}</span>
               </div>
             </div>
           </div>
