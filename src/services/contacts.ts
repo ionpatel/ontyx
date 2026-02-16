@@ -186,10 +186,18 @@ function getDemoContactStore(): Contact[] {
     try {
       const stored = localStorage.getItem(DEMO_CONTACTS_STORAGE_KEY)
       if (stored) {
-        return JSON.parse(stored)
+        const parsed = JSON.parse(stored)
+        // Validate it's a non-empty array
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed
+        }
+        // Reset to defaults if empty or invalid
+        console.warn('Demo contacts localStorage was empty/invalid, resetting to defaults')
+        localStorage.removeItem(DEMO_CONTACTS_STORAGE_KEY)
       }
     } catch (e) {
       console.error('Error reading demo contacts from localStorage:', e)
+      localStorage.removeItem(DEMO_CONTACTS_STORAGE_KEY)
     }
   }
   return [...demoContacts]
@@ -222,9 +230,12 @@ export const contactsService = {
     // Return demo data if Supabase not configured OR if using demo org
     if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
       const store = getDemoContactStore()
-      const filtered = type 
-        ? store.filter(c => c.type === type || c.type === 'both')
-        : store
+      // Filter by isActive AND type
+      const filtered = store.filter(c => {
+        if (!c.isActive) return false
+        if (!type) return true
+        return c.type === type || c.type === 'both'
+      })
       return filtered
     }
 
@@ -387,7 +398,7 @@ export const contactsService = {
     return mapContactFromDb(data)
   },
 
-  // Delete (soft delete)
+  // Delete (soft delete for Supabase, hard delete for demo mode)
   async deleteContact(id: string, organizationId: string): Promise<boolean> {
     const supabase = createClient()
     
@@ -395,7 +406,8 @@ export const contactsService = {
       const store = getDemoContactStore()
       const index = store.findIndex(c => c.id === id)
       if (index === -1) return false
-      store[index].isActive = false
+      // Hard delete for demo mode - actually remove from array
+      store.splice(index, 1)
       saveDemoContactStore(store)
       return true
     }
@@ -421,6 +433,7 @@ export const contactsService = {
     if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
       const q = query.toLowerCase()
       return getDemoContactStore().filter(c => 
+        c.isActive &&
         (c.name.toLowerCase().includes(q) || 
          c.email?.toLowerCase().includes(q) ||
          c.company?.toLowerCase().includes(q)) &&
