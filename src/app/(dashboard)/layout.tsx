@@ -292,12 +292,14 @@ export default function DashboardLayout({
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  className="text-destructive cursor-pointer"
-                  onClick={() => handleLogout()}
-                  onSelect={() => handleLogout()}
-                >
-                  <LogOut className="mr-2 h-4 w-4" /> Log out
+                <DropdownMenuItem asChild>
+                  <button
+                    type="button"
+                    className="w-full flex items-center text-destructive cursor-pointer"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" /> Log out
+                  </button>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
