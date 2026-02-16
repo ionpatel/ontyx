@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { 
   Building2, User, Mail, Lock, ArrowRight, Loader2, 
-  Eye, EyeOff, Check, MapPin
+  Eye, EyeOff, Check, MapPin, AlertCircle
 } from "lucide-react"
 import {
   Select,
@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client"
 
 const provinces = [
   { value: "ON", label: "Ontario" },
@@ -55,6 +56,8 @@ export default function RegisterPage() {
   const [googleLoading, setGoogleLoading] = React.useState(false)
   const [showPassword, setShowPassword] = React.useState(false)
   const [acceptTerms, setAcceptTerms] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+  const [success, setSuccess] = React.useState(false)
   
   const [formData, setFormData] = React.useState({
     fullName: "",
@@ -67,37 +70,132 @@ export default function RegisterPage() {
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+    setError(null)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!acceptTerms) return
+    if (!acceptTerms) {
+      setError("Please accept the terms and conditions")
+      return
+    }
     
     setLoading(true)
-    // Simulate registration - in production this would call Supabase
-    setTimeout(() => {
-      router.push("/dashboard")
-    }, 1500)
+    setError(null)
+    
+    const supabase = createClient()
+    
+    if (!supabase) {
+      // Demo mode - just redirect
+      setTimeout(() => {
+        router.push("/dashboard")
+      }, 1000)
+      return
+    }
+
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.fullName,
+            company_name: formData.companyName,
+            province: formData.province,
+            industry: formData.industry,
+            country: 'CA',
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+
+      if (signUpError) {
+        throw signUpError
+      }
+
+      if (data.user) {
+        // Check if email confirmation is required
+        if (data.user.identities?.length === 0) {
+          setError("An account with this email already exists. Please sign in instead.")
+        } else if (data.session) {
+          // User is signed in immediately (email confirmation disabled)
+          router.push("/dashboard")
+        } else {
+          // Email confirmation required
+          setSuccess(true)
+        }
+      }
+    } catch (err: any) {
+      console.error("Signup error:", err)
+      setError(err.message || "Failed to create account. Please try again.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleGoogleSignup = async () => {
     setGoogleLoading(true)
-    // Simulate Google OAuth
-    setTimeout(() => {
-      router.push("/dashboard")
-    }, 1500)
+    setError(null)
+    
+    const supabase = createClient()
+    
+    if (!supabase) {
+      setTimeout(() => {
+        router.push("/dashboard")
+      }, 1000)
+      return
+    }
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+
+      if (error) throw error
+    } catch (err: any) {
+      setError(err.message || "Failed to sign up with Google")
+      setGoogleLoading(false)
+    }
   }
 
   const passwordStrength = React.useMemo(() => {
     const { password } = formData
     if (!password) return null
-    if (password.length < 6) return { label: "Too short", color: "bg-error" }
-    if (password.length < 8) return { label: "Weak", color: "bg-warning" }
+    if (password.length < 6) return { label: "Too short", color: "bg-destructive" }
+    if (password.length < 8) return { label: "Weak", color: "bg-orange-500" }
     if (password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password)) {
-      return { label: "Strong", color: "bg-success" }
+      return { label: "Strong", color: "bg-green-500" }
     }
-    return { label: "Medium", color: "bg-warning" }
+    return { label: "Medium", color: "bg-orange-500" }
   }, [formData.password])
+
+  // Success state - show confirmation message
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-md w-full text-center"
+        >
+          <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-6">
+            <Check className="h-8 w-8 text-green-600 dark:text-green-400" />
+          </div>
+          <h1 className="text-2xl font-bold mb-2">Check your email</h1>
+          <p className="text-muted-foreground mb-6">
+            We've sent a confirmation link to <strong>{formData.email}</strong>. 
+            Click the link to activate your account.
+          </p>
+          <Button variant="outline" asChild>
+            <Link href="/login">Back to sign in</Link>
+          </Button>
+        </motion.div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -166,10 +264,31 @@ export default function RegisterPage() {
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold tracking-tight">Create your account</h1>
-            <p className="text-text-secondary mt-2">
+            <p className="text-muted-foreground mt-2">
               Start your 14-day free trial. No credit card required.
             </p>
           </div>
+
+          {/* Error message */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-2"
+            >
+              <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+              <p className="text-sm text-destructive">{error}</p>
+            </motion.div>
+          )}
+
+          {/* Demo mode notice */}
+          {!isSupabaseConfigured() && (
+            <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>Demo Mode:</strong> Registration is simulated. Configure Supabase for real auth.
+              </p>
+            </div>
+          )}
 
           {/* Google Signup */}
           <Button 
@@ -197,7 +316,7 @@ export default function RegisterPage() {
               <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-text-muted">Or continue with email</span>
+              <span className="bg-background px-2 text-muted-foreground">Or continue with email</span>
             </div>
           </div>
 
@@ -207,7 +326,7 @@ export default function RegisterPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Full Name</label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
                     type="text" 
                     placeholder="John Doe" 
@@ -221,7 +340,7 @@ export default function RegisterPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Company</label>
                 <div className="relative">
-                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
                     type="text" 
                     placeholder="Acme Inc" 
@@ -237,7 +356,7 @@ export default function RegisterPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Work Email</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
                   type="email" 
                   placeholder="you@company.com" 
@@ -257,7 +376,7 @@ export default function RegisterPage() {
                   onValueChange={(value) => handleChange("province", value)}
                 >
                   <SelectTrigger className="h-11">
-                    <MapPin className="h-4 w-4 mr-2 text-text-muted" />
+                    <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
@@ -292,7 +411,7 @@ export default function RegisterPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
                   type={showPassword ? "text" : "password"}
                   placeholder="Min. 8 characters" 
@@ -300,24 +419,25 @@ export default function RegisterPage() {
                   value={formData.password}
                   onChange={(e) => handleChange("password", e.target.value)}
                   required
+                  minLength={6}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               {passwordStrength && (
                 <div className="flex items-center gap-2">
-                  <div className="h-1 flex-1 rounded-full bg-border overflow-hidden">
+                  <div className="h-1 flex-1 rounded-full bg-muted overflow-hidden">
                     <div 
                       className={`h-full ${passwordStrength.color} transition-all`}
                       style={{ width: passwordStrength.label === "Strong" ? "100%" : passwordStrength.label === "Medium" ? "66%" : "33%" }}
                     />
                   </div>
-                  <span className="text-xs text-text-muted">{passwordStrength.label}</span>
+                  <span className="text-xs text-muted-foreground">{passwordStrength.label}</span>
                 </div>
               )}
             </div>
@@ -329,7 +449,7 @@ export default function RegisterPage() {
                 onCheckedChange={(checked) => setAcceptTerms(checked as boolean)}
                 className="mt-0.5"
               />
-              <label htmlFor="terms" className="text-sm text-text-secondary cursor-pointer leading-relaxed">
+              <label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer leading-relaxed">
                 I agree to the{" "}
                 <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link>
                 {" "}and{" "}
@@ -351,9 +471,9 @@ export default function RegisterPage() {
           </form>
 
           {/* Sign in link */}
-          <p className="mt-6 text-center text-sm text-text-secondary">
+          <p className="mt-6 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/login" className="text-primary hover:text-primary-hover font-medium transition-colors">
+            <Link href="/login" className="text-primary hover:text-primary/80 font-medium transition-colors">
               Sign in
             </Link>
           </p>
