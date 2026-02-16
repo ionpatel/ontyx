@@ -200,12 +200,18 @@ export const organizationService = {
     const supabase = createClient()
     
     if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
-      // For demo mode, create blob URL and persist it
-      // Note: Blob URLs don't survive page refresh, but at least we save the org state
-      const blobUrl = URL.createObjectURL(file)
-      const currentOrg = getDemoOrgStore()
-      saveDemoOrgStore({ ...currentOrg, logoUrl: blobUrl, updatedAt: new Date().toISOString() })
-      return blobUrl
+      // For demo mode, convert to base64 data URL (survives page refresh)
+      return new Promise((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const base64Url = reader.result as string
+          const currentOrg = getDemoOrgStore()
+          saveDemoOrgStore({ ...currentOrg, logoUrl: base64Url, updatedAt: new Date().toISOString() })
+          resolve(base64Url)
+        }
+        reader.onerror = () => resolve(null)
+        reader.readAsDataURL(file)
+      })
     }
 
     const fileExt = file.name.split('.').pop()

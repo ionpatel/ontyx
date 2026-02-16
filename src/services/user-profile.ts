@@ -152,11 +152,18 @@ export const userProfileService = {
     const supabase = createClient()
     
     if (!supabase || !isSupabaseConfigured() || userId === 'demo') {
-      // For demo mode, create blob URL and persist reference
-      const blobUrl = URL.createObjectURL(file)
-      const currentProfile = getDemoProfileStore()
-      saveDemoProfileStore({ ...currentProfile, avatarUrl: blobUrl, updatedAt: new Date().toISOString() })
-      return blobUrl
+      // For demo mode, convert to base64 data URL (survives page refresh)
+      return new Promise((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const base64Url = reader.result as string
+          const currentProfile = getDemoProfileStore()
+          saveDemoProfileStore({ ...currentProfile, avatarUrl: base64Url, updatedAt: new Date().toISOString() })
+          resolve(base64Url)
+        }
+        reader.onerror = () => resolve(null)
+        reader.readAsDataURL(file)
+      })
     }
 
     const fileExt = file.name.split('.').pop()
