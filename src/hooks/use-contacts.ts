@@ -5,23 +5,20 @@ import { contactsService, type Contact, type CreateContactInput, type ContactTyp
 import { useAuth } from './use-auth'
 
 export function useContacts(type?: ContactType) {
-  const { organizationId } = useAuth()
+  const { organizationId, isConfigured } = useAuth()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchContacts = useCallback(async () => {
-    if (!organizationId) {
-      setContacts([])
-      setLoading(false)
-      return
-    }
+  // Use 'demo' as fallback for demo mode
+  const effectiveOrgId = organizationId || 'demo'
 
+  const fetchContacts = useCallback(async () => {
     setLoading(true)
     setError(null)
     
     try {
-      const data = await contactsService.getContacts(organizationId, type)
+      const data = await contactsService.getContacts(effectiveOrgId, type)
       setContacts(data)
     } catch (err) {
       setError('Failed to fetch contacts')
@@ -29,17 +26,15 @@ export function useContacts(type?: ContactType) {
     } finally {
       setLoading(false)
     }
-  }, [organizationId, type])
+  }, [effectiveOrgId, type])
 
   useEffect(() => {
     fetchContacts()
   }, [fetchContacts])
 
   const createContact = async (input: CreateContactInput): Promise<Contact | null> => {
-    if (!organizationId) return null
-    
     try {
-      const contact = await contactsService.createContact(input, organizationId)
+      const contact = await contactsService.createContact(input, effectiveOrgId)
       if (contact) {
         setContacts(prev => [contact, ...prev])
       }
@@ -51,10 +46,8 @@ export function useContacts(type?: ContactType) {
   }
 
   const updateContact = async (id: string, updates: Partial<CreateContactInput>): Promise<Contact | null> => {
-    if (!organizationId) return null
-    
     try {
-      const contact = await contactsService.updateContact(id, updates, organizationId)
+      const contact = await contactsService.updateContact(id, updates, effectiveOrgId)
       if (contact) {
         setContacts(prev => prev.map(c => c.id === id ? contact : c))
       }
@@ -66,10 +59,8 @@ export function useContacts(type?: ContactType) {
   }
 
   const deleteContact = async (id: string): Promise<boolean> => {
-    if (!organizationId) return false
-    
     try {
-      const success = await contactsService.deleteContact(id, organizationId)
+      const success = await contactsService.deleteContact(id, effectiveOrgId)
       if (success) {
         setContacts(prev => prev.filter(c => c.id !== id))
       }
@@ -81,8 +72,7 @@ export function useContacts(type?: ContactType) {
   }
 
   const searchContacts = async (query: string): Promise<Contact[]> => {
-    if (!organizationId) return []
-    return contactsService.searchContacts(query, organizationId, type)
+    return contactsService.searchContacts(query, effectiveOrgId, type)
   }
 
   return {
