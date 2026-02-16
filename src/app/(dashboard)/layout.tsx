@@ -280,7 +280,13 @@ export default function DashboardLayout({
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive cursor-pointer" onClick={handleLogout}>
+                <DropdownMenuItem 
+                  className="text-destructive cursor-pointer" 
+                  onSelect={(e) => {
+                    e.preventDefault()
+                    handleLogout()
+                  }}
+                >
                   <LogOut className="mr-2 h-4 w-4" /> Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>
