@@ -537,13 +537,13 @@ export default function PayrollPage() {
                     Tax brackets for all provinces including Quebec's unique system.
                   </p>
                 </div>
-                <div className="p-4 rounded-lg border">
+                <Link href="/payroll/t4" className="p-4 rounded-lg border hover:border-primary hover:bg-primary/5 transition-colors block">
                   <h4 className="font-semibold mb-2">T4 Generation</h4>
                   <p className="text-sm text-muted-foreground">
                     Year-end tax slips generated in CRA-compliant format.
                   </p>
-                  <Badge variant="secondary" className="mt-2">Coming Soon</Badge>
-                </div>
+                  <Badge className="mt-2 bg-green-100 text-green-700">Available</Badge>
+                </Link>
                 <div className="p-4 rounded-lg border">
                   <h4 className="font-semibold mb-2">ROE Export</h4>
                   <p className="text-sm text-muted-foreground">
@@ -556,7 +556,7 @@ export default function PayrollPage() {
                   <p className="text-sm text-muted-foreground">
                     Professional PDF pay stubs with YTD totals and deduction breakdown.
                   </p>
-                  <Badge variant="secondary" className="mt-2">Coming Soon</Badge>
+                  <Badge className="mt-2 bg-green-100 text-green-700">Available</Badge>
                 </div>
               </div>
             </CardContent>
