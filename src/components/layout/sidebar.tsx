@@ -108,13 +108,13 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
       )}
     >
       {/* Logo */}
-      <div className="flex h-16 items-center justify-between px-4 border-b border-border">
-        <Link href="/dashboard" className={cn("flex items-center group", collapsed && "justify-center")}>
+      <div className="flex h-16 items-center justify-center px-4 border-b border-border">
+        <Link href="/dashboard" className="flex items-center justify-center group">
           <Image 
             src="/logo.png" 
             alt="OntyX" 
-            width={44}
-            height={44}
+            width={56}
+            height={56}
             quality={100}
             priority
             className="rounded-xl group-hover:opacity-90 transition-opacity"
