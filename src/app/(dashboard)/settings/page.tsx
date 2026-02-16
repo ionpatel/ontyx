@@ -261,7 +261,7 @@ export default function SettingsPage() {
                     variant="outline" 
                     size="sm"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={saving}
+                    disabled={orgSaving}
                   >
                     <Upload className="mr-2 h-4 w-4" /> Upload Logo
                   </Button>
