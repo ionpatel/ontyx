@@ -143,7 +143,32 @@ const demoTemplates: InvoiceTemplate[] = [
   },
 ]
 
-let demoTemplateStore = [...demoTemplates]
+// localStorage persistence for demo mode
+const DEMO_TEMPLATES_STORAGE_KEY = 'ontyx_demo_invoice_templates'
+
+function getDemoTemplateStore(): InvoiceTemplate[] {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(DEMO_TEMPLATES_STORAGE_KEY)
+      if (stored) {
+        return JSON.parse(stored)
+      }
+    } catch (e) {
+      console.error('Error reading demo templates from localStorage:', e)
+    }
+  }
+  return [...demoTemplates]
+}
+
+function saveDemoTemplateStore(templates: InvoiceTemplate[]): void {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(DEMO_TEMPLATES_STORAGE_KEY, JSON.stringify(templates))
+    } catch (e) {
+      console.error('Error saving demo templates to localStorage:', e)
+    }
+  }
+}
 
 // ============================================================================
 // SERVICE
@@ -157,7 +182,7 @@ export const invoiceTemplateService = {
     const supabase = createClient()
     
     if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
-      return demoTemplateStore.filter(t => t.organizationId === 'demo')
+      return getDemoTemplateStore().filter(t => t.organizationId === 'demo')
     }
 
     const { data, error } = await supabase
@@ -208,7 +233,9 @@ export const invoiceTemplateService = {
     }
     
     if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
-      demoTemplateStore.push(newTemplate)
+      const store = getDemoTemplateStore()
+      store.push(newTemplate)
+      saveDemoTemplateStore(store)
       return newTemplate
     }
 
@@ -237,23 +264,25 @@ export const invoiceTemplateService = {
     const supabase = createClient()
     
     if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
-      const idx = demoTemplateStore.findIndex(t => t.id === id)
+      let store = getDemoTemplateStore()
+      const idx = store.findIndex(t => t.id === id)
       if (idx === -1) return null
       
       // If setting as default, unset others
       if (updates.isDefault) {
-        demoTemplateStore = demoTemplateStore.map(t => ({
+        store = store.map(t => ({
           ...t,
           isDefault: t.id === id,
         }))
       }
       
-      demoTemplateStore[idx] = {
-        ...demoTemplateStore[idx],
+      store[idx] = {
+        ...store[idx],
         ...updates,
         updatedAt: new Date().toISOString(),
       }
-      return demoTemplateStore[idx]
+      saveDemoTemplateStore(store)
+      return store[idx]
     }
 
     // If setting as default, unset others first
@@ -290,9 +319,11 @@ export const invoiceTemplateService = {
     const supabase = createClient()
     
     if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
-      const idx = demoTemplateStore.findIndex(t => t.id === id)
-      if (idx === -1 || demoTemplateStore[idx].isDefault) return false
-      demoTemplateStore.splice(idx, 1)
+      const store = getDemoTemplateStore()
+      const idx = store.findIndex(t => t.id === id)
+      if (idx === -1 || store[idx].isDefault) return false
+      store.splice(idx, 1)
+      saveDemoTemplateStore(store)
       return true
     }
 
