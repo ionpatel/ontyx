@@ -12,14 +12,14 @@
   :root {
     /* Maple Professional — Light Mode */
     
-    /* Backgrounds */
-    --background: #FFFFFF;
-    --background-secondary: #F8FAFC;
+    /* Backgrounds — Maple Professional */
+    --background: #FFFFFF;           /* Clean White */
+    --background-secondary: #F8F9FA; /* Soft Gray (Surface) */
     --background-tertiary: #F1F5F9;
     
     /* Surfaces (cards, dialogs) */
     --surface: #FFFFFF;
-    --surface-hover: #F8FAFC;
+    --surface-hover: #F8F9FA;        /* Soft Gray */
     --surface-active: #F1F5F9;
     
     /* Primary (Maple Red) */
@@ -60,12 +60,12 @@
     /* Ring (focus) */
     --ring: #DC2626;
     
-    /* Sidebar */
+    /* Sidebar — Maple Professional */
     --sidebar-background: #FFFFFF;
     --sidebar-border: #E2E8F0;
-    --sidebar-item-hover: #F1F5F9;
-    --sidebar-item-active: #FEF2F2;
-    --sidebar-item-active-text: #B91C1C;
+    --sidebar-item-hover: #F8F9FA;   /* Soft Gray */
+    --sidebar-item-active: #FEF2F2;  /* Light Red tint */
+    --sidebar-item-active-text: #991B1B; /* Accent Dark Red */
     
     /* Charts */
     --chart-1: #DC2626;
