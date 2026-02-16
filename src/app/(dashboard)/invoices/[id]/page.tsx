@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { ArrowLeft, Edit, Loader2, Download, Printer, Send, CheckCircle } from "lucide-react"
+import { ArrowLeft, Edit, Loader2, Download, Printer, Send, CheckCircle, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -14,6 +14,7 @@ import { invoicesService, type Invoice } from "@/services/invoices"
 import { downloadInvoicePDF, type InvoicePDFData } from "@/services/pdf"
 import { useAuth } from "@/hooks/use-auth"
 import { useOrganization } from "@/hooks/use-organization"
+import { RecordPaymentDialog, type PaymentInput } from "@/components/modules/finance/record-payment-dialog"
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   draft: { label: "Draft", color: "bg-slate-100 text-slate-700" },
@@ -60,6 +61,7 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false)
 
   useEffect(() => {
     if (!invoiceId) return
@@ -187,6 +189,34 @@ export default function InvoiceDetailPage() {
       alert('Failed to update invoice')
     } finally {
       setActionLoading(null)
+    }
+  }
+
+  const handleRecordPayment = async (payment: PaymentInput): Promise<boolean> => {
+    const orgId = organizationId || 'demo'
+    try {
+      const success = await invoicesService.recordPayment(
+        invoice.id, 
+        payment.amount, 
+        orgId, 
+        payment.paymentDate
+      )
+      if (success) {
+        // Update local state
+        const newAmountPaid = invoice.amountPaid + payment.amount
+        const newAmountDue = Math.max(0, invoice.total - newAmountPaid)
+        setInvoice(prev => prev ? {
+          ...prev,
+          amountPaid: newAmountPaid,
+          amountDue: newAmountDue,
+          status: newAmountDue === 0 ? 'paid' : 'partial',
+          paidDate: newAmountDue === 0 ? payment.paymentDate : prev.paidDate,
+        } : null)
+      }
+      return success
+    } catch (error) {
+      console.error('Error recording payment:', error)
+      return false
     }
   }
 
@@ -389,21 +419,41 @@ export default function InvoiceDetailPage() {
         )}
         
         {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
-          <Button 
-            variant="default"
-            className="bg-green-600 hover:bg-green-700"
-            onClick={handleMarkPaid}
-            disabled={actionLoading === 'paid'}
-          >
-            {actionLoading === 'paid' ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <CheckCircle className="mr-2 h-4 w-4" />
-            )}
-            Mark as Paid
-          </Button>
+          <>
+            <Button 
+              variant="outline"
+              onClick={() => setShowPaymentDialog(true)}
+            >
+              <DollarSign className="mr-2 h-4 w-4" />
+              Record Payment
+            </Button>
+            <Button 
+              variant="default"
+              className="bg-green-600 hover:bg-green-700"
+              onClick={handleMarkPaid}
+              disabled={actionLoading === 'paid'}
+            >
+              {actionLoading === 'paid' ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle className="mr-2 h-4 w-4" />
+              )}
+              Mark as Paid
+            </Button>
+          </>
         )}
       </div>
+
+      {/* Payment Dialog */}
+      <RecordPaymentDialog
+        open={showPaymentDialog}
+        onOpenChange={setShowPaymentDialog}
+        invoiceNumber={invoice.invoiceNumber}
+        customerName={invoice.customerName}
+        totalAmount={invoice.total}
+        amountDue={invoice.amountDue}
+        onRecordPayment={handleRecordPayment}
+      />
     </div>
   )
 }
