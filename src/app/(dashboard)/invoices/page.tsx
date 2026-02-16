@@ -5,7 +5,7 @@ import Link from "next/link"
 import { 
   Plus, FileText, DollarSign, AlertCircle, Clock, 
   Send, CheckCircle, MoreHorizontal, Search, Filter,
-  Eye, Edit, Trash2, Copy, Download, CreditCard
+  Eye, Edit, Trash2, Copy, Download, CreditCard, RefreshCw
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -120,11 +120,18 @@ export default function InvoicesPage() {
             Create and manage customer invoices
           </p>
         </div>
-        <Button asChild className="shadow-maple">
-          <Link href="/invoices/new">
-            <Plus className="mr-2 h-4 w-4" /> New Invoice
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/invoices/recurring">
+              <RefreshCw className="mr-2 h-4 w-4" /> Recurring
+            </Link>
+          </Button>
+          <Button asChild className="shadow-maple">
+            <Link href="/invoices/new">
+              <Plus className="mr-2 h-4 w-4" /> New Invoice
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}

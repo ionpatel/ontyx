@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { useOrganization } from "@/hooks/use-organization"
 import { RecordPaymentDialog, type PaymentInput } from "@/components/modules/finance/record-payment-dialog"
 import { getInvoicePDFBlob } from "@/services/pdf"
+import { useToast } from "@/components/ui/toast"
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   draft: { label: "Draft", color: "bg-slate-100 text-slate-700" },
@@ -57,6 +58,7 @@ export default function InvoiceDetailPage() {
   const router = useRouter()
   const { organizationId } = useAuth()
   const { organization } = useOrganization()
+  const { success, error: showError, warning } = useToast()
   const invoiceId = params.id as string
   
   const [invoice, setInvoice] = useState<Invoice | null>(null)
@@ -153,7 +155,7 @@ export default function InvoiceDetailPage() {
       downloadInvoicePDF(pdfData)
     } catch (error) {
       console.error('PDF generation error:', error)
-      alert('Failed to generate PDF')
+      showError('PDF Error', 'Failed to generate PDF')
     } finally {
       setActionLoading(null)
     }
@@ -165,7 +167,7 @@ export default function InvoiceDetailPage() {
 
   const handleSend = async () => {
     if (!invoice.customerEmail) {
-      alert('No customer email address. Please add an email to the customer.')
+      warning('Missing Email', 'No customer email address. Please add an email to the customer.')
       return
     }
 
@@ -236,13 +238,13 @@ export default function InvoiceDetailPage() {
         const orgId = organizationId || 'demo'
         await invoicesService.updateInvoiceStatus(invoice.id, 'sent', orgId)
         setInvoice(prev => prev ? { ...prev, status: 'sent', sentAt: new Date().toISOString() } : null)
-        alert(`Invoice ${invoice.invoiceNumber} sent to ${invoice.customerEmail}!`)
+        success('Invoice Sent', `Invoice ${invoice.invoiceNumber} sent to ${invoice.customerEmail}`)
       } else {
-        alert(`Failed to send: ${result.error || 'Unknown error'}`)
+        showError('Send Failed', result.error || 'Unknown error')
       }
     } catch (error) {
       console.error('Send error:', error)
-      alert('Failed to send invoice. Please try again.')
+      showError('Send Failed', 'Failed to send invoice. Please try again.')
     } finally {
       setActionLoading(null)
     }
@@ -261,9 +263,10 @@ export default function InvoiceDetailPage() {
         amountDue: 0,
         paidDate: today,
       } : null)
+      success('Invoice Paid', 'Invoice marked as fully paid')
     } catch (error) {
       console.error('Error marking paid:', error)
-      alert('Failed to update invoice')
+      showError('Update Failed', 'Failed to update invoice')
     } finally {
       setActionLoading(null)
     }

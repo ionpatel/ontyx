@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { ToastProvider } from "@/components/ui/toast"
 
 const navigation = [
   {
@@ -94,6 +95,7 @@ export default function DashboardLayout({
   const [collapsed, setCollapsed] = useState(false)
 
   return (
+    <ToastProvider>
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
@@ -257,5 +259,6 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
+    </ToastProvider>
   )
 }
