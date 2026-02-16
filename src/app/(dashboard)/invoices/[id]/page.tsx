@@ -2,19 +2,57 @@
 
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Edit } from "lucide-react"
+import { useEffect, useState } from "react"
+import { ArrowLeft, Edit, Loader2, Download, Printer, Send, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { InvoicePreview } from "@/components/modules/finance/invoice-preview"
-import { mockInvoices } from "@/lib/mock-data"
-import { Invoice, InvoiceStatus } from "@/types/finance"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { formatCurrency, cn } from "@/lib/utils"
+import { invoiceService, type Invoice } from "@/services/invoices"
+import { downloadInvoicePDF, type InvoicePDFData } from "@/services/pdf"
+import { useAuth } from "@/hooks/use-auth"
+
+const statusConfig: Record<string, { label: string; color: string }> = {
+  draft: { label: "Draft", color: "bg-slate-100 text-slate-700" },
+  sent: { label: "Sent", color: "bg-blue-100 text-blue-700" },
+  viewed: { label: "Viewed", color: "bg-indigo-100 text-indigo-700" },
+  partial: { label: "Partial", color: "bg-amber-100 text-amber-700" },
+  paid: { label: "Paid", color: "bg-green-100 text-green-700" },
+  overdue: { label: "Overdue", color: "bg-red-100 text-red-700" },
+  cancelled: { label: "Cancelled", color: "bg-gray-100 text-gray-700" },
+}
 
 export default function InvoiceDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { organizationId } = useAuth()
   const invoiceId = params.id as string
+  
+  const [invoice, setInvoice] = useState<Invoice | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
 
-  // In a real app, this would fetch from API
-  const invoice = mockInvoices.find(inv => inv.id === invoiceId)
+  useEffect(() => {
+    if (!invoiceId) return
+    
+    const orgId = organizationId || 'demo'
+    setLoading(true)
+    
+    invoiceService.getById(orgId, invoiceId)
+      .then(setInvoice)
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [invoiceId, organizationId])
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-6">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   if (!invoice) {
     return (
@@ -32,27 +70,98 @@ export default function InvoiceDetailPage() {
     )
   }
 
-  const handleSend = () => {
-    // In a real app, this would trigger an email
-    console.log("Sending invoice:", invoice.id)
-    alert(`Invoice ${invoice.invoiceNumber} sent to ${invoice.customerEmail}`)
-  }
+  const status = statusConfig[invoice.status] || statusConfig.draft
 
-  const handleMarkPaid = () => {
-    // In a real app, this would update the database
-    console.log("Marking as paid:", invoice.id)
-    alert(`Invoice ${invoice.invoiceNumber} marked as paid`)
-    router.refresh()
+  const handleDownloadPDF = () => {
+    setActionLoading('download')
+    
+    try {
+      // Build PDF data from invoice
+      const pdfData: InvoicePDFData = {
+        invoiceNumber: invoice.invoiceNumber,
+        issueDate: invoice.issueDate,
+        dueDate: invoice.dueDate,
+        status: invoice.status,
+        
+        // Company details (would come from org settings)
+        companyName: 'Your Company Name',
+        companyAddress: '123 Business St',
+        companyCity: 'Toronto',
+        companyProvince: 'ON',
+        companyPostalCode: 'M5V 1A1',
+        companyPhone: '(416) 555-0123',
+        companyEmail: 'billing@company.com',
+        companyGstNumber: '123456789 RT0001',
+        
+        // Customer
+        customerName: invoice.customerName,
+        customerEmail: invoice.customerEmail,
+        customerAddress: invoice.billingAddress?.line1,
+        customerCity: invoice.billingAddress?.city,
+        customerProvince: invoice.billingAddress?.state,
+        customerPostalCode: invoice.billingAddress?.postalCode,
+        
+        // Items
+        items: invoice.items.map(item => ({
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          total: item.total,
+        })),
+        
+        // Totals
+        subtotal: invoice.subtotal,
+        taxBreakdown: invoice.taxDetails?.map(tax => ({
+          name: tax.name,
+          rate: tax.rate,
+          amount: tax.amount,
+        })) || [],
+        total: invoice.total,
+        amountPaid: invoice.amountPaid,
+        balanceDue: invoice.balanceDue,
+        
+        notes: invoice.notes,
+        terms: invoice.terms,
+      }
+      
+      downloadInvoicePDF(pdfData)
+    } catch (error) {
+      console.error('PDF generation error:', error)
+      alert('Failed to generate PDF')
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   const handlePrint = () => {
     window.print()
   }
 
-  const handleDownload = () => {
-    // In a real app, this would generate and download a PDF
-    console.log("Downloading PDF for:", invoice.id)
-    alert("PDF download started...")
+  const handleSend = async () => {
+    setActionLoading('send')
+    // In production: send email with PDF attachment
+    setTimeout(() => {
+      alert(`Invoice ${invoice.invoiceNumber} sent to ${invoice.customerEmail}`)
+      setActionLoading(null)
+    }, 1000)
+  }
+
+  const handleMarkPaid = async () => {
+    setActionLoading('paid')
+    try {
+      const orgId = organizationId || 'demo'
+      await invoiceService.update(orgId, invoice.id, {
+        status: 'paid',
+        amountPaid: invoice.total,
+        balanceDue: 0,
+      })
+      setInvoice(prev => prev ? { ...prev, status: 'paid', amountPaid: prev.total, balanceDue: 0 } : null)
+    } catch (error) {
+      console.error('Error marking paid:', error)
+      alert('Failed to update invoice')
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   return (
@@ -66,27 +175,186 @@ export default function InvoiceDetailPage() {
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{invoice.invoiceNumber}</h1>
-            <p className="text-muted-foreground">
-              {invoice.customerName}
-            </p>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold tracking-tight">{invoice.invoiceNumber}</h1>
+              <Badge className={cn("text-xs", status.color)}>{status.label}</Badge>
+            </div>
+            <p className="text-muted-foreground">{invoice.customerName}</p>
           </div>
         </div>
-        <Button variant="outline" asChild>
-          <Link href={`/invoices/${invoice.id}/edit`}>
-            <Edit className="mr-2 h-4 w-4" /> Edit Invoice
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handlePrint}
+          >
+            <Printer className="mr-2 h-4 w-4" /> Print
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleDownloadPDF}
+            disabled={actionLoading === 'download'}
+          >
+            {actionLoading === 'download' ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            Download PDF
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href={`/invoices/${invoice.id}/edit`}>
+              <Edit className="mr-2 h-4 w-4" /> Edit
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      {/* Invoice Preview */}
-      <InvoicePreview
-        invoice={invoice}
-        onSend={handleSend}
-        onMarkPaid={handleMarkPaid}
-        onPrint={handlePrint}
-        onDownload={handleDownload}
-      />
+      {/* Invoice Card */}
+      <Card className="print:shadow-none">
+        <CardHeader className="flex flex-row items-start justify-between pb-2">
+          <div>
+            <CardTitle className="text-2xl text-primary">INVOICE</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Invoice # {invoice.invoiceNumber}
+            </p>
+          </div>
+          <div className="text-right text-sm">
+            <p><span className="text-muted-foreground">Issue Date:</span> {new Date(invoice.issueDate).toLocaleDateString('en-CA')}</p>
+            <p><span className="text-muted-foreground">Due Date:</span> {new Date(invoice.dueDate).toLocaleDateString('en-CA')}</p>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="space-y-6">
+          {/* Bill To */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-sm font-semibold text-primary mb-2">BILL TO</h3>
+              <p className="font-medium">{invoice.customerName}</p>
+              {invoice.billingAddress && (
+                <div className="text-sm text-muted-foreground">
+                  <p>{invoice.billingAddress.line1}</p>
+                  {invoice.billingAddress.line2 && <p>{invoice.billingAddress.line2}</p>}
+                  <p>{invoice.billingAddress.city}, {invoice.billingAddress.state} {invoice.billingAddress.postalCode}</p>
+                </div>
+              )}
+              {invoice.customerEmail && (
+                <p className="text-sm text-muted-foreground mt-1">{invoice.customerEmail}</p>
+              )}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Line Items */}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[50%]">Description</TableHead>
+                <TableHead className="text-right">Qty</TableHead>
+                <TableHead className="text-right">Unit Price</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {invoice.items.map((item, idx) => (
+                <TableRow key={idx}>
+                  <TableCell>
+                    <p className="font-medium">{item.description}</p>
+                  </TableCell>
+                  <TableCell className="text-right">{item.quantity}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(item.unitPrice, 'CAD')}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(item.total, 'CAD')}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          {/* Totals */}
+          <div className="flex justify-end">
+            <div className="w-80 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span>{formatCurrency(invoice.subtotal, 'CAD')}</span>
+              </div>
+              
+              {invoice.taxDetails?.map((tax, idx) => (
+                <div key={idx} className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{tax.name} ({(tax.rate * 100).toFixed(2)}%)</span>
+                  <span>{formatCurrency(tax.amount, 'CAD')}</span>
+                </div>
+              ))}
+              
+              <Separator />
+              
+              <div className="flex justify-between font-semibold">
+                <span>Total</span>
+                <span>{formatCurrency(invoice.total, 'CAD')}</span>
+              </div>
+              
+              {invoice.amountPaid > 0 && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>Amount Paid</span>
+                  <span>-{formatCurrency(invoice.amountPaid, 'CAD')}</span>
+                </div>
+              )}
+              
+              <div className="flex justify-between text-lg font-bold bg-primary text-primary-foreground p-3 rounded-lg -mx-3">
+                <span>Balance Due</span>
+                <span>{formatCurrency(invoice.balanceDue, 'CAD')}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Notes */}
+          {invoice.notes && (
+            <div>
+              <h3 className="text-sm font-semibold text-primary mb-2">Notes</h3>
+              <p className="text-sm text-muted-foreground">{invoice.notes}</p>
+            </div>
+          )}
+
+          {/* Terms */}
+          {invoice.terms && (
+            <div>
+              <h3 className="text-sm font-semibold text-primary mb-2">Terms & Conditions</h3>
+              <p className="text-sm text-muted-foreground">{invoice.terms}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-3 print:hidden">
+        {invoice.status === 'draft' && (
+          <Button 
+            onClick={handleSend}
+            disabled={actionLoading === 'send'}
+          >
+            {actionLoading === 'send' ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="mr-2 h-4 w-4" />
+            )}
+            Send Invoice
+          </Button>
+        )}
+        
+        {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+          <Button 
+            variant="default"
+            className="bg-green-600 hover:bg-green-700"
+            onClick={handleMarkPaid}
+            disabled={actionLoading === 'paid'}
+          >
+            {actionLoading === 'paid' ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCircle className="mr-2 h-4 w-4" />
+            )}
+            Mark as Paid
+          </Button>
+        )}
+      </div>
     </div>
   )
 }
