@@ -1,10 +1,12 @@
 /**
  * PDF Generation Service for Ontyx ERP
  * Generates professional PDF invoices with Canadian tax breakdown
+ * Supports customizable templates with branding options
  */
 
 import { jsPDF } from 'jspdf'
 import { formatCurrency } from '@/lib/utils'
+import type { InvoiceTemplate } from './invoice-templates'
 
 // ============================================================================
 // TYPES
@@ -26,6 +28,7 @@ export interface InvoicePDFData {
   companyPhone?: string
   companyEmail?: string
   companyGstNumber?: string
+  companyLogoUrl?: string
   
   // Customer (buyer)
   customerName: string
@@ -57,19 +60,44 @@ export interface InvoicePDFData {
   // Optional
   notes?: string
   terms?: string
+  
+  // Template (optional - uses defaults if not provided)
+  template?: Partial<InvoiceTemplate>
 }
 
 // ============================================================================
 // CONSTANTS
 // ============================================================================
 
-const COLORS = {
+const DEFAULT_COLORS = {
   primary: '#DC2626',      // Maple red
   primaryDark: '#B91C1C',
   text: '#1f2937',
   textMuted: '#6b7280',
   border: '#e5e7eb',
   background: '#f9fafb',
+}
+
+// Build colors from template or use defaults
+function getColors(template?: Partial<InvoiceTemplate>) {
+  return {
+    primary: template?.primaryColor || DEFAULT_COLORS.primary,
+    primaryDark: darkenColor(template?.primaryColor || DEFAULT_COLORS.primary, 0.15),
+    text: template?.secondaryColor || DEFAULT_COLORS.text,
+    textMuted: '#6b7280',
+    border: '#e5e7eb',
+    background: '#f9fafb',
+  }
+}
+
+// Darken a hex color by a percentage
+function darkenColor(hex: string, percent: number): string {
+  const num = parseInt(hex.replace('#', ''), 16)
+  const amt = Math.round(255 * percent)
+  const R = Math.max((num >> 16) - amt, 0)
+  const G = Math.max((num >> 8 & 0x00FF) - amt, 0)
+  const B = Math.max((num & 0x0000FF) - amt, 0)
+  return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)
 }
 
 const FONTS = {
@@ -92,21 +120,64 @@ export function generateInvoicePDF(data: InvoicePDFData): jsPDF {
   const pageHeight = doc.internal.pageSize.getHeight()
   const margin = 20
   let y = margin
+  
+  // Get colors from template
+  const COLORS = getColors(data.template)
+  
+  // Template settings with defaults
+  const template = {
+    logoPosition: data.template?.logoPosition || 'left',
+    logoSize: data.template?.logoSize || 'medium',
+    fontStyle: data.template?.fontStyle || 'modern',
+    footerText: data.template?.footerText || 'Thank you for your business!',
+    paymentInstructions: data.template?.paymentInstructions || '',
+    thankYouMessage: data.template?.thankYouMessage || '',
+    showLogo: data.template?.showLogo ?? true,
+    showCompanyAddress: data.template?.showCompanyAddress ?? true,
+    showPaymentTerms: data.template?.showPaymentTerms ?? true,
+  }
+  
+  // Logo size in mm
+  const logoSizes = { small: 15, medium: 20, large: 25 }
+  const logoSize = logoSizes[template.logoSize]
 
   // -------------------------------------------------------------------------
   // HEADER
   // -------------------------------------------------------------------------
   
-  // Company name (left)
-  doc.setFontSize(24)
-  doc.setTextColor(COLORS.primary)
-  doc.setFont(FONTS.bold, 'bold')
-  doc.text(data.companyName, margin, y)
-  
-  // Invoice title (right)
-  doc.setFontSize(32)
-  doc.setTextColor(COLORS.text)
-  doc.text('INVOICE', pageWidth - margin, y, { align: 'right' })
+  // Header layout based on logo position
+  if (template.logoPosition === 'center') {
+    // Centered logo layout
+    doc.setFontSize(24)
+    doc.setTextColor(COLORS.primary)
+    doc.setFont(FONTS.bold, 'bold')
+    doc.text(data.companyName, pageWidth / 2, y, { align: 'center' })
+    
+    doc.setFontSize(28)
+    doc.setTextColor(COLORS.text)
+    doc.text('INVOICE', pageWidth / 2, y + 12, { align: 'center' })
+    y += 20
+  } else if (template.logoPosition === 'right') {
+    // Right-aligned company, left invoice
+    doc.setFontSize(32)
+    doc.setTextColor(COLORS.text)
+    doc.text('INVOICE', margin, y)
+    
+    doc.setFontSize(24)
+    doc.setTextColor(COLORS.primary)
+    doc.setFont(FONTS.bold, 'bold')
+    doc.text(data.companyName, pageWidth - margin, y, { align: 'right' })
+  } else {
+    // Default: Left company, right invoice
+    doc.setFontSize(24)
+    doc.setTextColor(COLORS.primary)
+    doc.setFont(FONTS.bold, 'bold')
+    doc.text(data.companyName, margin, y)
+    
+    doc.setFontSize(32)
+    doc.setTextColor(COLORS.text)
+    doc.text('INVOICE', pageWidth - margin, y, { align: 'right' })
+  }
   
   y += 12
   
@@ -326,25 +397,43 @@ export function generateInvoicePDF(data: InvoicePDFData): jsPDF {
     y += noteLines.length * 4 + 5
   }
   
-  if (data.terms) {
+  // Payment Instructions from template
+  const paymentInstructions = template.paymentInstructions || data.terms
+  if (paymentInstructions && template.showPaymentTerms) {
     doc.setFontSize(9)
     doc.setTextColor(COLORS.primary)
     doc.setFont(FONTS.bold, 'bold')
-    doc.text('Terms & Conditions', margin, y)
+    doc.text('Payment Instructions', margin, y)
     y += 5
     
     doc.setTextColor(COLORS.textMuted)
     doc.setFont(FONTS.regular, 'normal')
-    const termLines = doc.splitTextToSize(data.terms, pageWidth - (margin * 2))
+    const termLines = doc.splitTextToSize(paymentInstructions, pageWidth - (margin * 2))
     doc.text(termLines, margin, y)
+    y += termLines.length * 4 + 5
+  }
+  
+  // Thank you message from template
+  if (template.thankYouMessage) {
+    doc.setFontSize(10)
+    doc.setTextColor(COLORS.primary)
+    doc.setFont(FONTS.regular, 'italic')
+    doc.text(template.thankYouMessage, pageWidth / 2, y + 5, { align: 'center' })
+    y += 10
   }
   
   // -------------------------------------------------------------------------
   // FOOTER
   // -------------------------------------------------------------------------
   
-  doc.setFontSize(8)
+  // Custom footer text from template
+  const footerText = template.footerText || 'Thank you for your business!'
+  
+  doc.setFontSize(9)
   doc.setTextColor(COLORS.textMuted)
+  doc.text(footerText, pageWidth / 2, pageHeight - 15, { align: 'center' })
+  
+  doc.setFontSize(7)
   doc.text(
     'Generated by Ontyx ERP • ontyx.vercel.app',
     pageWidth / 2,

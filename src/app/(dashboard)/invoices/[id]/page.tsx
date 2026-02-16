@@ -11,11 +11,11 @@ import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { formatCurrency, cn } from "@/lib/utils"
 import { invoicesService, type Invoice } from "@/services/invoices"
-import { downloadInvoicePDF, type InvoicePDFData } from "@/services/pdf"
+import { downloadInvoicePDF, type InvoicePDFData, getInvoicePDFBlob } from "@/services/pdf"
 import { useAuth } from "@/hooks/use-auth"
 import { useOrganization } from "@/hooks/use-organization"
+import { useInvoiceTemplates } from "@/hooks/use-invoice-templates"
 import { RecordPaymentDialog, type PaymentInput } from "@/components/modules/finance/record-payment-dialog"
-import { getInvoicePDFBlob } from "@/services/pdf"
 import { useToast } from "@/components/ui/toast"
 
 const statusConfig: Record<string, { label: string; color: string }> = {
@@ -58,6 +58,7 @@ export default function InvoiceDetailPage() {
   const router = useRouter()
   const { organizationId } = useAuth()
   const { organization } = useOrganization()
+  const { defaultTemplate } = useInvoiceTemplates()
   const { success, error: showError, warning } = useToast()
   const invoiceId = params.id as string
   
@@ -150,6 +151,9 @@ export default function InvoiceDetailPage() {
         
         notes: invoice.notes,
         terms: invoice.terms,
+        
+        // Apply invoice template branding
+        template: defaultTemplate,
       }
       
       downloadInvoicePDF(pdfData)
@@ -174,7 +178,7 @@ export default function InvoiceDetailPage() {
     setActionLoading('send')
     
     try {
-      // Generate PDF blob
+      // Generate PDF blob with template branding
       const pdfBlob = getInvoicePDFBlob({
         invoiceNumber: invoice.invoiceNumber,
         issueDate: invoice.invoiceDate,
@@ -207,6 +211,7 @@ export default function InvoiceDetailPage() {
         balanceDue: invoice.amountDue,
         notes: invoice.notes,
         terms: invoice.terms,
+        template: defaultTemplate,
       })
 
       // Convert blob to base64
