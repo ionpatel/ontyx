@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { inventoryService } from '@/services/inventory'
+import { useAuth } from '@/hooks/use-auth'
 import type { Product, ProductCategory, StockMovement, StockMovementType } from '@/types/operations'
 
 // ============================================================================
@@ -17,6 +18,7 @@ interface UseProductsOptions {
 }
 
 export function useProducts(options: UseProductsOptions = {}) {
+  const { organizationId } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [count, setCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -26,7 +28,10 @@ export function useProducts(options: UseProductsOptions = {}) {
     try {
       setLoading(true)
       setError(null)
-      const result = await inventoryService.getProducts(options)
+      const result = await inventoryService.getProducts({
+        ...options,
+        organizationId: organizationId || undefined,
+      })
       setProducts(result.data)
       setCount(result.count)
     } catch (err) {
@@ -34,7 +39,7 @@ export function useProducts(options: UseProductsOptions = {}) {
     } finally {
       setLoading(false)
     }
-  }, [options.search, options.categoryId, options.status, options.limit])
+  }, [options.search, options.categoryId, options.status, options.limit, organizationId])
 
   useEffect(() => {
     if (options.initialLoad !== false) {
@@ -43,20 +48,20 @@ export function useProducts(options: UseProductsOptions = {}) {
   }, [fetchProducts, options.initialLoad])
 
   const createProduct = async (product: Partial<Product>) => {
-    const newProduct = await inventoryService.createProduct(product)
+    const newProduct = await inventoryService.createProduct(product, organizationId || undefined)
     setProducts(prev => [newProduct, ...prev])
     setCount(prev => prev + 1)
     return newProduct
   }
 
   const updateProduct = async (id: string, updates: Partial<Product>) => {
-    const updated = await inventoryService.updateProduct(id, updates)
+    const updated = await inventoryService.updateProduct(id, updates, organizationId || undefined)
     setProducts(prev => prev.map(p => p.id === id ? updated : p))
     return updated
   }
 
   const deleteProduct = async (id: string) => {
-    await inventoryService.deleteProduct(id)
+    await inventoryService.deleteProduct(id, organizationId || undefined)
     setProducts(prev => prev.filter(p => p.id !== id))
     setCount(prev => prev - 1)
   }
@@ -78,6 +83,7 @@ export function useProducts(options: UseProductsOptions = {}) {
 // ============================================================================
 
 export function useProduct(id: string) {
+  const { organizationId } = useAuth()
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
@@ -86,7 +92,7 @@ export function useProduct(id: string) {
     async function fetch() {
       try {
         setLoading(true)
-        const data = await inventoryService.getProduct(id)
+        const data = await inventoryService.getProduct(id, organizationId || undefined)
         setProduct(data)
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Failed to fetch product'))
@@ -95,10 +101,10 @@ export function useProduct(id: string) {
       }
     }
     fetch()
-  }, [id])
+  }, [id, organizationId])
 
   const update = async (updates: Partial<Product>) => {
-    const updated = await inventoryService.updateProduct(id, updates)
+    const updated = await inventoryService.updateProduct(id, updates, organizationId || undefined)
     setProduct(updated)
     return updated
   }
@@ -111,6 +117,7 @@ export function useProduct(id: string) {
 // ============================================================================
 
 export function useCategories() {
+  const { organizationId } = useAuth()
   const [categories, setCategories] = useState<ProductCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
@@ -119,7 +126,7 @@ export function useCategories() {
     async function fetch() {
       try {
         setLoading(true)
-        const data = await inventoryService.getCategories()
+        const data = await inventoryService.getCategories(organizationId || undefined)
         setCategories(data)
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Failed to fetch categories'))
@@ -128,10 +135,10 @@ export function useCategories() {
       }
     }
     fetch()
-  }, [])
+  }, [organizationId])
 
   const createCategory = async (category: Partial<ProductCategory>) => {
-    const newCategory = await inventoryService.createCategory(category)
+    const newCategory = await inventoryService.createCategory(category, organizationId || undefined)
     setCategories(prev => [...prev, newCategory])
     return newCategory
   }
@@ -144,6 +151,7 @@ export function useCategories() {
 // ============================================================================
 
 export function useStockMovements(productId?: string) {
+  const { organizationId } = useAuth()
   const [movements, setMovements] = useState<StockMovement[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
@@ -151,14 +159,14 @@ export function useStockMovements(productId?: string) {
   const fetchMovements = useCallback(async () => {
     try {
       setLoading(true)
-      const data = await inventoryService.getStockMovements(productId)
+      const data = await inventoryService.getStockMovements(productId, organizationId || undefined)
       setMovements(data)
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch movements'))
     } finally {
       setLoading(false)
     }
-  }, [productId])
+  }, [productId, organizationId])
 
   useEffect(() => {
     fetchMovements()
@@ -172,7 +180,7 @@ export function useStockMovements(productId?: string) {
     reference?: string
     notes?: string
   }) => {
-    const newMovement = await inventoryService.createStockMovement(movement)
+    const newMovement = await inventoryService.createStockMovement(movement, organizationId || undefined)
     setMovements(prev => [newMovement, ...prev])
     return newMovement
   }
@@ -185,6 +193,7 @@ export function useStockMovements(productId?: string) {
 // ============================================================================
 
 export function useInventoryStats() {
+  const { organizationId } = useAuth()
   const [stats, setStats] = useState<{
     totalProducts: number
     totalValue: number
@@ -198,7 +207,7 @@ export function useInventoryStats() {
     async function fetch() {
       try {
         setLoading(true)
-        const data = await inventoryService.getInventoryStats()
+        const data = await inventoryService.getInventoryStats(organizationId || undefined)
         setStats(data)
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Failed to fetch stats'))
@@ -207,7 +216,35 @@ export function useInventoryStats() {
       }
     }
     fetch()
-  }, [])
+  }, [organizationId])
 
   return { stats, loading, error }
+}
+
+// ============================================================================
+// USE WAREHOUSES HOOK
+// ============================================================================
+
+export function useWarehouses() {
+  const { organizationId } = useAuth()
+  const [warehouses, setWarehouses] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
+
+  useEffect(() => {
+    async function fetch() {
+      try {
+        setLoading(true)
+        const data = await inventoryService.getWarehouses(organizationId || undefined)
+        setWarehouses(data)
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('Failed to fetch warehouses'))
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetch()
+  }, [organizationId])
+
+  return { warehouses, loading, error }
 }

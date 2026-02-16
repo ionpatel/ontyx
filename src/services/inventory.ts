@@ -2,7 +2,7 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import type { Product, ProductCategory, StockMovement, StockMovementType } from '@/types/operations'
 
 // ============================================================================
-// DEMO DATA (Used when Supabase isn't configured)
+// DEMO DATA (Used when Supabase isn't configured or no org context)
 // ============================================================================
 
 const demoCategories: ProductCategory[] = [
@@ -144,6 +144,56 @@ let demoCategoryStore = [...demoCategories]
 let demoMovementStore = [...demoMovements]
 
 // ============================================================================
+// HELPER: Transform DB row to Product type
+// ============================================================================
+
+function transformProduct(row: any): Product {
+  return {
+    id: row.id,
+    sku: row.sku || '',
+    barcode: row.barcode,
+    name: row.name,
+    description: row.description,
+    categoryId: row.category_id,
+    categoryName: row.product_categories?.name || 'Uncategorized',
+    status: row.is_active 
+      ? (row.total_stock <= 0 ? 'out_of_stock' : 'active') 
+      : 'inactive',
+    unitPrice: parseFloat(row.sell_price) || 0,
+    costPrice: parseFloat(row.cost_price) || 0,
+    taxRate: row.tax_rates?.rate || 0,
+    stockQuantity: row.total_stock || 0,
+    reorderLevel: row.reorder_point || 0,
+    reorderQuantity: row.reorder_quantity || 0,
+    unit: row.weight_unit || 'piece',
+    weight: row.weight ? parseFloat(row.weight) : undefined,
+    dimensions: row.length || row.width || row.height ? {
+      length: parseFloat(row.length) || 0,
+      width: parseFloat(row.width) || 0,
+      height: parseFloat(row.height) || 0,
+    } : undefined,
+    imageUrl: row.images?.[0],
+    tags: row.tags,
+    isActive: row.is_active,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+function transformCategory(row: any): ProductCategory {
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    description: row.description,
+    parentId: row.parent_id,
+    productCount: row.product_count || 0,
+    isActive: row.is_active,
+    createdAt: row.created_at,
+  }
+}
+
+// ============================================================================
 // INVENTORY SERVICE
 // ============================================================================
 
@@ -158,10 +208,11 @@ export const inventoryService = {
     status?: string
     limit?: number
     offset?: number
+    organizationId?: string
   }): Promise<{ data: Product[]; count: number }> {
     const supabase = createClient()
     
-    if (!supabase) {
+    if (!supabase || !options?.organizationId) {
       // Demo mode
       let filtered = [...demoProductStore]
       
@@ -188,10 +239,16 @@ export const inventoryService = {
       return { data: filtered.slice(start, end), count }
     }
 
-    // Real Supabase query
+    // Real Supabase query with stock aggregation
     let query = supabase
       .from('products')
-      .select('*, categories(name)', { count: 'exact' })
+      .select(`
+        *,
+        product_categories(name),
+        tax_rates(rate),
+        inventory_levels(on_hand)
+      `, { count: 'exact' })
+      .eq('organization_id', options.organizationId)
     
     if (options?.search) {
       query = query.or(`name.ilike.%${options.search}%,sku.ilike.%${options.search}%`)
@@ -201,8 +258,10 @@ export const inventoryService = {
       query = query.eq('category_id', options.categoryId)
     }
     
-    if (options?.status) {
-      query = query.eq('status', options.status)
+    if (options?.status === 'active') {
+      query = query.eq('is_active', true)
+    } else if (options?.status === 'inactive') {
+      query = query.eq('is_active', false)
     }
     
     if (options?.limit) {
@@ -217,30 +276,44 @@ export const inventoryService = {
     
     if (error) throw error
     
-    return { data: data as unknown as Product[], count: count || 0 }
+    // Calculate total stock from inventory_levels
+    const products = (data || []).map((row: any) => {
+      const totalStock = row.inventory_levels?.reduce((sum: number, il: any) => sum + (il.on_hand || 0), 0) || 0
+      return transformProduct({ ...row, total_stock: totalStock })
+    })
+    
+    return { data: products, count: count || 0 }
   },
 
-  async getProduct(id: string): Promise<Product | null> {
+  async getProduct(id: string, organizationId?: string): Promise<Product | null> {
     const supabase = createClient()
     
-    if (!supabase) {
+    if (!supabase || !organizationId) {
       return demoProductStore.find(p => p.id === id) || null
     }
 
     const { data, error } = await supabase
       .from('products')
-      .select('*, categories(name)')
+      .select(`
+        *,
+        product_categories(name),
+        tax_rates(rate),
+        inventory_levels(on_hand)
+      `)
       .eq('id', id)
+      .eq('organization_id', organizationId)
       .single()
     
     if (error) throw error
-    return data as unknown as Product
+    
+    const totalStock = data.inventory_levels?.reduce((sum: number, il: any) => sum + (il.on_hand || 0), 0) || 0
+    return transformProduct({ ...data, total_stock: totalStock })
   },
 
-  async createProduct(product: Partial<Product>): Promise<Product> {
+  async createProduct(product: Partial<Product>, organizationId?: string): Promise<Product> {
     const supabase = createClient()
     
-    if (!supabase) {
+    if (!supabase || !organizationId) {
       // Demo mode - create in memory
       const newProduct: Product = {
         id: String(demoProductStore.length + 1),
@@ -265,20 +338,65 @@ export const inventoryService = {
       return newProduct
     }
 
+    // Transform to DB schema
+    const dbProduct = {
+      organization_id: organizationId,
+      sku: product.sku,
+      name: product.name,
+      description: product.description,
+      category_id: product.categoryId,
+      sell_price: product.unitPrice,
+      cost_price: product.costPrice,
+      reorder_point: product.reorderLevel,
+      reorder_quantity: product.reorderQuantity,
+      weight: product.weight,
+      weight_unit: product.unit,
+      length: product.dimensions?.length,
+      width: product.dimensions?.width,
+      height: product.dimensions?.height,
+      is_active: true,
+      is_taxable: (product.taxRate || 0) > 0,
+    }
+
     const { data, error } = await supabase
       .from('products')
-      .insert(product)
-      .select()
+      .insert(dbProduct)
+      .select(`
+        *,
+        product_categories(name)
+      `)
       .single()
     
     if (error) throw error
-    return data as unknown as Product
+    
+    // Create initial inventory level if stock quantity provided
+    if (product.stockQuantity && product.stockQuantity > 0) {
+      // Get default warehouse
+      const { data: warehouse } = await supabase
+        .from('warehouses')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('is_primary', true)
+        .single()
+      
+      if (warehouse) {
+        await supabase.from('inventory_levels').insert({
+          organization_id: organizationId,
+          product_id: data.id,
+          warehouse_id: warehouse.id,
+          on_hand: product.stockQuantity,
+          available: product.stockQuantity,
+        })
+      }
+    }
+    
+    return transformProduct({ ...data, total_stock: product.stockQuantity || 0 })
   },
 
-  async updateProduct(id: string, updates: Partial<Product>): Promise<Product> {
+  async updateProduct(id: string, updates: Partial<Product>, organizationId?: string): Promise<Product> {
     const supabase = createClient()
     
-    if (!supabase) {
+    if (!supabase || !organizationId) {
       const index = demoProductStore.findIndex(p => p.id === id)
       if (index === -1) throw new Error('Product not found')
       
@@ -290,21 +408,41 @@ export const inventoryService = {
       return demoProductStore[index]
     }
 
+    const dbUpdates: any = { updated_at: new Date().toISOString() }
+    
+    if (updates.sku !== undefined) dbUpdates.sku = updates.sku
+    if (updates.name !== undefined) dbUpdates.name = updates.name
+    if (updates.description !== undefined) dbUpdates.description = updates.description
+    if (updates.categoryId !== undefined) dbUpdates.category_id = updates.categoryId
+    if (updates.unitPrice !== undefined) dbUpdates.sell_price = updates.unitPrice
+    if (updates.costPrice !== undefined) dbUpdates.cost_price = updates.costPrice
+    if (updates.reorderLevel !== undefined) dbUpdates.reorder_point = updates.reorderLevel
+    if (updates.reorderQuantity !== undefined) dbUpdates.reorder_quantity = updates.reorderQuantity
+    if (updates.isActive !== undefined) dbUpdates.is_active = updates.isActive
+    if (updates.status !== undefined) dbUpdates.is_active = updates.status !== 'inactive'
+
     const { data, error } = await supabase
       .from('products')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update(dbUpdates)
       .eq('id', id)
-      .select()
+      .eq('organization_id', organizationId)
+      .select(`
+        *,
+        product_categories(name),
+        inventory_levels(on_hand)
+      `)
       .single()
     
     if (error) throw error
-    return data as unknown as Product
+    
+    const totalStock = data.inventory_levels?.reduce((sum: number, il: any) => sum + (il.on_hand || 0), 0) || 0
+    return transformProduct({ ...data, total_stock: totalStock })
   },
 
-  async deleteProduct(id: string): Promise<void> {
+  async deleteProduct(id: string, organizationId?: string): Promise<void> {
     const supabase = createClient()
     
-    if (!supabase) {
+    if (!supabase || !organizationId) {
       demoProductStore = demoProductStore.filter(p => p.id !== id)
       return
     }
@@ -313,6 +451,7 @@ export const inventoryService = {
       .from('products')
       .delete()
       .eq('id', id)
+      .eq('organization_id', organizationId)
     
     if (error) throw error
   },
@@ -321,26 +460,34 @@ export const inventoryService = {
   // CATEGORIES
   // --------------------------------------------------------------------------
 
-  async getCategories(): Promise<ProductCategory[]> {
+  async getCategories(organizationId?: string): Promise<ProductCategory[]> {
     const supabase = createClient()
     
-    if (!supabase) {
+    if (!supabase || !organizationId) {
       return demoCategoryStore
     }
 
     const { data, error } = await supabase
       .from('product_categories')
-      .select('*')
+      .select(`
+        *,
+        products(count)
+      `)
+      .eq('organization_id', organizationId)
       .order('name')
     
     if (error) throw error
-    return data as unknown as ProductCategory[]
+    
+    return (data || []).map((row: any) => ({
+      ...transformCategory(row),
+      productCount: row.products?.[0]?.count || 0,
+    }))
   },
 
-  async createCategory(category: Partial<ProductCategory>): Promise<ProductCategory> {
+  async createCategory(category: Partial<ProductCategory>, organizationId?: string): Promise<ProductCategory> {
     const supabase = createClient()
     
-    if (!supabase) {
+    if (!supabase || !organizationId) {
       const newCategory: ProductCategory = {
         id: String(demoCategoryStore.length + 1),
         name: category.name || 'New Category',
@@ -356,22 +503,28 @@ export const inventoryService = {
 
     const { data, error } = await supabase
       .from('product_categories')
-      .insert(category)
+      .insert({
+        organization_id: organizationId,
+        name: category.name,
+        slug: category.slug || category.name?.toLowerCase().replace(/\s+/g, '-'),
+        description: category.description,
+        is_active: true,
+      })
       .select()
       .single()
     
     if (error) throw error
-    return data as unknown as ProductCategory
+    return transformCategory(data)
   },
 
   // --------------------------------------------------------------------------
   // STOCK MOVEMENTS
   // --------------------------------------------------------------------------
 
-  async getStockMovements(productId?: string): Promise<StockMovement[]> {
+  async getStockMovements(productId?: string, organizationId?: string): Promise<StockMovement[]> {
     const supabase = createClient()
     
-    if (!supabase) {
+    if (!supabase || !organizationId) {
       if (productId) {
         return demoMovementStore.filter(m => m.productId === productId)
       }
@@ -379,8 +532,14 @@ export const inventoryService = {
     }
 
     let query = supabase
-      .from('stock_movements')
-      .select('*, products(name), warehouses(name)')
+      .from('inventory_movements')
+      .select(`
+        *,
+        products(name),
+        warehouses(name),
+        users(full_name)
+      `)
+      .eq('organization_id', organizationId)
       .order('created_at', { ascending: false })
     
     if (productId) {
@@ -390,7 +549,22 @@ export const inventoryService = {
     const { data, error } = await query.limit(100)
     
     if (error) throw error
-    return data as unknown as StockMovement[]
+    
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      productId: row.product_id,
+      productName: row.products?.name || 'Unknown',
+      warehouseId: row.warehouse_id,
+      warehouseName: row.warehouses?.name || 'Unknown',
+      type: row.movement_type as StockMovementType,
+      quantity: row.quantity,
+      previousStock: row.quantity_before,
+      newStock: row.quantity_after,
+      reference: row.reference_number,
+      notes: row.notes,
+      createdAt: row.created_at,
+      createdBy: row.users?.full_name || 'System',
+    }))
   },
 
   async createStockMovement(movement: {
@@ -400,10 +574,10 @@ export const inventoryService = {
     quantity: number
     reference?: string
     notes?: string
-  }): Promise<StockMovement> {
+  }, organizationId?: string): Promise<StockMovement> {
     const supabase = createClient()
     
-    if (!supabase) {
+    if (!supabase || !organizationId) {
       const product = demoProductStore.find(p => p.id === movement.productId)
       if (!product) throw new Error('Product not found')
       
@@ -435,22 +609,86 @@ export const inventoryService = {
       return newMovement
     }
 
-    // Real implementation would use a transaction
+    // Get current inventory level
+    const { data: invLevel } = await supabase
+      .from('inventory_levels')
+      .select('id, on_hand, available')
+      .eq('product_id', movement.productId)
+      .eq('warehouse_id', movement.warehouseId)
+      .single()
+    
+    const previousStock = invLevel?.on_hand || 0
+    const quantityChange = movement.type === 'out' || movement.type === 'adjustment' && movement.quantity < 0
+      ? -Math.abs(movement.quantity) 
+      : movement.quantity
+    const newStock = previousStock + quantityChange
+
+    // Create movement record
     const { data, error } = await supabase
-      .from('stock_movements')
-      .insert(movement)
-      .select()
+      .from('inventory_movements')
+      .insert({
+        organization_id: organizationId,
+        product_id: movement.productId,
+        warehouse_id: movement.warehouseId,
+        movement_type: movement.type,
+        quantity: movement.quantity,
+        quantity_before: previousStock,
+        quantity_after: newStock,
+        reference_number: movement.reference,
+        notes: movement.notes,
+      })
+      .select(`
+        *,
+        products(name),
+        warehouses(name)
+      `)
       .single()
     
     if (error) throw error
-    return data as unknown as StockMovement
+
+    // Update inventory level
+    if (invLevel) {
+      await supabase
+        .from('inventory_levels')
+        .update({ 
+          on_hand: newStock, 
+          available: newStock,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', invLevel.id)
+    } else {
+      // Create new inventory level
+      await supabase.from('inventory_levels').insert({
+        organization_id: organizationId,
+        product_id: movement.productId,
+        warehouse_id: movement.warehouseId,
+        on_hand: newStock,
+        available: newStock,
+      })
+    }
+    
+    return {
+      id: data.id,
+      productId: data.product_id,
+      productName: data.products?.name || 'Unknown',
+      warehouseId: data.warehouse_id,
+      warehouseName: data.warehouses?.name || 'Unknown',
+      type: data.movement_type,
+      quantity: data.quantity,
+      previousStock: data.quantity_before,
+      newStock: data.quantity_after,
+      reference: data.reference_number,
+      notes: data.notes,
+      createdAt: data.created_at,
+      createdBy: 'Current User',
+    }
   },
 
   // --------------------------------------------------------------------------
   // STATS
   // --------------------------------------------------------------------------
 
-  async getInventoryStats(): Promise<{
+  async getInventoryStats(organizationId?: string): Promise<{
     totalProducts: number
     totalValue: number
     lowStockCount: number
@@ -458,7 +696,7 @@ export const inventoryService = {
   }> {
     const supabase = createClient()
     
-    if (!supabase) {
+    if (!supabase || !organizationId) {
       const products = demoProductStore
       return {
         totalProducts: products.length,
@@ -468,10 +706,75 @@ export const inventoryService = {
       }
     }
 
-    const { data, error } = await supabase.rpc('get_inventory_stats')
+    // Get products with inventory levels
+    const { data: products, error } = await supabase
+      .from('products')
+      .select(`
+        id,
+        cost_price,
+        reorder_point,
+        inventory_levels(on_hand)
+      `)
+      .eq('organization_id', organizationId)
+      .eq('is_active', true)
     
     if (error) throw error
-    return data
+
+    let totalValue = 0
+    let lowStockCount = 0
+    let outOfStockCount = 0
+
+    for (const product of products || []) {
+      const totalStock = product.inventory_levels?.reduce((sum: number, il: any) => sum + (il.on_hand || 0), 0) || 0
+      const costPrice = parseFloat(product.cost_price) || 0
+      const reorderPoint = product.reorder_point || 0
+
+      totalValue += totalStock * costPrice
+
+      if (totalStock === 0) {
+        outOfStockCount++
+      } else if (totalStock <= reorderPoint) {
+        lowStockCount++
+      }
+    }
+
+    return {
+      totalProducts: products?.length || 0,
+      totalValue,
+      lowStockCount,
+      outOfStockCount,
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // WAREHOUSES
+  // --------------------------------------------------------------------------
+
+  async getWarehouses(organizationId?: string): Promise<any[]> {
+    const supabase = createClient()
+    
+    if (!supabase || !organizationId) {
+      return [
+        { id: '1', name: 'Main Warehouse', code: 'MAIN', isPrimary: true },
+        { id: '2', name: 'Toronto DC', code: 'TOR', isPrimary: false },
+      ]
+    }
+
+    const { data, error } = await supabase
+      .from('warehouses')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .eq('is_active', true)
+      .order('name')
+    
+    if (error) throw error
+    
+    return (data || []).map((w: any) => ({
+      id: w.id,
+      name: w.name,
+      code: w.code,
+      isPrimary: w.is_primary,
+    }))
   },
 }
 
