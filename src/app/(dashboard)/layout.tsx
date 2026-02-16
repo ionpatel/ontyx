@@ -109,9 +109,11 @@ export default function DashboardLayout({
   const [collapsed, setCollapsed] = useState(false)
 
   // Get user display info
-  const userName = profile?.fullName || 'Demo User'
+  const userName = profile ? `${profile.firstName} ${profile.lastName}`.trim() : 'Demo User'
   const userRole = profile?.jobTitle || 'Admin'
-  const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  const userInitials = profile 
+    ? `${profile.firstName?.[0] || ''}${profile.lastName?.[0] || ''}`.toUpperCase() || 'DU'
+    : 'DU'
 
   const handleLogout = async () => {
     await signOut()
