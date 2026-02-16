@@ -176,6 +176,36 @@ const demoContacts: Contact[] = [
 ]
 
 // ============================================================================
+// LOCALSTORAGE PERSISTENCE FOR DEMO MODE
+// ============================================================================
+
+const DEMO_CONTACTS_STORAGE_KEY = 'ontyx_demo_contacts'
+
+function getDemoContactStore(): Contact[] {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(DEMO_CONTACTS_STORAGE_KEY)
+      if (stored) {
+        return JSON.parse(stored)
+      }
+    } catch (e) {
+      console.error('Error reading demo contacts from localStorage:', e)
+    }
+  }
+  return [...demoContacts]
+}
+
+function saveDemoContactStore(contacts: Contact[]): void {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(DEMO_CONTACTS_STORAGE_KEY, JSON.stringify(contacts))
+    } catch (e) {
+      console.error('Error saving demo contacts to localStorage:', e)
+    }
+  }
+}
+
+// ============================================================================
 // SERVICE FUNCTIONS
 // ============================================================================
 
@@ -191,9 +221,10 @@ export const contactsService = {
     
     // Return demo data if Supabase not configured OR if using demo org
     if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+      const store = getDemoContactStore()
       const filtered = type 
-        ? demoContacts.filter(c => c.type === type || c.type === 'both')
-        : demoContacts
+        ? store.filter(c => c.type === type || c.type === 'both')
+        : store
       return filtered
     }
 
@@ -227,7 +258,7 @@ export const contactsService = {
     const supabase = createClient()
     
     if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
-      return demoContacts.find(c => c.id === id) || null
+      return getDemoContactStore().find(c => c.id === id) || null
     }
 
     const { data, error } = await supabase
@@ -281,7 +312,9 @@ export const contactsService = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
-      demoContacts.push(newContact)
+      const store = getDemoContactStore()
+      store.push(newContact)
+      saveDemoContactStore(store)
       return newContact
     }
 
@@ -327,10 +360,12 @@ export const contactsService = {
     const supabase = createClient()
     
     if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
-      const index = demoContacts.findIndex(c => c.id === id)
+      const store = getDemoContactStore()
+      const index = store.findIndex(c => c.id === id)
       if (index === -1) return null
-      demoContacts[index] = { ...demoContacts[index], ...updates, updatedAt: new Date().toISOString() }
-      return demoContacts[index]
+      store[index] = { ...store[index], ...updates, updatedAt: new Date().toISOString() }
+      saveDemoContactStore(store)
+      return store[index]
     }
 
     const { data, error } = await supabase
@@ -357,9 +392,11 @@ export const contactsService = {
     const supabase = createClient()
     
     if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
-      const index = demoContacts.findIndex(c => c.id === id)
+      const store = getDemoContactStore()
+      const index = store.findIndex(c => c.id === id)
       if (index === -1) return false
-      demoContacts[index].isActive = false
+      store[index].isActive = false
+      saveDemoContactStore(store)
       return true
     }
 
@@ -383,7 +420,7 @@ export const contactsService = {
     
     if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
       const q = query.toLowerCase()
-      return demoContacts.filter(c => 
+      return getDemoContactStore().filter(c => 
         (c.name.toLowerCase().includes(q) || 
          c.email?.toLowerCase().includes(q) ||
          c.company?.toLowerCase().includes(q)) &&
