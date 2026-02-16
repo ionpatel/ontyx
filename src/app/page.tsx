@@ -140,7 +140,7 @@ export default function LandingPage() {
       {/* ─── Navigation ─── */}
       <nav className="fixed top-0 inset-x-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5 group">
             <Image 
               src="/logo.png" 
               alt="Ontyx" 
@@ -148,7 +148,7 @@ export default function LandingPage() {
               height={40}
               className="rounded-lg"
             />
-            <span className="text-xl font-bold tracking-tight text-text-primary">
+            <span className="text-2xl font-display font-bold tracking-tight bg-gradient-to-r from-primary via-primary to-rose-500 bg-clip-text text-transparent group-hover:opacity-90 transition-opacity">
               Ontyx
             </span>
           </Link>
@@ -518,7 +518,7 @@ export default function LandingPage() {
           <div className="grid gap-8 md:grid-cols-5">
             {/* Brand */}
             <div className="md:col-span-2">
-              <Link href="/" className="flex items-center gap-2.5 mb-4">
+              <Link href="/" className="flex items-center gap-2.5 mb-4 group">
                 <Image 
                   src="/logo.png" 
                   alt="Ontyx" 
@@ -526,7 +526,9 @@ export default function LandingPage() {
                   height={32}
                   className="rounded-lg"
                 />
-                <span className="text-lg font-bold">Ontyx</span>
+                <span className="text-xl font-display font-bold tracking-tight bg-gradient-to-r from-primary via-primary to-rose-500 bg-clip-text text-transparent">
+                  Ontyx
+                </span>
               </Link>
               <p className="text-sm text-text-secondary max-w-xs leading-relaxed">
                 The complete business management platform for Canadian local businesses. 

@@ -1,8 +1,13 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Inter, Sora } from "next/font/google"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-geist-sans" })
+const sora = Sora({ 
+  subsets: ["latin"], 
+  variable: "--font-display",
+  weight: ["600", "700", "800"]
+})
 
 export const metadata: Metadata = {
   title: "Ontyx - Business, Unified",
@@ -17,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} ${sora.variable} font-sans antialiased`}>
         {children}
       </body>
     </html>

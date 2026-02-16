@@ -123,12 +123,14 @@ export default function DashboardLayout({
       >
         {/* Logo */}
         <div className="flex h-16 items-center justify-between px-4 border-b">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">O</span>
+          <Link href="/dashboard" className="flex items-center gap-2 group">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-rose-500 flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
+              <span className="text-primary-foreground font-display font-bold text-lg">O</span>
             </div>
             {!collapsed && (
-              <span className="font-bold text-xl">Ontyx</span>
+              <span className="font-display font-bold text-xl tracking-tight bg-gradient-to-r from-primary via-primary to-rose-500 bg-clip-text text-transparent">
+                Ontyx
+              </span>
             )}
           </Link>
           <Button
