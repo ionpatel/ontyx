@@ -8,9 +8,18 @@ export async function updateSession(request: NextRequest) {
     },
   })
 
+  // Check if Supabase is configured
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  
+  if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('placeholder')) {
+    // Supabase not configured - allow all requests (demo mode)
+    return { response, user: null }
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseKey,
     {
       cookies: {
         get(name: string) {
@@ -55,7 +64,12 @@ export async function updateSession(request: NextRequest) {
   )
 
   // Refresh session if expired
-  const { data: { user } } = await supabase.auth.getUser()
-
-  return { response, user }
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    return { response, user }
+  } catch (error) {
+    // Supabase connection failed - allow request but no user
+    console.error('Supabase auth error:', error)
+    return { response, user: null }
+  }
 }
