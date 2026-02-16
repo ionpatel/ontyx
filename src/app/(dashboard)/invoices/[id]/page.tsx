@@ -13,6 +13,7 @@ import { formatCurrency, cn } from "@/lib/utils"
 import { invoicesService, type Invoice } from "@/services/invoices"
 import { downloadInvoicePDF, type InvoicePDFData } from "@/services/pdf"
 import { useAuth } from "@/hooks/use-auth"
+import { useOrganization } from "@/hooks/use-organization"
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   draft: { label: "Draft", color: "bg-slate-100 text-slate-700" },
@@ -53,6 +54,7 @@ export default function InvoiceDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { organizationId } = useAuth()
+  const { organization } = useOrganization()
   const invoiceId = params.id as string
   
   const [invoice, setInvoice] = useState<Invoice | null>(null)
@@ -108,15 +110,15 @@ export default function InvoiceDetailPage() {
         dueDate: invoice.dueDate,
         status: invoice.status,
         
-        // Company details (would come from org settings)
-        companyName: 'Your Company Name',
-        companyAddress: '123 Business St',
-        companyCity: 'Toronto',
-        companyProvince: 'ON',
-        companyPostalCode: 'M5V 1A1',
-        companyPhone: '(416) 555-0123',
-        companyEmail: 'billing@company.com',
-        companyGstNumber: '123456789 RT0001',
+        // Company details from org settings
+        companyName: organization?.name || 'Your Company',
+        companyAddress: organization?.addressLine1 || '',
+        companyCity: organization?.city || '',
+        companyProvince: organization?.province || 'ON',
+        companyPostalCode: organization?.postalCode || '',
+        companyPhone: organization?.phone,
+        companyEmail: organization?.email,
+        companyGstNumber: organization?.taxNumber,
         
         // Customer
         customerName: invoice.customerName,

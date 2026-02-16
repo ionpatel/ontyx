@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useCustomers } from "@/hooks/use-contacts"
+import { useOrganization } from "@/hooks/use-organization"
 import { type CreateInvoiceInput } from "@/services/invoices"
 import { downloadInvoicePDF, type InvoicePDFData } from "@/services/pdf"
 
@@ -110,6 +111,7 @@ const createEmptyLineItem = (): LineItem => ({
 export function InvoiceForm({ invoice, onSave, onSend, saving }: InvoiceFormProps) {
   const router = useRouter()
   const { contacts: customers, loading: contactsLoading } = useCustomers()
+  const { organization } = useOrganization()
   const [showPreview, setShowPreview] = useState(false)
 
   const [formData, setFormData] = useState<InvoiceFormData>({
@@ -236,11 +238,14 @@ export function InvoiceForm({ invoice, onSave, onSend, saving }: InvoiceFormProp
       issueDate: formData.issueDate,
       dueDate: formData.dueDate,
       status: 'draft',
-      companyName: 'Your Company', // Would come from org settings
-      companyAddress: '123 Business St',
-      companyCity: 'Toronto',
-      companyProvince: 'ON',
-      companyPostalCode: 'M5V 1A1',
+      companyName: organization?.name || 'Your Company',
+      companyAddress: organization?.addressLine1 || '',
+      companyCity: organization?.city || '',
+      companyProvince: organization?.province || 'ON',
+      companyPostalCode: organization?.postalCode || '',
+      companyPhone: organization?.phone,
+      companyEmail: organization?.email,
+      companyGstNumber: organization?.taxNumber,
       customerName: formData.customerName,
       customerEmail: formData.customerEmail,
       customerAddress: formData.customerAddress,
