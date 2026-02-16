@@ -16,7 +16,7 @@ export function usePayRuns() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const effectiveOrgId = organizationId || 'demo'
+  const effectiveOrgId = organizationId 
 
   const fetchPayRuns = useCallback(async () => {
     setLoading(true)
@@ -107,7 +107,7 @@ export function usePayRunDetail(payRunId: string) {
   const [employees, setEmployees] = useState<PayRunEmployee[]>([])
   const [loading, setLoading] = useState(true)
 
-  const effectiveOrgId = organizationId || 'demo'
+  const effectiveOrgId = organizationId 
 
   useEffect(() => {
     async function fetch() {

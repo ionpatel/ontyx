@@ -181,7 +181,7 @@ export const invoiceTemplateService = {
   async getTemplates(organizationId: string): Promise<InvoiceTemplate[]> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       return getDemoTemplateStore().filter(t => t.organizationId === 'demo')
     }
 
@@ -232,7 +232,7 @@ export const invoiceTemplateService = {
       updatedAt: new Date().toISOString(),
     }
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       const store = getDemoTemplateStore()
       store.push(newTemplate)
       saveDemoTemplateStore(store)
@@ -263,7 +263,7 @@ export const invoiceTemplateService = {
   ): Promise<InvoiceTemplate | null> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       let store = getDemoTemplateStore()
       const idx = store.findIndex(t => t.id === id)
       if (idx === -1) return null
@@ -318,7 +318,7 @@ export const invoiceTemplateService = {
   async deleteTemplate(id: string, organizationId: string): Promise<boolean> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       const store = getDemoTemplateStore()
       const idx = store.findIndex(t => t.id === id)
       if (idx === -1 || store[idx].isDefault) return false

@@ -12,7 +12,7 @@ export function useUserProfile() {
   const [saving, setSaving] = useState(false)
 
   // Use 'demo' as fallback for demo mode
-  const userId = user?.id || 'demo'
+  const userId = user?.id 
 
   const fetchProfile = useCallback(async () => {
     setLoading(true)

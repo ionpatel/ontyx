@@ -110,7 +110,7 @@ export const dashboardService = {
   async getStats(organizationId: string): Promise<DashboardStats> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       return demoStats
     }
 
@@ -160,7 +160,7 @@ export const dashboardService = {
   async getRecentInvoices(organizationId: string, limit = 5): Promise<RecentInvoice[]> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       return demoRecentInvoices.slice(0, limit)
     }
 
@@ -192,7 +192,7 @@ export const dashboardService = {
   async getRecentOrders(organizationId: string, limit = 5): Promise<RecentOrder[]> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       return demoRecentOrders.slice(0, limit)
     }
 

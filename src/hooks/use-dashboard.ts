@@ -39,7 +39,7 @@ export function useRecentInvoices(limit = 5) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const orgId = organizationId || 'demo'
+    const orgId = organizationId 
     
     setLoading(true)
     dashboardService.getRecentInvoices(orgId, limit)
@@ -57,7 +57,7 @@ export function useRecentOrders(limit = 5) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const orgId = organizationId || 'demo'
+    const orgId = organizationId 
     
     setLoading(true)
     dashboardService.getRecentOrders(orgId, limit)
@@ -75,7 +75,7 @@ export function useRecentActivity(limit = 10) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const orgId = organizationId || 'demo'
+    const orgId = organizationId 
     
     setLoading(true)
     dashboardService.getRecentActivity(orgId, limit)

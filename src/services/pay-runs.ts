@@ -261,7 +261,7 @@ export const payRunsService = {
   async getPayRuns(organizationId: string): Promise<PayRun[]> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       return demoPayRunStore.filter(pr => pr.organizationId === 'demo')
     }
 
@@ -285,7 +285,7 @@ export const payRunsService = {
   async getPayRun(id: string, organizationId: string): Promise<{ payRun: PayRun; employees: PayRunEmployee[] } | null> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       const payRun = demoPayRunStore.find(pr => pr.id === id)
       if (!payRun) return null
       
@@ -366,7 +366,7 @@ export const payRunsService = {
       updatedAt: new Date().toISOString(),
     }
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       demoPayRunStore.push(newPayRun)
       
       // Store employees
@@ -393,7 +393,7 @@ export const payRunsService = {
   ): Promise<boolean> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       const idx = demoPayRunStore.findIndex(pr => pr.id === id)
       if (idx === -1) return false
       
@@ -427,7 +427,7 @@ export const payRunsService = {
   async deletePayRun(id: string, organizationId: string): Promise<boolean> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       const idx = demoPayRunStore.findIndex(pr => pr.id === id && pr.status === 'draft')
       if (idx === -1) return false
       

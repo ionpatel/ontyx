@@ -16,7 +16,7 @@ export function useInvoices(filters?: {
   const [error, setError] = useState<string | null>(null)
 
   // Use 'demo' as fallback for demo mode
-  const effectiveOrgId = organizationId || 'demo'
+  const effectiveOrgId = organizationId 
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true)
@@ -97,7 +97,7 @@ export function useInvoices(filters?: {
 
 export function useInvoice(id: string | null) {
   const { organizationId } = useAuth()
-  const effectiveOrgId = organizationId || 'demo'
+  const effectiveOrgId = organizationId 
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -126,7 +126,7 @@ export function useInvoice(id: string | null) {
 
 export function useInvoiceStats() {
   const { organizationId } = useAuth()
-  const effectiveOrgId = organizationId || 'demo'
+  const effectiveOrgId = organizationId 
   const [stats, setStats] = useState<InvoiceStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

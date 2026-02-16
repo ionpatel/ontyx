@@ -109,7 +109,7 @@ export const t4Service = {
   async getT4s(organizationId: string, taxYear: number): Promise<T4Data[]> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       return getDemoT4Store().filter(t => t.taxYear === taxYear)
     }
 
@@ -249,7 +249,7 @@ export const t4Service = {
     }))
 
     // Save T4s
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       // Remove existing T4s for this year and save new ones
       const store = getDemoT4Store().filter(t => t.taxYear !== taxYear)
       store.push(...t4s)
@@ -271,7 +271,7 @@ export const t4Service = {
   ): Promise<boolean> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       const store = getDemoT4Store()
       const idx = store.findIndex(t => t.id === id)
       if (idx === -1) return false
@@ -300,7 +300,7 @@ export const t4Service = {
   async deleteT4s(organizationId: string, taxYear: number): Promise<boolean> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       const store = getDemoT4Store().filter(t => t.taxYear !== taxYear)
       saveDemoT4Store(store)
       return true

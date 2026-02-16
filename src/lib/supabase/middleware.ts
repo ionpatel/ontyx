@@ -8,13 +8,11 @@ export async function updateSession(request: NextRequest) {
     },
   })
 
-  // Check if Supabase is configured
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   
-  if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('placeholder')) {
-    // Supabase not configured - allow all requests (demo mode)
-    return { response, user: null }
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Supabase configuration missing')
   }
 
   const supabase = createServerClient(

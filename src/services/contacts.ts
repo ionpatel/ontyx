@@ -228,7 +228,7 @@ export const contactsService = {
     const supabase = createClient()
     
     // Return demo data if Supabase not configured OR if using demo org
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       const store = getDemoContactStore()
       // Filter by isActive AND type
       const filtered = store.filter(c => {
@@ -268,7 +268,7 @@ export const contactsService = {
   async getContact(id: string, organizationId: string): Promise<Contact | null> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       return getDemoContactStore().find(c => c.id === id) || null
     }
 
@@ -291,7 +291,7 @@ export const contactsService = {
   async createContact(input: CreateContactInput, organizationId: string): Promise<Contact | null> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       const newContact: Contact = {
         id: `demo-${Date.now()}`,
         organizationId: 'demo',
@@ -370,7 +370,7 @@ export const contactsService = {
   async updateContact(id: string, updates: Partial<CreateContactInput>, organizationId: string): Promise<Contact | null> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       const store = getDemoContactStore()
       const index = store.findIndex(c => c.id === id)
       if (index === -1) return null
@@ -402,7 +402,7 @@ export const contactsService = {
   async deleteContact(id: string, organizationId: string): Promise<boolean> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       const store = getDemoContactStore()
       const index = store.findIndex(c => c.id === id)
       if (index === -1) return false
@@ -430,7 +430,7 @@ export const contactsService = {
   async searchContacts(query: string, organizationId: string, type?: ContactType): Promise<Contact[]> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       const q = query.toLowerCase()
       return getDemoContactStore().filter(c => 
         c.isActive &&

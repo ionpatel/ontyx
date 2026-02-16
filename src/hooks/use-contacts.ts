@@ -11,7 +11,7 @@ export function useContacts(type?: ContactType) {
   const [error, setError] = useState<string | null>(null)
 
   // Use 'demo' as fallback for demo mode
-  const effectiveOrgId = organizationId || 'demo'
+  const effectiveOrgId = organizationId 
 
   const fetchContacts = useCallback(async () => {
     setLoading(true)

@@ -16,7 +16,7 @@ export function useInvoiceTemplates() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const effectiveOrgId = organizationId || 'demo'
+  const effectiveOrgId = organizationId 
 
   const fetchTemplates = useCallback(async () => {
     setLoading(true)

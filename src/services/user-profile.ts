@@ -86,7 +86,7 @@ export const userProfileService = {
   async getProfile(userId?: string): Promise<UserProfile | null> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || !userId || userId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() || !userId ) {
       return getDemoProfileStore()
     }
 
@@ -110,7 +110,7 @@ export const userProfileService = {
   async updateProfile(userId: string, updates: UpdateProfileInput): Promise<UserProfile | null> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || userId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       const currentProfile = getDemoProfileStore()
       const updatedProfile = {
         ...currentProfile,
@@ -158,7 +158,7 @@ export const userProfileService = {
   async uploadAvatar(userId: string, file: File): Promise<string | null> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || userId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       // For demo mode, convert to base64 data URL (survives page refresh)
       return new Promise((resolve) => {
         const reader = new FileReader()

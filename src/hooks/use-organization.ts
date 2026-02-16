@@ -12,7 +12,7 @@ export function useOrganization() {
   const [saving, setSaving] = useState(false)
 
   // Use 'demo' as fallback for demo mode
-  const effectiveOrgId = organizationId || 'demo'
+  const effectiveOrgId = organizationId 
 
   const fetchOrganization = useCallback(async () => {
     setLoading(true)

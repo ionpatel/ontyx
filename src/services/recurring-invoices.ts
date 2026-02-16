@@ -172,7 +172,7 @@ export const recurringInvoicesService = {
   async listRecurring(organizationId: string): Promise<RecurringInvoice[]> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       return demoRecurringStore.filter(r => r.organizationId === 'demo')
     }
 
@@ -196,7 +196,7 @@ export const recurringInvoicesService = {
   async getRecurring(id: string, organizationId: string): Promise<RecurringInvoice | null> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       return demoRecurringStore.find(r => r.id === id) || null
     }
 
@@ -226,7 +226,7 @@ export const recurringInvoicesService = {
     
     const nextDate = input.startDate
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       const newRecurring: RecurringInvoice = {
         id: generateId(),
         organizationId: 'demo',
@@ -293,7 +293,7 @@ export const recurringInvoicesService = {
   ): Promise<RecurringInvoice | null> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       const idx = demoRecurringStore.findIndex(r => r.id === id)
       if (idx === -1) return null
       
@@ -345,7 +345,7 @@ export const recurringInvoicesService = {
   async deleteRecurring(id: string, organizationId: string): Promise<boolean> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       const idx = demoRecurringStore.findIndex(r => r.id === id)
       if (idx === -1) return false
       demoRecurringStore.splice(idx, 1)

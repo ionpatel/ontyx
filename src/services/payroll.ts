@@ -459,7 +459,7 @@ export const payrollService = {
   async getEmployees(organizationId: string): Promise<Employee[]> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       return demoEmployees
     }
 

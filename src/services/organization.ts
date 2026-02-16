@@ -125,7 +125,7 @@ export const organizationService = {
   async getOrganization(organizationId: string): Promise<Organization | null> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       return getDemoOrgStore()
     }
 
@@ -150,7 +150,7 @@ export const organizationService = {
   ): Promise<Organization | null> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       const currentOrg = getDemoOrgStore()
       const updatedOrg = { 
         ...currentOrg, 
@@ -199,7 +199,7 @@ export const organizationService = {
   async uploadLogo(organizationId: string, file: File): Promise<string | null> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
+    if (!supabase || !isSupabaseConfigured() ) {
       // For demo mode, convert to base64 data URL (survives page refresh)
       return new Promise((resolve) => {
         const reader = new FileReader()

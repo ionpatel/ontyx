@@ -15,7 +15,7 @@ export function useRecurringInvoices() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const effectiveOrgId = organizationId || 'demo'
+  const effectiveOrgId = organizationId 
 
   const fetchRecurring = useCallback(async () => {
     setLoading(true)
