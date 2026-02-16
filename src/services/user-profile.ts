@@ -91,14 +91,14 @@ export const userProfileService = {
     }
 
     const { data, error } = await supabase
-      .from('user_profiles')
+      .from('users')
       .select('*')
       .eq('id', userId)
       .single()
 
     if (error) {
       console.error('Error fetching profile:', error)
-      return demoProfileStore
+      return getDemoProfileStore()
     }
 
     return mapProfileFromDb(data)
@@ -121,18 +121,25 @@ export const userProfileService = {
       return updatedProfile
     }
 
+    // Combine first and last name for full_name field
+    let fullName: string | undefined
+    if (updates.firstName !== undefined || updates.lastName !== undefined) {
+      const currentProfile = await this.getProfile(userId)
+      const first = updates.firstName ?? currentProfile?.firstName ?? ''
+      const last = updates.lastName ?? currentProfile?.lastName ?? ''
+      fullName = `${first} ${last}`.trim()
+    }
+
+    const updateData: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    }
+    if (fullName !== undefined) updateData.full_name = fullName
+    if (updates.phone !== undefined) updateData.phone = updates.phone
+    if (updates.language !== undefined) updateData.locale = updates.language
+
     const { data, error } = await supabase
-      .from('user_profiles')
-      .update({
-        first_name: updates.firstName,
-        last_name: updates.lastName,
-        phone: updates.phone,
-        job_title: updates.jobTitle,
-        timezone: updates.timezone,
-        date_format: updates.dateFormat,
-        language: updates.language,
-        updated_at: new Date().toISOString(),
-      })
+      .from('users')
+      .update(updateData)
       .eq('id', userId)
       .select()
       .single()
@@ -184,7 +191,7 @@ export const userProfileService = {
 
     // Update profile with new avatar URL
     await supabase
-      .from('user_profiles')
+      .from('users')
       .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
       .eq('id', userId)
 
@@ -218,17 +225,22 @@ export const userProfileService = {
 // ============================================================================
 
 function mapProfileFromDb(row: any): UserProfile {
+  // Split full_name into first and last name
+  const nameParts = (row.full_name || '').trim().split(' ')
+  const firstName = nameParts[0] || ''
+  const lastName = nameParts.slice(1).join(' ') || ''
+  
   return {
     id: row.id,
     email: row.email,
-    firstName: row.first_name || '',
-    lastName: row.last_name || '',
+    firstName,
+    lastName,
     avatarUrl: row.avatar_url,
     phone: row.phone,
-    jobTitle: row.job_title,
-    timezone: row.timezone || 'America/Toronto',
-    dateFormat: row.date_format || 'YYYY-MM-DD',
-    language: row.language || 'en',
+    jobTitle: '', // Not in database, store in demo mode only
+    timezone: 'America/Toronto', // Not in database, use default
+    dateFormat: 'YYYY-MM-DD', // Not in database, use default
+    language: row.locale || 'en',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
