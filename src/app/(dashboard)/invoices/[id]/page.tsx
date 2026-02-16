@@ -15,6 +15,8 @@ import { downloadInvoicePDF, type InvoicePDFData } from "@/services/pdf"
 import { useAuth } from "@/hooks/use-auth"
 import { useOrganization } from "@/hooks/use-organization"
 import { RecordPaymentDialog, type PaymentInput } from "@/components/modules/finance/record-payment-dialog"
+import { emailService } from "@/services/email"
+import { getInvoicePDFBlob } from "@/services/pdf"
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   draft: { label: "Draft", color: "bg-slate-100 text-slate-700" },
@@ -163,12 +165,86 @@ export default function InvoiceDetailPage() {
   }
 
   const handleSend = async () => {
+    if (!invoice.customerEmail) {
+      alert('No customer email address. Please add an email to the customer.')
+      return
+    }
+
     setActionLoading('send')
-    // In production: send email with PDF attachment
-    setTimeout(() => {
-      alert(`Invoice ${invoice.invoiceNumber} sent to ${invoice.customerEmail}`)
+    
+    try {
+      // Generate PDF blob
+      const pdfBlob = getInvoicePDFBlob({
+        invoiceNumber: invoice.invoiceNumber,
+        issueDate: invoice.invoiceDate,
+        dueDate: invoice.dueDate,
+        status: invoice.status,
+        companyName: organization?.name || 'Your Company',
+        companyAddress: organization?.addressLine1 || '',
+        companyCity: organization?.city || '',
+        companyProvince: organization?.province || 'ON',
+        companyPostalCode: organization?.postalCode || '',
+        companyPhone: organization?.phone,
+        companyEmail: organization?.email,
+        companyGstNumber: organization?.taxNumber,
+        customerName: invoice.customerName,
+        customerEmail: invoice.customerEmail,
+        customerAddress: invoice.billingAddress?.street,
+        customerCity: invoice.billingAddress?.city,
+        customerProvince: invoice.billingAddress?.province,
+        customerPostalCode: invoice.billingAddress?.postalCode,
+        items: invoice.items.map(item => ({
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          total: item.amount,
+        })),
+        subtotal: invoice.subtotal,
+        taxBreakdown: buildTaxBreakdown(invoice),
+        total: invoice.total,
+        amountPaid: invoice.amountPaid,
+        balanceDue: invoice.amountDue,
+        notes: invoice.notes,
+        terms: invoice.terms,
+      })
+
+      // Convert blob to base64
+      const pdfBuffer = await pdfBlob.arrayBuffer()
+      const pdfBase64 = btoa(
+        new Uint8Array(pdfBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+      )
+
+      // Send email
+      const result = await emailService.sendInvoice({
+        invoiceNumber: invoice.invoiceNumber,
+        customerName: invoice.customerName,
+        customerEmail: invoice.customerEmail,
+        amount: invoice.amountDue,
+        dueDate: invoice.dueDate,
+        companyName: organization?.name || 'Your Company',
+        companyEmail: organization?.email,
+        pdfAttachment: {
+          filename: `${invoice.invoiceNumber}.pdf`,
+          content: pdfBase64,
+          contentType: 'application/pdf',
+        },
+      })
+
+      if (result.success) {
+        // Update invoice status to sent
+        const orgId = organizationId || 'demo'
+        await invoicesService.updateInvoiceStatus(invoice.id, 'sent', orgId)
+        setInvoice(prev => prev ? { ...prev, status: 'sent', sentAt: new Date().toISOString() } : null)
+        alert(`Invoice ${invoice.invoiceNumber} sent to ${invoice.customerEmail}!`)
+      } else {
+        alert(`Failed to send: ${result.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Send error:', error)
+      alert('Failed to send invoice. Please try again.')
+    } finally {
       setActionLoading(null)
-    }, 1000)
+    }
   }
 
   const handleMarkPaid = async () => {
