@@ -13,14 +13,14 @@
     /* Maple Professional — Light Mode */
     
     /* Backgrounds — Maple Professional */
-    --background: #FFFFFF;           /* Clean White */
-    --background-secondary: #F8F9FA; /* Soft Gray (Surface) */
-    --background-tertiary: #F1F5F9;
+    --background: #F4F4F4;           /* PANTONE 11-0601 Bright White */
+    --background-secondary: #EBEBEB; /* Slightly darker for contrast */
+    --background-tertiary: #E5E5E5;
     
     /* Surfaces (cards, dialogs) */
-    --surface: #FFFFFF;
-    --surface-hover: #F8F9FA;        /* Soft Gray */
-    --surface-active: #F1F5F9;
+    --surface: #FFFFFF;              /* Pure white for cards */
+    --surface-hover: #FAFAFA;
+    --surface-active: #F5F5F5;
     
     /* Primary (Maple Red) */
     --primary: #DC2626;
@@ -61,9 +61,9 @@
     --ring: #DC2626;
     
     /* Sidebar — Maple Professional */
-    --sidebar-background: #FFFFFF;
-    --sidebar-border: #E2E8F0;
-    --sidebar-item-hover: #F8F9FA;   /* Soft Gray */
+    --sidebar-background: #FFFFFF;   /* Pure white sidebar for contrast */
+    --sidebar-border: #E5E5E5;
+    --sidebar-item-hover: #F4F4F4;   /* Bright White */
     --sidebar-item-active: #FEF2F2;  /* Light Red tint */
     --sidebar-item-active-text: #991B1B; /* Accent Dark Red */
     
