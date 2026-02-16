@@ -501,7 +501,7 @@ export default function LandingPage() {
                   Start Free Trial <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
-              <Button size="lg" variant="outline" asChild className="w-full sm:w-auto h-12 px-8 text-base border-white/40 text-white hover:bg-white/10 hover:text-white">
+              <Button size="lg" variant="outline" asChild className="w-full sm:w-auto h-12 px-8 text-base bg-white border-white text-slate-900 hover:bg-white/90 hover:text-slate-900">
                 <Link href="/contact">
                   Talk to Sales
                 </Link>
