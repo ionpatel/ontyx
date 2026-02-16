@@ -1,12 +1,12 @@
 import type { Metadata } from "next"
-import { Inter, Sora } from "next/font/google"
+import { Inter, Playfair_Display } from "next/font/google"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-geist-sans" })
-const sora = Sora({ 
+const playfair = Playfair_Display({ 
   subsets: ["latin"], 
   variable: "--font-display",
-  weight: ["600", "700", "800"]
+  weight: ["400", "500", "600", "700", "800", "900"]
 })
 
 export const metadata: Metadata = {
@@ -22,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${sora.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
         {children}
       </body>
     </html>

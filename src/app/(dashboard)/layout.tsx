@@ -125,11 +125,11 @@ export default function DashboardLayout({
         <div className="flex h-16 items-center justify-between px-4 border-b">
           <Link href="/dashboard" className="flex items-center gap-2 group">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-rose-500 flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
-              <span className="text-primary-foreground font-display font-bold text-lg">O</span>
+              <span className="text-primary-foreground font-display font-semibold italic text-lg">O</span>
             </div>
             {!collapsed && (
-              <span className="font-display font-bold text-xl tracking-tight bg-gradient-to-r from-primary via-primary to-rose-500 bg-clip-text text-transparent">
-                Ontyx
+              <span className="font-display font-semibold italic text-xl tracking-wide">
+                <span className="bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">Onty</span><span className="bg-gradient-to-r from-primary to-rose-500 bg-clip-text text-transparent font-bold">X</span>
               </span>
             )}
           </Link>

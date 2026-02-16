@@ -143,13 +143,13 @@ export default function LandingPage() {
           <Link href="/" className="flex items-center gap-2.5 group">
             <Image 
               src="/logo.png" 
-              alt="Ontyx" 
+              alt="OntyX" 
               width={40} 
               height={40}
               className="rounded-lg"
             />
-            <span className="text-2xl font-display font-bold tracking-tight bg-gradient-to-r from-primary via-primary to-rose-500 bg-clip-text text-transparent group-hover:opacity-90 transition-opacity">
-              Ontyx
+            <span className="text-2xl font-display font-semibold italic tracking-wide group-hover:opacity-90 transition-opacity">
+              <span className="bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">Onty</span><span className="bg-gradient-to-r from-primary to-rose-500 bg-clip-text text-transparent font-bold">X</span>
             </span>
           </Link>
 
@@ -521,13 +521,13 @@ export default function LandingPage() {
               <Link href="/" className="flex items-center gap-2.5 mb-4 group">
                 <Image 
                   src="/logo.png" 
-                  alt="Ontyx" 
+                  alt="OntyX" 
                   width={32} 
                   height={32}
                   className="rounded-lg"
                 />
-                <span className="text-xl font-display font-bold tracking-tight bg-gradient-to-r from-primary via-primary to-rose-500 bg-clip-text text-transparent">
-                  Ontyx
+                <span className="text-xl font-display font-semibold italic tracking-wide">
+                  <span className="bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">Onty</span><span className="bg-gradient-to-r from-primary to-rose-500 bg-clip-text text-transparent font-bold">X</span>
                 </span>
               </Link>
               <p className="text-sm text-text-secondary max-w-xs leading-relaxed">
