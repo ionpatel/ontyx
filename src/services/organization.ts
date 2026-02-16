@@ -89,8 +89,32 @@ const demoOrganization: Organization = {
   updatedAt: new Date().toISOString(),
 }
 
-// Mutable demo store
-let demoOrgStore: Organization = { ...demoOrganization }
+// Mutable demo store with localStorage persistence
+const DEMO_ORG_STORAGE_KEY = 'ontyx_demo_organization'
+
+function getDemoOrgStore(): Organization {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(DEMO_ORG_STORAGE_KEY)
+      if (stored) {
+        return { ...demoOrganization, ...JSON.parse(stored) }
+      }
+    } catch (e) {
+      console.error('Error reading demo org from localStorage:', e)
+    }
+  }
+  return { ...demoOrganization }
+}
+
+function saveDemoOrgStore(org: Organization): void {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(DEMO_ORG_STORAGE_KEY, JSON.stringify(org))
+    } catch (e) {
+      console.error('Error saving demo org to localStorage:', e)
+    }
+  }
+}
 
 // ============================================================================
 // SERVICE
@@ -102,7 +126,7 @@ export const organizationService = {
     const supabase = createClient()
     
     if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
-      return demoOrgStore
+      return getDemoOrgStore()
     }
 
     const { data, error } = await supabase
@@ -127,12 +151,14 @@ export const organizationService = {
     const supabase = createClient()
     
     if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
-      demoOrgStore = { 
-        ...demoOrgStore, 
+      const currentOrg = getDemoOrgStore()
+      const updatedOrg = { 
+        ...currentOrg, 
         ...updates, 
         updatedAt: new Date().toISOString() 
       }
-      return demoOrgStore
+      saveDemoOrgStore(updatedOrg)
+      return updatedOrg
     }
 
     const { data, error } = await supabase
@@ -174,8 +200,12 @@ export const organizationService = {
     const supabase = createClient()
     
     if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
-      // Return a fake URL for demo
-      return URL.createObjectURL(file)
+      // For demo mode, create blob URL and persist it
+      // Note: Blob URLs don't survive page refresh, but at least we save the org state
+      const blobUrl = URL.createObjectURL(file)
+      const currentOrg = getDemoOrgStore()
+      saveDemoOrgStore({ ...currentOrg, logoUrl: blobUrl, updatedAt: new Date().toISOString() })
+      return blobUrl
     }
 
     const fileExt = file.name.split('.').pop()
