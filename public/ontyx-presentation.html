@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ontyx ERP — The Canadian Business Platform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    html { scroll-behavior: smooth; }
+    .slide { min-height: 100vh; scroll-snap-align: start; }
+    .gradient-text { background: linear-gradient(135deg, #6366f1, #14b8a6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    .float { animation: float 3s ease-in-out infinite; }
+    @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 20px rgba(99,102,241,0.3); } 50% { box-shadow: 0 0 40px rgba(99,102,241,0.6); } }
+    .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+    .feature-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+    .nav-dot { transition: all 0.3s; }
+    .nav-dot.active { background: #6366f1; transform: scale(1.3); }
+  </style>
+</head>
+<body class="bg-[#0a0f1a] text-white overflow-x-hidden">
+
+<!-- Navigation Dots -->
+<nav class="fixed right-6 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-3">
+  <a href="#slide1" class="nav-dot w-3 h-3 rounded-full bg-white/30 hover:bg-indigo-500"></a>
+  <a href="#slide2" class="nav-dot w-3 h-3 rounded-full bg-white/30 hover:bg-indigo-500"></a>
+  <a href="#slide3" class="nav-dot w-3 h-3 rounded-full bg-white/30 hover:bg-indigo-500"></a>
+  <a href="#slide4" class="nav-dot w-3 h-3 rounded-full bg-white/30 hover:bg-indigo-500"></a>
+  <a href="#slide5" class="nav-dot w-3 h-3 rounded-full bg-white/30 hover:bg-indigo-500"></a>
+  <a href="#slide6" class="nav-dot w-3 h-3 rounded-full bg-white/30 hover:bg-indigo-500"></a>
+  <a href="#slide7" class="nav-dot w-3 h-3 rounded-full bg-white/30 hover:bg-indigo-500"></a>
+  <a href="#slide8" class="nav-dot w-3 h-3 rounded-full bg-white/30 hover:bg-indigo-500"></a>
+  <a href="#slide9" class="nav-dot w-3 h-3 rounded-full bg-white/30 hover:bg-indigo-500"></a>
+  <a href="#slide10" class="nav-dot w-3 h-3 rounded-full bg-white/30 hover:bg-indigo-500"></a>
+</nav>
+
+<!-- SLIDE 1: Title -->
+<section id="slide1" class="slide flex items-center justify-center relative overflow-hidden">
+  <div class="absolute inset-0 bg-gradient-to-br from-indigo-600/20 via-transparent to-teal-600/20"></div>
+  <div class="absolute top-20 left-20 w-72 h-72 bg-indigo-500/20 rounded-full blur-3xl float"></div>
+  <div class="absolute bottom-20 right-20 w-96 h-96 bg-teal-500/20 rounded-full blur-3xl float" style="animation-delay: 1s;"></div>
+  
+  <div class="text-center z-10 px-8">
+    <div class="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-sm">
+      <span class="text-2xl">🇨🇦</span>
+      <span class="text-gray-300">Built for Canadian Businesses</span>
+    </div>
+    
+    <h1 class="text-7xl md:text-8xl font-black mb-6">
+      <span class="gradient-text">Ontyx</span>
+    </h1>
+    
+    <p class="text-2xl md:text-3xl text-gray-300 mb-4 font-light">
+      The All-in-One Business Platform
+    </p>
+    
+    <p class="text-xl text-gray-500 mb-12 max-w-2xl mx-auto">
+      More powerful than Odoo. Simpler than SAP. Cheaper than all of them.
+    </p>
+    
+    <div class="flex items-center justify-center gap-6">
+      <div class="text-center">
+        <div class="text-4xl font-bold text-indigo-400">$29</div>
+        <div class="text-sm text-gray-500">Starting price</div>
+      </div>
+      <div class="w-px h-12 bg-gray-700"></div>
+      <div class="text-center">
+        <div class="text-4xl font-bold text-teal-400">18+</div>
+        <div class="text-sm text-gray-500">Modules</div>
+      </div>
+      <div class="w-px h-12 bg-gray-700"></div>
+      <div class="text-center">
+        <div class="text-4xl font-bold text-pink-400">100%</div>
+        <div class="text-sm text-gray-500">CRA Ready</div>
+      </div>
+    </div>
+    
+    <div class="mt-16 text-gray-500 animate-bounce">↓ Scroll to explore</div>
+  </div>
+</section>
+
+<!-- SLIDE 2: The Problem -->
+<section id="slide2" class="slide flex items-center justify-center px-8">
+  <div class="max-w-6xl w-full">
+    <h2 class="text-5xl font-bold mb-4 text-center">The Problem</h2>
+    <p class="text-xl text-gray-400 text-center mb-16">Why Canadian businesses struggle with existing ERPs</p>
+    
+    <div class="grid md:grid-cols-2 gap-8">
+      <div class="glass rounded-2xl p-8">
+        <div class="text-4xl mb-4">💸</div>
+        <h3 class="text-2xl font-bold mb-3 text-rose-400">Odoo / SAP</h3>
+        <ul class="space-y-3 text-gray-400">
+          <li class="flex items-start gap-3">
+            <span class="text-rose-500">✗</span>
+            <span>$24-49 per user per month — 10 users = $500/mo</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-rose-500">✗</span>
+            <span>Needs $200/hr consultants to set up</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-rose-500">✗</span>
+            <span>Canadian tax compliance is an expensive add-on</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-rose-500">✗</span>
+            <span>Outdated UI from 2010</span>
+          </li>
+        </ul>
+      </div>
+      
+      <div class="glass rounded-2xl p-8">
+        <div class="text-4xl mb-4">🤷</div>
+        <h3 class="text-2xl font-bold mb-3 text-amber-400">Xero / QuickBooks</h3>
+        <ul class="space-y-3 text-gray-400">
+          <li class="flex items-start gap-3">
+            <span class="text-amber-500">✗</span>
+            <span>No manufacturing — huge gap</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-amber-500">✗</span>
+            <span>Limited inventory management</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-amber-500">✗</span>
+            <span>Need 5+ apps to run a real business</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-amber-500">✗</span>
+            <span>Payroll is a separate expensive product</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="mt-12 text-center">
+      <div class="inline-block glass rounded-xl px-8 py-4">
+        <p class="text-lg text-gray-300">
+          <span class="font-bold text-white">Canadian businesses need</span> an all-in-one solution
+          that's <span class="text-indigo-400 font-semibold">affordable</span>,
+          <span class="text-teal-400 font-semibold">modern</span>, and
+          <span class="text-pink-400 font-semibold">built for Canada</span>.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 3: The Solution -->
+<section id="slide3" class="slide flex items-center justify-center px-8">
+  <div class="max-w-6xl w-full">
+    <h2 class="text-5xl font-bold mb-4 text-center">The <span class="gradient-text">Ontyx</span> Solution</h2>
+    <p class="text-xl text-gray-400 text-center mb-16">One platform. Everything you need. Built for Canada.</p>
+    
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="feature-card glass rounded-2xl p-6 transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center text-2xl mb-4">📊</div>
+        <h3 class="text-xl font-bold mb-2">Accounting</h3>
+        <p class="text-gray-400 text-sm">GL, AR, AP, bank reconciliation, financial reports. ASPE & IFRS compliant.</p>
+      </div>
+      
+      <div class="feature-card glass rounded-2xl p-6 transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-teal-500/20 flex items-center justify-center text-2xl mb-4">🧾</div>
+        <h3 class="text-xl font-bold mb-2">Invoicing & Bills</h3>
+        <p class="text-gray-400 text-sm">Create, send, track invoices. Manage vendor bills. Auto GST/HST.</p>
+      </div>
+      
+      <div class="feature-card glass rounded-2xl p-6 transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-pink-500/20 flex items-center justify-center text-2xl mb-4">🏦</div>
+        <h3 class="text-xl font-bold mb-2">Banking</h3>
+        <p class="text-gray-400 text-sm">Connect TD, RBC, BMO, Scotiabank, CIBC. Auto-categorize transactions.</p>
+      </div>
+      
+      <div class="feature-card glass rounded-2xl p-6 transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center text-2xl mb-4">📦</div>
+        <h3 class="text-xl font-bold mb-2">Inventory</h3>
+        <p class="text-gray-400 text-sm">Multi-location, barcode scanning, lot tracking, auto-reorder.</p>
+      </div>
+      
+      <div class="feature-card glass rounded-2xl p-6 transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-violet-500/20 flex items-center justify-center text-2xl mb-4">🏭</div>
+        <h3 class="text-xl font-bold mb-2">Manufacturing</h3>
+        <p class="text-gray-400 text-sm">BOMs, work orders, MRP, quality control. <span class="text-teal-400 font-semibold">Xero doesn't have this!</span></p>
+      </div>
+      
+      <div class="feature-card glass rounded-2xl p-6 transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-rose-500/20 flex items-center justify-center text-2xl mb-4">💰</div>
+        <h3 class="text-xl font-bold mb-2">Payroll</h3>
+        <p class="text-gray-400 text-sm">CPP, EI, provincial taxes, T4s, ROEs. 100% Canadian compliant.</p>
+      </div>
+      
+      <div class="feature-card glass rounded-2xl p-6 transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-cyan-500/20 flex items-center justify-center text-2xl mb-4">👥</div>
+        <h3 class="text-xl font-bold mb-2">HR & Employees</h3>
+        <p class="text-gray-400 text-sm">Time tracking, leave management, org chart, performance reviews.</p>
+      </div>
+      
+      <div class="feature-card glass rounded-2xl p-6 transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center text-2xl mb-4">🎯</div>
+        <h3 class="text-xl font-bold mb-2">CRM & Sales</h3>
+        <p class="text-gray-400 text-sm">Leads, deals, pipeline, quotes, sales orders, fulfillment.</p>
+      </div>
+      
+      <div class="feature-card glass rounded-2xl p-6 transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-orange-500/20 flex items-center justify-center text-2xl mb-4">🤖</div>
+        <h3 class="text-xl font-bold mb-2">AI-Powered</h3>
+        <p class="text-gray-400 text-sm">Auto-categorization, OCR receipts, cash flow forecasting, smart alerts.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 4: Canadian Tax Compliance -->
+<section id="slide4" class="slide flex items-center justify-center px-8">
+  <div class="max-w-6xl w-full">
+    <div class="text-center mb-12">
+      <span class="text-6xl mb-4 block">🇨🇦</span>
+      <h2 class="text-5xl font-bold mb-4">Canadian Tax Compliance</h2>
+      <p class="text-xl text-gray-400">Built-in. Not an add-on. Not extra cost.</p>
+    </div>
+    
+    <div class="grid md:grid-cols-2 gap-8">
+      <div class="glass rounded-2xl p-8">
+        <h3 class="text-2xl font-bold mb-6 text-indigo-400">Sales Tax</h3>
+        <ul class="space-y-4">
+          <li class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">✓</span>
+            <span>GST/HST auto-calculation by province</span>
+          </li>
+          <li class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">✓</span>
+            <span>PST for BC, SK, MB</span>
+          </li>
+          <li class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">✓</span>
+            <span>QST for Quebec</span>
+          </li>
+          <li class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">✓</span>
+            <span>Input Tax Credit (ITC) tracking</span>
+          </li>
+          <li class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">✓</span>
+            <span>GST/HST return generation (GST34)</span>
+          </li>
+          <li class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">✓</span>
+            <span>CRA direct filing ready</span>
+          </li>
+        </ul>
+      </div>
+      
+      <div class="glass rounded-2xl p-8">
+        <h3 class="text-2xl font-bold mb-6 text-teal-400">Payroll Tax</h3>
+        <ul class="space-y-4">
+          <li class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-400">✓</span>
+            <span>CPP/QPP contributions</span>
+          </li>
+          <li class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-400">✓</span>
+            <span>EI premiums</span>
+          </li>
+          <li class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-400">✓</span>
+            <span>Federal + Provincial income tax</span>
+          </li>
+          <li class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-400">✓</span>
+            <span>T4 & T4A slip generation</span>
+          </li>
+          <li class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-400">✓</span>
+            <span>ROE (Record of Employment)</span>
+          </li>
+          <li class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-400">✓</span>
+            <span>RL-1 for Quebec</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="mt-12 glass rounded-xl p-6 text-center">
+      <p class="text-gray-300">
+        <span class="text-2xl mr-2">⚠️</span>
+        <strong>QuickBooks & Xero</strong> charge extra for Canadian payroll.
+        <strong class="text-teal-400">Ontyx includes it.</strong>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 5: Banking Integration -->
+<section id="slide5" class="slide flex items-center justify-center px-8">
+  <div class="max-w-6xl w-full">
+    <h2 class="text-5xl font-bold mb-4 text-center">Canadian Bank Integration</h2>
+    <p class="text-xl text-gray-400 text-center mb-16">Connect your accounts. Auto-import transactions. Reconcile in seconds.</p>
+    
+    <div class="grid grid-cols-3 md:grid-cols-5 gap-6 mb-12">
+      <div class="glass rounded-xl p-6 text-center hover:scale-105 transition-transform">
+        <div class="text-3xl mb-2">🏦</div>
+        <div class="font-semibold">TD Bank</div>
+      </div>
+      <div class="glass rounded-xl p-6 text-center hover:scale-105 transition-transform">
+        <div class="text-3xl mb-2">🏦</div>
+        <div class="font-semibold">RBC</div>
+      </div>
+      <div class="glass rounded-xl p-6 text-center hover:scale-105 transition-transform">
+        <div class="text-3xl mb-2">🏦</div>
+        <div class="font-semibold">BMO</div>
+      </div>
+      <div class="glass rounded-xl p-6 text-center hover:scale-105 transition-transform">
+        <div class="text-3xl mb-2">🏦</div>
+        <div class="font-semibold">Scotiabank</div>
+      </div>
+      <div class="glass rounded-xl p-6 text-center hover:scale-105 transition-transform">
+        <div class="text-3xl mb-2">🏦</div>
+        <div class="font-semibold">CIBC</div>
+      </div>
+      <div class="glass rounded-xl p-6 text-center hover:scale-105 transition-transform">
+        <div class="text-3xl mb-2">🏦</div>
+        <div class="font-semibold">Desjardins</div>
+      </div>
+      <div class="glass rounded-xl p-6 text-center hover:scale-105 transition-transform">
+        <div class="text-3xl mb-2">🏦</div>
+        <div class="font-semibold">National</div>
+      </div>
+      <div class="glass rounded-xl p-6 text-center hover:scale-105 transition-transform">
+        <div class="text-3xl mb-2">🏦</div>
+        <div class="font-semibold">ATB</div>
+      </div>
+      <div class="glass rounded-xl p-6 text-center hover:scale-105 transition-transform">
+        <div class="text-3xl mb-2">💳</div>
+        <div class="font-semibold">Credit Unions</div>
+      </div>
+      <div class="glass rounded-xl p-6 text-center hover:scale-105 transition-transform">
+        <div class="text-3xl mb-2">➕</div>
+        <div class="font-semibold">300+ more</div>
+      </div>
+    </div>
+    
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="glass rounded-xl p-6 text-center">
+        <div class="text-4xl font-bold text-indigo-400 mb-2">Auto-Import</div>
+        <p class="text-gray-400">Transactions sync daily. No manual entry.</p>
+      </div>
+      <div class="glass rounded-xl p-6 text-center">
+        <div class="text-4xl font-bold text-teal-400 mb-2">AI Categorize</div>
+        <p class="text-gray-400">Smart rules learn from your patterns.</p>
+      </div>
+      <div class="glass rounded-xl p-6 text-center">
+        <div class="text-4xl font-bold text-pink-400 mb-2">1-Click Match</div>
+        <p class="text-gray-400">Match to invoices and bills instantly.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 6: Manufacturing -->
+<section id="slide6" class="slide flex items-center justify-center px-8">
+  <div class="max-w-6xl w-full">
+    <div class="text-center mb-12">
+      <span class="inline-block px-4 py-1 rounded-full bg-violet-500/20 text-violet-400 text-sm font-semibold mb-4">
+        🎯 Xero & QuickBooks don't have this
+      </span>
+      <h2 class="text-5xl font-bold mb-4">Manufacturing Module</h2>
+      <p class="text-xl text-gray-400">Perfect for Canadian manufacturers, food producers, and makers.</p>
+    </div>
+    
+    <div class="grid md:grid-cols-2 gap-8">
+      <div class="space-y-6">
+        <div class="glass rounded-xl p-6 flex items-start gap-4">
+          <div class="w-12 h-12 rounded-lg bg-violet-500/20 flex items-center justify-center text-2xl flex-shrink-0">📋</div>
+          <div>
+            <h4 class="font-bold text-lg mb-1">Bill of Materials (BOM)</h4>
+            <p class="text-gray-400 text-sm">Multi-level BOMs, component tracking, cost rollup, version control.</p>
+          </div>
+        </div>
+        
+        <div class="glass rounded-xl p-6 flex items-start gap-4">
+          <div class="w-12 h-12 rounded-lg bg-pink-500/20 flex items-center justify-center text-2xl flex-shrink-0">🔧</div>
+          <div>
+            <h4 class="font-bold text-lg mb-1">Work Orders</h4>
+            <p class="text-gray-400 text-sm">Create, schedule, track production. Assign to work centers.</p>
+          </div>
+        </div>
+        
+        <div class="glass rounded-xl p-6 flex items-start gap-4">
+          <div class="w-12 h-12 rounded-lg bg-amber-500/20 flex items-center justify-center text-2xl flex-shrink-0">🏭</div>
+          <div>
+            <h4 class="font-bold text-lg mb-1">Work Centers</h4>
+            <p class="text-gray-400 text-sm">Define machines, labor, capacity. Track utilization and efficiency.</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="space-y-6">
+        <div class="glass rounded-xl p-6 flex items-start gap-4">
+          <div class="w-12 h-12 rounded-lg bg-emerald-500/20 flex items-center justify-center text-2xl flex-shrink-0">✅</div>
+          <div>
+            <h4 class="font-bold text-lg mb-1">Quality Control</h4>
+            <p class="text-gray-400 text-sm">Inspection checkpoints, pass/fail, batch hold, CFIA compliance.</p>
+          </div>
+        </div>
+        
+        <div class="glass rounded-xl p-6 flex items-start gap-4">
+          <div class="w-12 h-12 rounded-lg bg-cyan-500/20 flex items-center justify-center text-2xl flex-shrink-0">📊</div>
+          <div>
+            <h4 class="font-bold text-lg mb-1">MRP Planning</h4>
+            <p class="text-gray-400 text-sm">Material requirements planning. Know what to order and when.</p>
+          </div>
+        </div>
+        
+        <div class="glass rounded-xl p-6 flex items-start gap-4">
+          <div class="w-12 h-12 rounded-lg bg-rose-500/20 flex items-center justify-center text-2xl flex-shrink-0">📅</div>
+          <div>
+            <h4 class="font-bold text-lg mb-1">Production Scheduling</h4>
+            <p class="text-gray-400 text-sm">Visual scheduler, drag-drop, capacity planning, deadline tracking.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 7: Integrations -->
+<section id="slide7" class="slide flex items-center justify-center px-8">
+  <div class="max-w-6xl w-full">
+    <h2 class="text-5xl font-bold mb-4 text-center">Integrations</h2>
+    <p class="text-xl text-gray-400 text-center mb-16">Connect with the tools Canadian businesses already use.</p>
+    
+    <div class="grid md:grid-cols-4 gap-4 mb-8">
+      <div class="glass rounded-xl p-4">
+        <h4 class="font-semibold text-indigo-400 mb-3">eCommerce</h4>
+        <ul class="space-y-2 text-sm text-gray-400">
+          <li>• Shopify Canada</li>
+          <li>• WooCommerce</li>
+          <li>• Amazon Canada</li>
+          <li>• eBay Canada</li>
+          <li>• Etsy</li>
+        </ul>
+      </div>
+      
+      <div class="glass rounded-xl p-4">
+        <h4 class="font-semibold text-teal-400 mb-3">Payments</h4>
+        <ul class="space-y-2 text-sm text-gray-400">
+          <li>• Stripe</li>
+          <li>• Square</li>
+          <li>• Moneris</li>
+          <li>• Interac</li>
+          <li>• PayPal</li>
+        </ul>
+      </div>
+      
+      <div class="glass rounded-xl p-4">
+        <h4 class="font-semibold text-pink-400 mb-3">Shipping</h4>
+        <ul class="space-y-2 text-sm text-gray-400">
+          <li>• Canada Post</li>
+          <li>• Purolator</li>
+          <li>• FedEx Canada</li>
+          <li>• UPS Canada</li>
+          <li>• Canpar</li>
+        </ul>
+      </div>
+      
+      <div class="glass rounded-xl p-4">
+        <h4 class="font-semibold text-amber-400 mb-3">Productivity</h4>
+        <ul class="space-y-2 text-sm text-gray-400">
+          <li>• Google Workspace</li>
+          <li>• Microsoft 365</li>
+          <li>• Slack</li>
+          <li>• Zoom</li>
+          <li>• Calendly</li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="glass rounded-xl p-6 text-center">
+      <div class="flex items-center justify-center gap-4 flex-wrap">
+        <span class="px-4 py-2 bg-indigo-500/20 rounded-lg text-sm">REST API</span>
+        <span class="px-4 py-2 bg-teal-500/20 rounded-lg text-sm">GraphQL</span>
+        <span class="px-4 py-2 bg-pink-500/20 rounded-lg text-sm">Webhooks</span>
+        <span class="px-4 py-2 bg-amber-500/20 rounded-lg text-sm">Zapier</span>
+        <span class="px-4 py-2 bg-violet-500/20 rounded-lg text-sm">Make</span>
+      </div>
+      <p class="text-gray-400 mt-4 text-sm">Full API access on all plans. Build your own integrations.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 8: Pricing -->
+<section id="slide8" class="slide flex items-center justify-center px-8">
+  <div class="max-w-6xl w-full">
+    <h2 class="text-5xl font-bold mb-4 text-center">Simple, Honest Pricing</h2>
+    <p class="text-xl text-gray-400 text-center mb-16">No per-user fees. No hidden costs. No surprises.</p>
+    
+    <div class="grid md:grid-cols-3 gap-8">
+      <!-- Starter -->
+      <div class="glass rounded-2xl p-8">
+        <h3 class="text-xl font-semibold mb-2">Starter</h3>
+        <div class="flex items-baseline gap-1 mb-4">
+          <span class="text-5xl font-bold">$29</span>
+          <span class="text-gray-400">/month</span>
+        </div>
+        <p class="text-gray-400 text-sm mb-6">Perfect for small businesses</p>
+        <ul class="space-y-3 mb-8">
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> Up to 5 users
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> Invoicing & Billing
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> Banking & Reconciliation
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> Basic Inventory
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> GST/HST Compliance
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> Email Support
+          </li>
+        </ul>
+        <button class="w-full py-3 rounded-lg border border-gray-600 hover:bg-white/5 transition-colors">
+          Start Free Trial
+        </button>
+      </div>
+      
+      <!-- Pro -->
+      <div class="relative glass rounded-2xl p-8 border-2 border-indigo-500">
+        <div class="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-indigo-500 rounded-full text-sm font-semibold">
+          Most Popular
+        </div>
+        <h3 class="text-xl font-semibold mb-2">Professional</h3>
+        <div class="flex items-baseline gap-1 mb-4">
+          <span class="text-5xl font-bold">$49</span>
+          <span class="text-gray-400">/month</span>
+        </div>
+        <p class="text-gray-400 text-sm mb-6">For growing businesses</p>
+        <ul class="space-y-3 mb-8">
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> <strong>Unlimited users</strong>
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> Everything in Starter
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> Full Inventory & Warehouses
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> Manufacturing
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> Canadian Payroll
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> CRM & Sales
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> API Access
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> Priority Support
+          </li>
+        </ul>
+        <button class="w-full py-3 rounded-lg bg-indigo-500 hover:bg-indigo-600 transition-colors font-semibold">
+          Start Free Trial
+        </button>
+      </div>
+      
+      <!-- Enterprise -->
+      <div class="glass rounded-2xl p-8">
+        <h3 class="text-xl font-semibold mb-2">Enterprise</h3>
+        <div class="flex items-baseline gap-1 mb-4">
+          <span class="text-5xl font-bold">$99</span>
+          <span class="text-gray-400">/month</span>
+        </div>
+        <p class="text-gray-400 text-sm mb-6">For larger organizations</p>
+        <ul class="space-y-3 mb-8">
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> Everything in Pro
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> Multi-location
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> Advanced Manufacturing (MRP)
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> Custom Workflows
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> White-label Option
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> Dedicated Account Manager
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="text-teal-400">✓</span> SLA & Phone Support
+          </li>
+        </ul>
+        <button class="w-full py-3 rounded-lg border border-gray-600 hover:bg-white/5 transition-colors">
+          Contact Sales
+        </button>
+      </div>
+    </div>
+    
+    <div class="mt-12 text-center">
+      <p class="text-gray-400">14-day free trial on all plans. No credit card required.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 9: Comparison -->
+<section id="slide9" class="slide flex items-center justify-center px-8">
+  <div class="max-w-6xl w-full">
+    <h2 class="text-5xl font-bold mb-4 text-center">How Ontyx Compares</h2>
+    <p class="text-xl text-gray-400 text-center mb-12">The honest comparison nobody else will show you.</p>
+    
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="border-b border-gray-700">
+            <th class="text-left py-4 px-4">Feature</th>
+            <th class="py-4 px-4"><span class="gradient-text font-bold">Ontyx</span></th>
+            <th class="py-4 px-4 text-gray-400">Odoo</th>
+            <th class="py-4 px-4 text-gray-400">Xero</th>
+            <th class="py-4 px-4 text-gray-400">QuickBooks</th>
+            <th class="py-4 px-4 text-gray-400">SAP B1</th>
+          </tr>
+        </thead>
+        <tbody class="text-sm">
+          <tr class="border-b border-gray-800">
+            <td class="py-4 px-4 font-medium">Price (10 users)</td>
+            <td class="py-4 px-4 text-center text-teal-400 font-bold">$49/mo</td>
+            <td class="py-4 px-4 text-center text-gray-400">$470/mo</td>
+            <td class="py-4 px-4 text-center text-gray-400">$78/mo*</td>
+            <td class="py-4 px-4 text-center text-gray-400">$108/mo*</td>
+            <td class="py-4 px-4 text-center text-gray-400">$1,500+/mo</td>
+          </tr>
+          <tr class="border-b border-gray-800">
+            <td class="py-4 px-4 font-medium">Manufacturing</td>
+            <td class="py-4 px-4 text-center text-teal-400">✓</td>
+            <td class="py-4 px-4 text-center text-teal-400">✓</td>
+            <td class="py-4 px-4 text-center text-rose-400">✗</td>
+            <td class="py-4 px-4 text-center text-rose-400">✗</td>
+            <td class="py-4 px-4 text-center text-teal-400">✓</td>
+          </tr>
+          <tr class="border-b border-gray-800">
+            <td class="py-4 px-4 font-medium">Canadian Payroll</td>
+            <td class="py-4 px-4 text-center text-teal-400">✓ Included</td>
+            <td class="py-4 px-4 text-center text-amber-400">+ Extra</td>
+            <td class="py-4 px-4 text-center text-amber-400">+ $40/mo</td>
+            <td class="py-4 px-4 text-center text-amber-400">+ $50/mo</td>
+            <td class="py-4 px-4 text-center text-amber-400">+ Extra</td>
+          </tr>
+          <tr class="border-b border-gray-800">
+            <td class="py-4 px-4 font-medium">Bank Feeds (Big 5)</td>
+            <td class="py-4 px-4 text-center text-teal-400">✓</td>
+            <td class="py-4 px-4 text-center text-teal-400">✓</td>
+            <td class="py-4 px-4 text-center text-teal-400">✓</td>
+            <td class="py-4 px-4 text-center text-teal-400">✓</td>
+            <td class="py-4 px-4 text-center text-amber-400">Limited</td>
+          </tr>
+          <tr class="border-b border-gray-800">
+            <td class="py-4 px-4 font-medium">Modern UI</td>
+            <td class="py-4 px-4 text-center text-teal-400">✓</td>
+            <td class="py-4 px-4 text-center text-rose-400">✗</td>
+            <td class="py-4 px-4 text-center text-amber-400">Okay</td>
+            <td class="py-4 px-4 text-center text-amber-400">Okay</td>
+            <td class="py-4 px-4 text-center text-rose-400">✗</td>
+          </tr>
+          <tr class="border-b border-gray-800">
+            <td class="py-4 px-4 font-medium">API Access</td>
+            <td class="py-4 px-4 text-center text-teal-400">✓ All plans</td>
+            <td class="py-4 px-4 text-center text-amber-400">$49/user</td>
+            <td class="py-4 px-4 text-center text-teal-400">✓</td>
+            <td class="py-4 px-4 text-center text-teal-400">✓</td>
+            <td class="py-4 px-4 text-center text-teal-400">✓</td>
+          </tr>
+          <tr class="border-b border-gray-800">
+            <td class="py-4 px-4 font-medium">Self-Setup Time</td>
+            <td class="py-4 px-4 text-center text-teal-400">~30 min</td>
+            <td class="py-4 px-4 text-center text-amber-400">Weeks</td>
+            <td class="py-4 px-4 text-center text-teal-400">~1 hour</td>
+            <td class="py-4 px-4 text-center text-teal-400">~1 hour</td>
+            <td class="py-4 px-4 text-center text-rose-400">Months</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <p class="text-gray-500 text-sm mt-6 text-center">* Limited users on lower plans. Manufacturing/payroll not included.</p>
+  </div>
+</section>
+
+<!-- SLIDE 10: CTA -->
+<section id="slide10" class="slide flex items-center justify-center px-8 relative overflow-hidden">
+  <div class="absolute inset-0 bg-gradient-to-br from-indigo-600/30 via-transparent to-teal-600/30"></div>
+  <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl"></div>
+  <div class="absolute bottom-1/4 right-1/4 w-72 h-72 bg-teal-500/20 rounded-full blur-3xl"></div>
+  
+  <div class="text-center z-10 max-w-3xl">
+    <span class="text-6xl mb-6 block">🚀</span>
+    <h2 class="text-5xl md:text-6xl font-bold mb-6">
+      Ready to run your business <span class="gradient-text">smarter</span>?
+    </h2>
+    <p class="text-xl text-gray-400 mb-10">
+      Join 500+ Canadian businesses who switched to Ontyx.
+      14-day free trial. No credit card. Cancel anytime.
+    </p>
+    
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+      <button class="px-8 py-4 bg-indigo-500 hover:bg-indigo-600 rounded-xl font-semibold text-lg transition-all pulse-glow">
+        Start Free Trial →
+      </button>
+      <button class="px-8 py-4 glass rounded-xl font-semibold text-lg hover:bg-white/10 transition-all">
+        Book a Demo
+      </button>
+    </div>
+    
+    <div class="mt-16 flex items-center justify-center gap-8 text-sm text-gray-500">
+      <div class="flex items-center gap-2">
+        <span class="text-teal-400">✓</span> No credit card
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-teal-400">✓</span> Setup in 30 min
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-teal-400">✓</span> Cancel anytime
+      </div>
+    </div>
+    
+    <div class="mt-20 text-gray-600 text-sm">
+      Built with ❤️ in Canada 🇨🇦
+    </div>
+  </div>
+</section>
+
+<script>
+// Highlight active nav dot based on scroll
+const slides = document.querySelectorAll('.slide');
+const dots = document.querySelectorAll('.nav-dot');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const index = Array.from(slides).indexOf(entry.target);
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('active', i === index);
+      });
+    }
+  });
+}, { threshold: 0.5 });
+
+slides.forEach(slide => observer.observe(slide));
+</script>
+
+</body>
+</html>

@@ -10,66 +10,138 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Ontyx Premium Color System
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
+        // CSS Variable-based colors (theme-aware)
+        background: "var(--background)",
+        "background-secondary": "var(--background-secondary)",
+        "background-tertiary": "var(--background-tertiary)",
+        
+        surface: "var(--surface)",
+        "surface-hover": "var(--surface-hover)",
+        "surface-active": "var(--surface-active)",
+        
+        foreground: "var(--text-primary)",
+        
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: "var(--primary)",
+          hover: "var(--primary-hover)",
+          active: "var(--primary-active)",
+          light: "var(--primary-light)",
+          foreground: "var(--primary-foreground)",
         },
+        
         secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+          DEFAULT: "var(--secondary)",
+          hover: "var(--secondary-hover)",
+          active: "var(--secondary-active)",
+          foreground: "var(--secondary-foreground)",
         },
+        
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--text-muted)",
         },
+        
         accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
         },
+        
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+          DEFAULT: "var(--error)",
+          foreground: "var(--primary-foreground)",
+          light: "var(--error-light)",
         },
+        
         success: {
-          DEFAULT: "hsl(var(--success))",
-          foreground: "hsl(var(--success-foreground))",
+          DEFAULT: "var(--success)",
+          light: "var(--success-light)",
         },
+        
         warning: {
-          DEFAULT: "hsl(var(--warning))",
-          foreground: "hsl(var(--warning-foreground))",
+          DEFAULT: "var(--warning)",
+          light: "var(--warning-light)",
         },
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
+        
+        info: {
+          DEFAULT: "var(--info)",
+          light: "var(--info-light)",
+        },
+        
+        border: "var(--border)",
+        "border-hover": "var(--border-hover)",
+        input: "var(--border)",
+        ring: "var(--ring)",
+        
+        // Text colors
+        "text-primary": "var(--text-primary)",
+        "text-secondary": "var(--text-secondary)",
+        "text-tertiary": "var(--text-tertiary)",
+        "text-muted": "var(--text-muted)",
+        
+        // Sidebar
+        sidebar: {
+          background: "var(--sidebar-background)",
+          border: "var(--sidebar-border)",
+          "item-hover": "var(--sidebar-item-hover)",
+          "item-active": "var(--sidebar-item-active)",
+          "item-active-text": "var(--sidebar-item-active-text)",
+        },
+        
         // Chart colors
         chart: {
-          1: "hsl(var(--chart-1))",
-          2: "hsl(var(--chart-2))",
-          3: "hsl(var(--chart-3))",
-          4: "hsl(var(--chart-4))",
-          5: "hsl(var(--chart-5))",
+          1: "var(--chart-1)",
+          2: "var(--chart-2)",
+          3: "var(--chart-3)",
+          4: "var(--chart-4)",
+          5: "var(--chart-5)",
+        },
+        
+        // Keep shadcn compatibility
+        card: {
+          DEFAULT: "var(--surface)",
+          foreground: "var(--text-primary)",
+        },
+        popover: {
+          DEFAULT: "var(--surface)",
+          foreground: "var(--text-primary)",
         },
       },
+      
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "var(--radius-lg)",
+        md: "var(--radius-md)",
+        sm: "var(--radius-sm)",
+        xl: "var(--radius-xl)",
+        "2xl": "var(--radius-2xl)",
       },
+      
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-geist-mono)", "monospace"],
+        sans: ["Inter", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+        mono: ["JetBrains Mono", "Fira Code", "monospace"],
       },
+      
+      fontSize: {
+        "2xs": ["0.625rem", { lineHeight: "0.875rem" }],
+      },
+      
+      spacing: {
+        "sidebar": "var(--sidebar-width)",
+        "sidebar-collapsed": "var(--sidebar-collapsed-width)",
+        "header": "var(--header-height)",
+      },
+      
+      boxShadow: {
+        "sm": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        "DEFAULT": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+        "md": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        "lg": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        "xl": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+        "2xl": "0 25px 50px -12px rgb(0 0 0 / 0.25)",
+        "inner": "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
+        "maple": "0 4px 14px 0 rgba(220, 38, 38, 0.15)",
+        "maple-lg": "0 10px 25px 0 rgba(220, 38, 38, 0.2)",
+      },
+      
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
@@ -95,7 +167,20 @@ const config: Config = {
           from: { transform: "translateX(0)" },
           to: { transform: "translateX(100%)" },
         },
+        "slide-in-from-bottom": {
+          from: { transform: "translateY(10px)", opacity: "0" },
+          to: { transform: "translateY(0)", opacity: "1" },
+        },
+        "scale-in": {
+          from: { transform: "scale(0.95)", opacity: "0" },
+          to: { transform: "scale(1)", opacity: "1" },
+        },
+        "shimmer": {
+          from: { transform: "translateX(-100%)" },
+          to: { transform: "translateX(100%)" },
+        },
       },
+      
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
@@ -103,6 +188,9 @@ const config: Config = {
         "fade-out": "fade-out 0.2s ease-out",
         "slide-in": "slide-in-from-right 0.3s ease-out",
         "slide-out": "slide-out-to-right 0.3s ease-out",
+        "slide-up": "slide-in-from-bottom 0.3s ease-out",
+        "scale-in": "scale-in 0.2s ease-out",
+        "shimmer": "shimmer 1.5s linear infinite",
       },
     },
   },
