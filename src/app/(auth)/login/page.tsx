@@ -53,7 +53,7 @@ export default function LoginPage() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 mb-8">
             <Image 
-              src="/logo-original.jpg" 
+              src="/logo.png" 
               alt="Ontyx" 
               width={40} 
               height={40}
@@ -200,7 +200,7 @@ export default function LoginPage() {
         <div className="relative text-center text-primary-foreground max-w-md">
           <div className="mb-8">
             <Image 
-              src="/logo-original.jpg" 
+              src="/logo.png" 
               alt="Ontyx" 
               width={80} 
               height={80}

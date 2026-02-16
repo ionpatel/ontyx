@@ -142,7 +142,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2.5">
             <Image 
-              src="/logo-original.jpg" 
+              src="/logo.png" 
               alt="Ontyx" 
               width={40} 
               height={40}
@@ -520,7 +520,7 @@ export default function LandingPage() {
             <div className="md:col-span-2">
               <Link href="/" className="flex items-center gap-2.5 mb-4">
                 <Image 
-                  src="/logo-original.jpg" 
+                  src="/logo.png" 
                   alt="Ontyx" 
                   width={32} 
                   height={32}

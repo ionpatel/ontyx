@@ -109,7 +109,7 @@ export default function RegisterPage() {
         <div className="relative text-primary-foreground max-w-md">
           <div className="mb-8">
             <Image 
-              src="/logo-original.jpg" 
+              src="/logo.png" 
               alt="Ontyx" 
               width={80} 
               height={80}
@@ -154,7 +154,7 @@ export default function RegisterPage() {
           {/* Mobile logo */}
           <Link href="/" className="lg:hidden flex items-center gap-2.5 mb-8">
             <Image 
-              src="/logo-original.jpg" 
+              src="/logo.png" 
               alt="Ontyx" 
               width={40} 
               height={40}

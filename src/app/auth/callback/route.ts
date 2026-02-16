@@ -1,24 +1,20 @@
-import { createClient } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server'
+import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
-  const code = searchParams.get('code');
-  const setup = searchParams.get('setup');
+  const { searchParams, origin } = new URL(request.url)
+  const code = searchParams.get('code')
+  const next = searchParams.get('next') ?? '/dashboard'
 
   if (code) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const supabase = await createClient()
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
     
     if (!error) {
-      // If this is a new signup, redirect to setup
-      if (setup === 'true') {
-        return NextResponse.redirect(`${origin}/setup`);
-      }
-      return NextResponse.redirect(`${origin}/dashboard`);
+      return NextResponse.redirect(`${origin}${next}`)
     }
   }
 
-  // Return to login on error
-  return NextResponse.redirect(`${origin}/login?error=auth_error`);
+  // Return the user to an error page with instructions
+  return NextResponse.redirect(`${origin}/login?error=auth_callback_error`)
 }
