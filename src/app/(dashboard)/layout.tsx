@@ -292,15 +292,13 @@ export default function DashboardLayout({
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <button
-                    type="button"
-                    className="w-full flex items-center text-destructive cursor-pointer"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" /> Log out
-                  </button>
-                </DropdownMenuItem>
+                <div 
+                  className="relative flex cursor-pointer select-none items-center rounded-md px-2 py-1.5 text-sm outline-none transition-colors text-destructive hover:bg-destructive/10"
+                  onClick={handleLogout}
+                  role="menuitem"
+                >
+                  <LogOut className="mr-2 h-4 w-4" /> Log out
+                </div>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
