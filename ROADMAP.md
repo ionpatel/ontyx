@@ -32,8 +32,8 @@
 ### Week 2: Complete Invoice Flow
 - [x] **Email invoices** ✅ - send PDF via Resend
 - [x] **Payment recording** ✅ - mark partial/full payments
+- [x] **Recurring invoices** ✅ - schedule auto-generation
 - [ ] **Invoice templates** - customizable branding
-- [ ] **Recurring invoices** - auto-generate monthly
 
 ### Week 3: Banking & Payments
 - [ ] **Plaid integration** - connect Canadian banks
@@ -68,15 +68,17 @@
 ---
 
 ## Current Focus
-**Recurring Invoices** - auto-generate monthly invoices
+**Banking Integration** - connect Canadian banks via Plaid
 
 ## Quick Wins Queue
 1. ~~Org settings page~~ ✅
 2. ~~Email invoice sending~~ ✅
 3. ~~Payment recording~~ ✅
 4. ~~User profile page~~ ✅
-5. Invoice templates (branding)
-6. Recurring invoices
+5. ~~Recurring invoices~~ ✅
+6. Invoice templates (branding)
+7. Banking/Plaid integration
+8. Canadian Payroll (CPP/EI)
 
 ---
 
@@ -90,4 +92,7 @@
 - ✅ Organization settings page complete (Company, Billing, Alerts, Account tabs)
 - ✅ Email invoice sending (Resend API integration)
 - ✅ User profile page with avatar, name, password change
-- 🔄 Moving to recurring invoices
+- ✅ Recurring invoices with full CRUD UI
+- ✅ Toast notifications (replaced primitive alerts)
+- ✅ Database migration for recurring_invoices table
+- 🔄 Building banking/Plaid integration
