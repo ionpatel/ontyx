@@ -116,8 +116,20 @@ export default function DashboardLayout({
     : 'DU'
 
   const handleLogout = async () => {
-    await signOut()
-    router.push('/login')
+    try {
+      await signOut()
+      // Clear demo mode localStorage data
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('ontyx_demo_profile')
+        localStorage.removeItem('ontyx_demo_organization')
+        localStorage.removeItem('ontyx_demo_contacts')
+        localStorage.removeItem('ontyx_demo_invoice_templates')
+      }
+      router.push('/login')
+    } catch (err) {
+      console.error('Logout error:', err)
+      router.push('/login')
+    }
   }
 
   return (
@@ -281,11 +293,9 @@ export default function DashboardLayout({
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
-                  className="text-destructive cursor-pointer" 
-                  onSelect={(e) => {
-                    e.preventDefault()
-                    handleLogout()
-                  }}
+                  className="text-destructive cursor-pointer"
+                  onClick={() => handleLogout()}
+                  onSelect={() => handleLogout()}
                 >
                   <LogOut className="mr-2 h-4 w-4" /> Log out
                 </DropdownMenuItem>
