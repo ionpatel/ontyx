@@ -124,14 +124,11 @@ export default function DashboardLayout({
         {/* Logo */}
         <div className="flex h-16 items-center justify-between px-4 border-b">
           <Link href="/dashboard" className="flex items-center gap-2 group">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
-              <span className="text-primary-foreground font-display font-semibold text-lg">O</span>
-            </div>
-            {!collapsed && (
-              <span className="font-display font-semibold text-xl tracking-tight text-slate-800">
-                Onty<span className="text-primary">X</span>
-              </span>
-            )}
+            <img 
+              src="/logo.png" 
+              alt="OntyX" 
+              className="h-9 w-9 rounded-lg group-hover:opacity-90 transition-opacity"
+            />
           </Link>
           <Button
             variant="ghost"

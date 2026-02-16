@@ -108,21 +108,13 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
     >
       {/* Logo */}
       <div className="flex h-16 items-center justify-between px-4 border-b border-border">
-        {!collapsed && (
-          <Link href="/dashboard" className="flex items-center gap-2 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-sm group-hover:shadow-md transition-shadow">
-              <span className="text-primary-foreground font-display font-semibold text-lg">O</span>
-            </div>
-            <span className="text-xl font-display font-semibold tracking-tight text-slate-800">
-              Onty<span className="text-primary">X</span>
-            </span>
-          </Link>
-        )}
-        {collapsed && (
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary mx-auto shadow-sm">
-            <span className="text-primary-foreground font-display font-semibold text-lg">O</span>
-          </div>
-        )}
+        <Link href="/dashboard" className={cn("flex items-center group", collapsed && "justify-center")}>
+          <img 
+            src="/logo.png" 
+            alt="OntyX" 
+            className="h-9 w-9 rounded-lg group-hover:opacity-90 transition-opacity"
+          />
+        </Link>
       </div>
 
       {/* Navigation */}
