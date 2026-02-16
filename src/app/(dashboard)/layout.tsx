@@ -8,7 +8,7 @@ import {
   BarChart3, Package, ShoppingCart, Users, Briefcase,
   Settings, Menu, X, ChevronDown, LogOut, User,
   Bell, Search, Moon, Sun, Factory, FolderKanban, 
-  Layers, CheckCircle2, ClipboardList, Clock
+  Layers, CheckCircle2, ClipboardList, Clock, Wallet, UserCircle
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -75,6 +75,14 @@ const navigation = [
     items: [
       { name: "Contacts", href: "/contacts", icon: Users },
       { name: "CRM", href: "/crm", icon: Briefcase },
+    ],
+  },
+  {
+    name: "People",
+    items: [
+      { name: "Employees", href: "/employees", icon: UserCircle },
+      { name: "Payroll", href: "/payroll", icon: Wallet },
+      { name: "T4 Tax Slips", href: "/payroll/t4", icon: FileText },
     ],
   },
   {
