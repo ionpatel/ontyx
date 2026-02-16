@@ -16,18 +16,15 @@ export function useSalesOrders(filters?: {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchOrders = useCallback(async () => {
-    if (!organizationId) {
-      setOrders([])
-      setLoading(false)
-      return
-    }
+  // Use 'demo' as fallback for demo mode
+  const effectiveOrgId = organizationId || 'demo'
 
+  const fetchOrders = useCallback(async () => {
     setLoading(true)
     setError(null)
     
     try {
-      const data = await salesService.getOrders(organizationId, filters)
+      const data = await salesService.getOrders(effectiveOrgId, filters)
       setOrders(data)
     } catch (err) {
       setError('Failed to fetch orders')
@@ -35,17 +32,15 @@ export function useSalesOrders(filters?: {
     } finally {
       setLoading(false)
     }
-  }, [organizationId, filters?.status, filters?.customerId, filters?.fromDate, filters?.toDate])
+  }, [effectiveOrgId, filters?.status, filters?.customerId, filters?.fromDate, filters?.toDate])
 
   useEffect(() => {
     fetchOrders()
   }, [fetchOrders])
 
   const createOrder = async (input: CreateSalesOrderInput): Promise<SalesOrder | null> => {
-    if (!organizationId) return null
-    
     try {
-      const order = await salesService.createOrder(input, organizationId)
+      const order = await salesService.createOrder(input, effectiveOrgId)
       if (order) {
         setOrders(prev => [order, ...prev])
       }
@@ -57,10 +52,8 @@ export function useSalesOrders(filters?: {
   }
 
   const updateOrderStatus = async (id: string, status: SalesOrderStatus): Promise<boolean> => {
-    if (!organizationId) return false
-    
     try {
-      const success = await salesService.updateOrderStatus(id, status, organizationId)
+      const success = await salesService.updateOrderStatus(id, status, effectiveOrgId)
       if (success) {
         setOrders(prev => prev.map(o => 
           o.id === id ? { ...o, status, updatedAt: new Date().toISOString() } : o
@@ -74,8 +67,7 @@ export function useSalesOrders(filters?: {
   }
 
   const searchOrders = async (query: string): Promise<SalesOrder[]> => {
-    if (!organizationId) return []
-    return salesService.searchOrders(query, organizationId)
+    return salesService.searchOrders(query, effectiveOrgId)
   }
 
   return {
@@ -91,12 +83,13 @@ export function useSalesOrders(filters?: {
 
 export function useSalesOrder(id: string | null) {
   const { organizationId } = useAuth()
+  const effectiveOrgId = organizationId || 'demo'
   const [order, setOrder] = useState<SalesOrder | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!id || !organizationId) {
+    if (!id) {
       setOrder(null)
       setLoading(false)
       return
@@ -105,42 +98,37 @@ export function useSalesOrder(id: string | null) {
     setLoading(true)
     setError(null)
 
-    salesService.getOrder(id, organizationId)
+    salesService.getOrder(id, effectiveOrgId)
       .then(data => setOrder(data))
       .catch(err => {
         setError('Failed to fetch order')
         console.error(err)
       })
       .finally(() => setLoading(false))
-  }, [id, organizationId])
+  }, [id, effectiveOrgId])
 
   return { order, loading, error }
 }
 
 export function useSalesStats() {
   const { organizationId } = useAuth()
+  const effectiveOrgId = organizationId || 'demo'
   const [stats, setStats] = useState<SalesStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!organizationId) {
-      setStats(null)
-      setLoading(false)
-      return
-    }
-
     setLoading(true)
     setError(null)
 
-    salesService.getStats(organizationId)
+    salesService.getStats(effectiveOrgId)
       .then(data => setStats(data))
       .catch(err => {
         setError('Failed to fetch stats')
         console.error(err)
       })
       .finally(() => setLoading(false))
-  }, [organizationId])
+  }, [effectiveOrgId])
 
   return { stats, loading, error }
 }

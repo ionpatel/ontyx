@@ -15,18 +15,15 @@ export function useInvoices(filters?: {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchInvoices = useCallback(async () => {
-    if (!organizationId) {
-      setInvoices([])
-      setLoading(false)
-      return
-    }
+  // Use 'demo' as fallback for demo mode
+  const effectiveOrgId = organizationId || 'demo'
 
+  const fetchInvoices = useCallback(async () => {
     setLoading(true)
     setError(null)
     
     try {
-      const data = await invoicesService.getInvoices(organizationId, filters)
+      const data = await invoicesService.getInvoices(effectiveOrgId, filters)
       setInvoices(data)
     } catch (err) {
       setError('Failed to fetch invoices')
@@ -34,17 +31,15 @@ export function useInvoices(filters?: {
     } finally {
       setLoading(false)
     }
-  }, [organizationId, filters?.status, filters?.customerId, filters?.fromDate, filters?.toDate])
+  }, [effectiveOrgId, filters?.status, filters?.customerId, filters?.fromDate, filters?.toDate])
 
   useEffect(() => {
     fetchInvoices()
   }, [fetchInvoices])
 
   const createInvoice = async (input: CreateInvoiceInput): Promise<Invoice | null> => {
-    if (!organizationId) return null
-    
     try {
-      const invoice = await invoicesService.createInvoice(input, organizationId)
+      const invoice = await invoicesService.createInvoice(input, effectiveOrgId)
       if (invoice) {
         setInvoices(prev => [invoice, ...prev])
       }
@@ -56,10 +51,8 @@ export function useInvoices(filters?: {
   }
 
   const updateInvoiceStatus = async (id: string, status: InvoiceStatus, paidDate?: string): Promise<boolean> => {
-    if (!organizationId) return false
-    
     try {
-      const success = await invoicesService.updateInvoiceStatus(id, status, organizationId, paidDate)
+      const success = await invoicesService.updateInvoiceStatus(id, status, effectiveOrgId, paidDate)
       if (success) {
         setInvoices(prev => prev.map(i => 
           i.id === id ? { 
@@ -79,12 +72,9 @@ export function useInvoices(filters?: {
   }
 
   const recordPayment = async (id: string, amount: number, paymentDate?: string): Promise<boolean> => {
-    if (!organizationId) return false
-    
     try {
-      const success = await invoicesService.recordPayment(id, amount, organizationId, paymentDate)
+      const success = await invoicesService.recordPayment(id, amount, effectiveOrgId, paymentDate)
       if (success) {
-        // Refetch to get updated values
         await fetchInvoices()
       }
       return success
@@ -107,12 +97,13 @@ export function useInvoices(filters?: {
 
 export function useInvoice(id: string | null) {
   const { organizationId } = useAuth()
+  const effectiveOrgId = organizationId || 'demo'
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!id || !organizationId) {
+    if (!id) {
       setInvoice(null)
       setLoading(false)
       return
@@ -121,42 +112,37 @@ export function useInvoice(id: string | null) {
     setLoading(true)
     setError(null)
 
-    invoicesService.getInvoice(id, organizationId)
+    invoicesService.getInvoice(id, effectiveOrgId)
       .then(data => setInvoice(data))
       .catch(err => {
         setError('Failed to fetch invoice')
         console.error(err)
       })
       .finally(() => setLoading(false))
-  }, [id, organizationId])
+  }, [id, effectiveOrgId])
 
   return { invoice, loading, error }
 }
 
 export function useInvoiceStats() {
   const { organizationId } = useAuth()
+  const effectiveOrgId = organizationId || 'demo'
   const [stats, setStats] = useState<InvoiceStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!organizationId) {
-      setStats(null)
-      setLoading(false)
-      return
-    }
-
     setLoading(true)
     setError(null)
 
-    invoicesService.getStats(organizationId)
+    invoicesService.getStats(effectiveOrgId)
       .then(data => setStats(data))
       .catch(err => {
         setError('Failed to fetch stats')
         console.error(err)
       })
       .finally(() => setLoading(false))
-  }, [organizationId])
+  }, [effectiveOrgId])
 
   return { stats, loading, error }
 }
