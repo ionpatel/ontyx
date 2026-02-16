@@ -80,6 +80,7 @@ const navigation: NavGroup[] = [
     items: [
       { title: "Employees", href: "/employees", icon: UserCircle },
       { title: "Payroll", href: "/payroll", icon: Wallet },
+      { title: "T4 Tax Slips", href: "/payroll/t4", icon: FileText },
     ],
   },
   {
