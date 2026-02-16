@@ -140,22 +140,24 @@ export default function DashboardLayout({
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center justify-center px-4 border-b">
-          <Link href="/dashboard" className="flex items-center justify-center group">
-            <Image 
-              src="/logo.png" 
-              alt="OntyX" 
-              width={56}
-              height={56}
-              quality={100}
-              priority
-              className="rounded-xl group-hover:opacity-90 transition-opacity"
-            />
-          </Link>
+        <div className="flex h-16 items-center justify-between px-4 border-b">
+          <div className="flex-1 flex justify-center lg:justify-start">
+            <Link href="/dashboard" className="flex items-center group">
+              <Image 
+                src="/logo.png" 
+                alt="OntyX" 
+                width={48}
+                height={48}
+                quality={100}
+                priority
+                className="rounded-xl group-hover:opacity-90 transition-opacity"
+              />
+            </Link>
+          </div>
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className="lg:hidden absolute right-3 top-3 h-10 w-10 rounded-full bg-muted/50 hover:bg-muted"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="h-5 w-5" />
