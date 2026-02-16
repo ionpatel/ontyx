@@ -83,17 +83,8 @@ export default function RegisterPage() {
     setLoading(true)
     setError(null)
     
-    const supabase = createClient()
-    
-    if (!supabase) {
-      // Demo mode - just redirect
-      setTimeout(() => {
-        router.push("/dashboard")
-      }, 1000)
-      return
-    }
-
     try {
+      const supabase = createClient()
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -151,16 +142,8 @@ export default function RegisterPage() {
     setGoogleLoading(true)
     setError(null)
     
-    const supabase = createClient()
-    
-    if (!supabase) {
-      setTimeout(() => {
-        router.push("/dashboard")
-      }, 1000)
-      return
-    }
-
     try {
+      const supabase = createClient()
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -293,15 +276,6 @@ export default function RegisterPage() {
               <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
               <p className="text-sm text-destructive">{error}</p>
             </motion.div>
-          )}
-
-          {/* Demo mode notice */}
-          {!isSupabaseConfigured() && (
-            <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
-                <strong>Demo Mode:</strong> Registration is simulated. Configure Supabase for real auth.
-              </p>
-            </div>
           )}
 
           {/* Google Signup */}
