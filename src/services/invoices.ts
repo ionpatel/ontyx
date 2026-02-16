@@ -327,7 +327,7 @@ export const invoicesService = {
   }): Promise<Invoice[]> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured()) {
+    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
       let result = [...demoInvoices]
       if (filters?.status) {
         result = result.filter(i => i.status === filters.status)
@@ -375,7 +375,7 @@ export const invoicesService = {
   async getInvoice(id: string, organizationId: string): Promise<Invoice | null> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured()) {
+    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
       return demoInvoices.find(i => i.id === id) || null
     }
 
@@ -428,7 +428,7 @@ export const invoicesService = {
     
     const total = subtotal - discountTotal + taxTotal
     
-    if (!supabase || !isSupabaseConfigured()) {
+    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
       const invoiceDate = input.invoiceDate || new Date().toISOString().split('T')[0]
       const dueDate = input.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
       
@@ -535,7 +535,7 @@ export const invoicesService = {
   async updateInvoiceStatus(id: string, status: InvoiceStatus, organizationId: string, paidDate?: string): Promise<boolean> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured()) {
+    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
       const invoice = demoInvoices.find(i => i.id === id)
       if (invoice) {
         invoice.status = status
@@ -583,7 +583,7 @@ export const invoicesService = {
   async recordPayment(id: string, amount: number, organizationId: string, paymentDate?: string): Promise<boolean> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured()) {
+    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
       const invoice = demoInvoices.find(i => i.id === id)
       if (invoice) {
         invoice.amountPaid += amount
@@ -644,7 +644,7 @@ export const invoicesService = {
   async getStats(organizationId: string): Promise<InvoiceStats> {
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured()) {
+    if (!supabase || !isSupabaseConfigured() || organizationId === 'demo') {
       const overdue = demoInvoices.filter(i => i.status === 'overdue')
       return {
         totalInvoices: demoInvoices.length,
