@@ -210,9 +210,8 @@ export const inventoryService = {
     offset?: number
     organizationId?: string
   }): Promise<{ data: Product[]; count: number }> {
-    const supabase = createClient()
-    
-    if (!supabase || !options?.organizationId) {
+    // Demo mode check FIRST - never hit Supabase in demo mode
+    if (!options?.organizationId || options.organizationId === 'demo') {
       // Demo mode
       let filtered = [...demoProductStore]
       
@@ -286,9 +285,14 @@ export const inventoryService = {
   },
 
   async getProduct(id: string, organizationId?: string): Promise<Product | null> {
+    // Demo mode check FIRST
+    if (!organizationId || organizationId === 'demo') {
+      return demoProductStore.find(p => p.id === id) || null
+    }
+    
     const supabase = createClient()
     
-    if (!supabase || !organizationId) {
+    if (!supabase) {
       return demoProductStore.find(p => p.id === id) || null
     }
 
@@ -311,9 +315,8 @@ export const inventoryService = {
   },
 
   async createProduct(product: Partial<Product>, organizationId?: string): Promise<Product> {
-    const supabase = createClient()
-    
-    if (!supabase || !organizationId) {
+    // Demo mode check FIRST
+    if (!organizationId || organizationId === 'demo') {
       // Demo mode - create in memory
       const newProduct: Product = {
         id: String(demoProductStore.length + 1),
@@ -396,7 +399,7 @@ export const inventoryService = {
   async updateProduct(id: string, updates: Partial<Product>, organizationId?: string): Promise<Product> {
     const supabase = createClient()
     
-    if (!supabase || !organizationId) {
+    if (!organizationId || organizationId === 'demo') {
       const index = demoProductStore.findIndex(p => p.id === id)
       if (index === -1) throw new Error('Product not found')
       
@@ -442,7 +445,7 @@ export const inventoryService = {
   async deleteProduct(id: string, organizationId?: string): Promise<void> {
     const supabase = createClient()
     
-    if (!supabase || !organizationId) {
+    if (!organizationId || organizationId === 'demo') {
       demoProductStore = demoProductStore.filter(p => p.id !== id)
       return
     }
@@ -463,7 +466,7 @@ export const inventoryService = {
   async getCategories(organizationId?: string): Promise<ProductCategory[]> {
     const supabase = createClient()
     
-    if (!supabase || !organizationId) {
+    if (!organizationId || organizationId === 'demo') {
       return demoCategoryStore
     }
 
@@ -487,7 +490,7 @@ export const inventoryService = {
   async createCategory(category: Partial<ProductCategory>, organizationId?: string): Promise<ProductCategory> {
     const supabase = createClient()
     
-    if (!supabase || !organizationId) {
+    if (!organizationId || organizationId === 'demo') {
       const newCategory: ProductCategory = {
         id: String(demoCategoryStore.length + 1),
         name: category.name || 'New Category',
@@ -524,7 +527,7 @@ export const inventoryService = {
   async getStockMovements(productId?: string, organizationId?: string): Promise<StockMovement[]> {
     const supabase = createClient()
     
-    if (!supabase || !organizationId) {
+    if (!organizationId || organizationId === 'demo') {
       if (productId) {
         return demoMovementStore.filter(m => m.productId === productId)
       }
@@ -577,7 +580,7 @@ export const inventoryService = {
   }, organizationId?: string): Promise<StockMovement> {
     const supabase = createClient()
     
-    if (!supabase || !organizationId) {
+    if (!organizationId || organizationId === 'demo') {
       const product = demoProductStore.find(p => p.id === movement.productId)
       if (!product) throw new Error('Product not found')
       
@@ -696,7 +699,7 @@ export const inventoryService = {
   }> {
     const supabase = createClient()
     
-    if (!supabase || !organizationId) {
+    if (!organizationId || organizationId === 'demo') {
       const products = demoProductStore
       return {
         totalProducts: products.length,
@@ -753,7 +756,7 @@ export const inventoryService = {
   async getWarehouses(organizationId?: string): Promise<any[]> {
     const supabase = createClient()
     
-    if (!supabase || !organizationId) {
+    if (!organizationId || organizationId === 'demo') {
       return [
         { id: '1', name: 'Main Warehouse', code: 'MAIN', isPrimary: true },
         { id: '2', name: 'Toronto DC', code: 'TOR', isPrimary: false },

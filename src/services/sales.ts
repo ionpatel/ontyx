@@ -219,9 +219,21 @@ export const salesService = {
     fromDate?: string
     toDate?: string
   }): Promise<SalesOrder[]> {
+    // Demo mode check FIRST - never hit Supabase in demo mode
+    if (organizationId === 'demo') {
+      let result = [...demoOrders]
+      if (filters?.status) {
+        result = result.filter(o => o.status === filters.status)
+      }
+      if (filters?.customerId) {
+        result = result.filter(o => o.customerId === filters.customerId)
+      }
+      return result
+    }
+    
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() ) {
+    if (!supabase || !isSupabaseConfigured()) {
       let result = [...demoOrders]
       if (filters?.status) {
         result = result.filter(o => o.status === filters.status)
@@ -267,9 +279,14 @@ export const salesService = {
 
   // Get single order
   async getOrder(id: string, organizationId: string): Promise<SalesOrder | null> {
+    // Demo mode check FIRST
+    if (organizationId === 'demo') {
+      return demoOrders.find(o => o.id === id) || null
+    }
+    
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() ) {
+    if (!supabase || !isSupabaseConfigured()) {
       return demoOrders.find(o => o.id === id) || null
     }
 
@@ -297,8 +314,6 @@ export const salesService = {
 
   // Create order
   async createOrder(input: CreateSalesOrderInput, organizationId: string): Promise<SalesOrder | null> {
-    const supabase = createClient()
-    
     // Calculate totals
     let subtotal = 0
     let taxTotal = 0
@@ -323,7 +338,8 @@ export const salesService = {
     const shippingCost = input.shippingCost || 0
     const total = subtotal - discount + taxTotal + shippingCost
     
-    if (!supabase || !isSupabaseConfigured() ) {
+    // Demo mode check FIRST
+    if (organizationId === 'demo') {
       const newOrder: SalesOrder = {
         id: `demo-so-${Date.now()}`,
         orderNumber: generateOrderNumber(),
@@ -437,9 +453,22 @@ export const salesService = {
 
   // Update order status
   async updateOrderStatus(id: string, status: SalesOrderStatus, organizationId: string): Promise<boolean> {
+    // Demo mode check FIRST
+    if (organizationId === 'demo') {
+      const order = demoOrders.find(o => o.id === id)
+      if (order) {
+        order.status = status
+        order.updatedAt = new Date().toISOString()
+        if (status === 'shipped') order.shippedAt = new Date().toISOString()
+        if (status === 'delivered') order.deliveredAt = new Date().toISOString()
+        return true
+      }
+      return false
+    }
+    
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() ) {
+    if (!supabase || !isSupabaseConfigured()) {
       const order = demoOrders.find(o => o.id === id)
       if (order) {
         order.status = status
@@ -475,9 +504,21 @@ export const salesService = {
 
   // Get sales stats
   async getStats(organizationId: string): Promise<SalesStats> {
+    // Demo mode check FIRST
+    if (organizationId === 'demo') {
+      return {
+        totalOrders: demoOrders.length,
+        totalRevenue: demoOrders.reduce((sum, o) => sum + o.total, 0),
+        avgOrderValue: demoOrders.reduce((sum, o) => sum + o.total, 0) / demoOrders.length,
+        pendingOrders: demoOrders.filter(o => o.status === 'confirmed' || o.status === 'processing').length,
+        shippedOrders: demoOrders.filter(o => o.status === 'shipped').length,
+        deliveredOrders: demoOrders.filter(o => o.status === 'delivered').length,
+      }
+    }
+    
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() ) {
+    if (!supabase || !isSupabaseConfigured()) {
       return {
         totalOrders: demoOrders.length,
         totalRevenue: demoOrders.reduce((sum, o) => sum + o.total, 0),
@@ -520,9 +561,18 @@ export const salesService = {
 
   // Search orders
   async searchOrders(query: string, organizationId: string): Promise<SalesOrder[]> {
+    // Demo mode check FIRST
+    if (organizationId === 'demo') {
+      const q = query.toLowerCase()
+      return demoOrders.filter(o => 
+        o.orderNumber.toLowerCase().includes(q) ||
+        o.customerName.toLowerCase().includes(q)
+      )
+    }
+    
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() ) {
+    if (!supabase || !isSupabaseConfigured()) {
       const q = query.toLowerCase()
       return demoOrders.filter(o => 
         o.orderNumber.toLowerCase().includes(q) ||

@@ -325,9 +325,21 @@ export const invoicesService = {
     fromDate?: string
     toDate?: string
   }): Promise<Invoice[]> {
+    // Demo mode check FIRST - never hit Supabase in demo mode
+    if (organizationId === 'demo') {
+      let result = [...demoInvoices]
+      if (filters?.status) {
+        result = result.filter(i => i.status === filters.status)
+      }
+      if (filters?.customerId) {
+        result = result.filter(i => i.customerId === filters.customerId)
+      }
+      return result
+    }
+    
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() ) {
+    if (!supabase || !isSupabaseConfigured()) {
       let result = [...demoInvoices]
       if (filters?.status) {
         result = result.filter(i => i.status === filters.status)
@@ -373,9 +385,14 @@ export const invoicesService = {
 
   // Get single invoice
   async getInvoice(id: string, organizationId: string): Promise<Invoice | null> {
+    // Demo mode check FIRST
+    if (organizationId === 'demo') {
+      return demoInvoices.find(i => i.id === id) || null
+    }
+    
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() ) {
+    if (!supabase || !isSupabaseConfigured()) {
       return demoInvoices.find(i => i.id === id) || null
     }
 
@@ -400,8 +417,6 @@ export const invoicesService = {
 
   // Create invoice
   async createInvoice(input: CreateInvoiceInput, organizationId: string): Promise<Invoice | null> {
-    const supabase = createClient()
-    
     // Calculate totals
     let subtotal = 0
     let discountTotal = 0
@@ -428,7 +443,8 @@ export const invoicesService = {
     
     const total = subtotal - discountTotal + taxTotal
     
-    if (!supabase || !isSupabaseConfigured() ) {
+    // Demo mode check FIRST
+    if (organizationId === 'demo') {
       const invoiceDate = input.invoiceDate || new Date().toISOString().split('T')[0]
       const dueDate = input.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
       

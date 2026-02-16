@@ -225,12 +225,23 @@ function generateContactCode(type: ContactType): string {
 export const contactsService = {
   // Get all contacts
   async getContacts(organizationId: string, type?: ContactType): Promise<Contact[]> {
-    const supabase = createClient()
-    
-    // Return demo data if Supabase not configured OR if using demo org
-    if (!supabase || !isSupabaseConfigured() ) {
+    // Demo mode check FIRST - never hit Supabase in demo mode
+    if (organizationId === 'demo') {
       const store = getDemoContactStore()
       // Filter by isActive AND type
+      const filtered = store.filter(c => {
+        if (!c.isActive) return false
+        if (!type) return true
+        return c.type === type || c.type === 'both'
+      })
+      return filtered
+    }
+    
+    const supabase = createClient()
+    
+    // Return demo data if Supabase not configured
+    if (!supabase || !isSupabaseConfigured()) {
+      const store = getDemoContactStore()
       const filtered = store.filter(c => {
         if (!c.isActive) return false
         if (!type) return true
@@ -266,9 +277,14 @@ export const contactsService = {
 
   // Get single contact
   async getContact(id: string, organizationId: string): Promise<Contact | null> {
+    // Demo mode check FIRST
+    if (organizationId === 'demo') {
+      return getDemoContactStore().find(c => c.id === id) || null
+    }
+    
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() ) {
+    if (!supabase || !isSupabaseConfigured()) {
       return getDemoContactStore().find(c => c.id === id) || null
     }
 
@@ -289,9 +305,48 @@ export const contactsService = {
 
   // Create contact
   async createContact(input: CreateContactInput, organizationId: string): Promise<Contact | null> {
-    const supabase = createClient()
+    // Demo mode check FIRST
+    if (organizationId === 'demo') {
+      const newContact: Contact = {
+        id: `demo-${Date.now()}`,
+        organizationId: 'demo',
+        code: generateContactCode(input.type),
+        type: input.type,
+        name: input.name,
+        email: input.email,
+        phone: input.phone,
+        mobile: input.mobile,
+        company: input.company,
+        jobTitle: input.jobTitle,
+        website: input.website,
+        street: input.street,
+        city: input.city,
+        province: input.province,
+        postalCode: input.postalCode,
+        country: input.country || 'CA',
+        currency: input.currency || 'CAD',
+        taxNumber: input.taxNumber,
+        paymentTerms: input.paymentTerms || 'Net 30',
+        creditLimit: input.creditLimit,
+        currentBalance: 0,
+        totalOrders: 0,
+        totalSpent: 0,
+        totalReceived: 0,
+        tags: input.tags,
+        notes: input.notes,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      const store = getDemoContactStore()
+      store.push(newContact)
+      saveDemoContactStore(store)
+      return newContact
+    }
     
-    if (!supabase || !isSupabaseConfigured() ) {
+    const supabase = createClient()
+    if (!supabase || !isSupabaseConfigured()) {
+      // Fallback to demo mode if Supabase not configured
       const newContact: Contact = {
         id: `demo-${Date.now()}`,
         organizationId: 'demo',
@@ -368,9 +423,19 @@ export const contactsService = {
 
   // Update contact
   async updateContact(id: string, updates: Partial<CreateContactInput>, organizationId: string): Promise<Contact | null> {
+    // Demo mode check FIRST
+    if (organizationId === 'demo') {
+      const store = getDemoContactStore()
+      const index = store.findIndex(c => c.id === id)
+      if (index === -1) return null
+      store[index] = { ...store[index], ...updates, updatedAt: new Date().toISOString() }
+      saveDemoContactStore(store)
+      return store[index]
+    }
+    
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() ) {
+    if (!supabase || !isSupabaseConfigured()) {
       const store = getDemoContactStore()
       const index = store.findIndex(c => c.id === id)
       if (index === -1) return null
@@ -400,13 +465,23 @@ export const contactsService = {
 
   // Delete (soft delete for Supabase, hard delete for demo mode)
   async deleteContact(id: string, organizationId: string): Promise<boolean> {
-    const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured() ) {
+    // Demo mode check FIRST
+    if (organizationId === 'demo') {
       const store = getDemoContactStore()
       const index = store.findIndex(c => c.id === id)
       if (index === -1) return false
       // Hard delete for demo mode - actually remove from array
+      store.splice(index, 1)
+      saveDemoContactStore(store)
+      return true
+    }
+    
+    const supabase = createClient()
+    
+    if (!supabase || !isSupabaseConfigured()) {
+      const store = getDemoContactStore()
+      const index = store.findIndex(c => c.id === id)
+      if (index === -1) return false
       store.splice(index, 1)
       saveDemoContactStore(store)
       return true

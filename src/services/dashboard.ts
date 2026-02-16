@@ -108,9 +108,14 @@ const demoActivity: RecentActivity[] = [
 
 export const dashboardService = {
   async getStats(organizationId: string): Promise<DashboardStats> {
+    // Demo mode check FIRST
+    if (organizationId === 'demo') {
+      return demoStats
+    }
+    
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() ) {
+    if (!supabase || !isSupabaseConfigured()) {
       return demoStats
     }
 
@@ -158,9 +163,14 @@ export const dashboardService = {
   },
 
   async getRecentInvoices(organizationId: string, limit = 5): Promise<RecentInvoice[]> {
+    // Demo mode check FIRST
+    if (organizationId === 'demo') {
+      return demoRecentInvoices.slice(0, limit)
+    }
+    
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() ) {
+    if (!supabase || !isSupabaseConfigured()) {
       return demoRecentInvoices.slice(0, limit)
     }
 
@@ -190,9 +200,14 @@ export const dashboardService = {
   },
 
   async getRecentOrders(organizationId: string, limit = 5): Promise<RecentOrder[]> {
+    // Demo mode check FIRST
+    if (organizationId === 'demo') {
+      return demoRecentOrders.slice(0, limit)
+    }
+    
     const supabase = createClient()
     
-    if (!supabase || !isSupabaseConfigured() ) {
+    if (!supabase || !isSupabaseConfigured()) {
       return demoRecentOrders.slice(0, limit)
     }
 
