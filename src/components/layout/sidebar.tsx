@@ -110,17 +110,17 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
       <div className="flex h-16 items-center justify-between px-4 border-b border-border">
         {!collapsed && (
           <Link href="/dashboard" className="flex items-center gap-2 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-rose-500 shadow-sm group-hover:shadow-md transition-shadow">
-              <span className="text-primary-foreground font-display font-semibold italic text-lg">O</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-rose-500 shadow-sm group-hover:shadow-md transition-shadow">
+              <span className="text-primary-foreground font-display font-bold text-lg">O</span>
             </div>
-            <span className="text-xl font-display font-semibold italic tracking-wide">
-              <span className="bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">Onty</span><span className="bg-gradient-to-r from-primary to-rose-500 bg-clip-text text-transparent font-bold pl-0.5">X</span>
+            <span className="text-xl font-display font-bold tracking-wide">
+              <span className="bg-gradient-to-r from-slate-700 to-slate-500 bg-clip-text text-transparent">Onty</span><span className="bg-gradient-to-r from-primary to-rose-500 bg-clip-text text-transparent">X</span>
             </span>
           </Link>
         )}
         {collapsed && (
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-rose-500 mx-auto shadow-sm">
-            <span className="text-primary-foreground font-display font-semibold italic text-lg">O</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-rose-500 mx-auto shadow-sm">
+            <span className="text-primary-foreground font-display font-bold text-lg">O</span>
           </div>
         )}
       </div>
