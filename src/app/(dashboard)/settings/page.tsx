@@ -617,9 +617,15 @@ export default function SettingsPage() {
               {/* Email (read-only) */}
               <div className="space-y-2">
                 <Label>Email Address</Label>
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border">
                   <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span>{user?.email || profile?.email || 'demo@ontyx.ca'}</span>
+                  <span className="font-medium">
+                    {profileLoading ? (
+                      <span className="text-muted-foreground">Loading...</span>
+                    ) : (
+                      user?.email || profile?.email || 'demo@ontyx.ca'
+                    )}
+                  </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Contact support to change your email address
