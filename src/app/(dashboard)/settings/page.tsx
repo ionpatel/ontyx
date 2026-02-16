@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import Link from "next/link"
 import { 
   Building2, User, Bell, Database, Key, Shield,
   Save, Upload, Loader2, Check, MapPin, Mail
@@ -476,6 +477,23 @@ export default function SettingsPage() {
                   </Select>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Invoice Templates Link */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Invoice Templates</CardTitle>
+              <CardDescription>
+                Customize how your invoices look
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" asChild>
+                <Link href="/settings/templates">
+                  Customize Invoice Template →
+                </Link>
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
