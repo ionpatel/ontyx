@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { 
   Search, Plus, Building2, User, Phone, Mail, 
   MoreHorizontal, ArrowUpRight, Users, TrendingUp, 
-  UserPlus, Edit, Trash2, Eye, MapPin
+  UserPlus, Edit, Trash2, Eye, MapPin, FileDown
 } from 'lucide-react'
+import { exportContactsToCSV } from '@/lib/export'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -163,13 +164,22 @@ export default function ContactsPage() {
           <h1 className="text-3xl font-bold tracking-tight text-text-primary">Contacts</h1>
           <p className="text-text-secondary mt-1">Manage customers, vendors, and partners</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="shadow-maple">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Contact
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => exportContactsToCSV(contacts)}
+            disabled={contacts.length === 0}
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="shadow-maple">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Contact
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Add New Contact</DialogTitle>
@@ -279,7 +289,8 @@ export default function ContactsPage() {
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {/* Stats */}

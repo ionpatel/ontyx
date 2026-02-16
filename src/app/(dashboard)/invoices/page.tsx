@@ -5,8 +5,10 @@ import Link from "next/link"
 import { 
   Plus, FileText, DollarSign, AlertCircle, Clock, 
   Send, CheckCircle, MoreHorizontal, Search, Filter,
-  Eye, Edit, Trash2, Copy, Download, CreditCard, RefreshCw
+  Eye, Edit, Trash2, Copy, Download, CreditCard, RefreshCw,
+  FileDown
 } from "lucide-react"
+import { exportInvoicesToCSV } from "@/lib/export"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -121,6 +123,13 @@ export default function InvoicesPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => exportInvoicesToCSV(invoices)}
+            disabled={invoices.length === 0}
+          >
+            <FileDown className="mr-2 h-4 w-4" /> Export
+          </Button>
           <Button variant="outline" asChild>
             <Link href="/invoices/recurring">
               <RefreshCw className="mr-2 h-4 w-4" /> Recurring
