@@ -1,27 +1,42 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { 
   Plus, Search, Calendar, DollarSign, Users, Clock,
   CheckCircle, AlertCircle, PlayCircle, FileText,
-  ArrowRight, TrendingUp, Download
+  ArrowRight, TrendingUp, Download, Calculator, Leaf
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { cn, formatCurrency, formatDate } from '@/lib/utils'
-import { mockPayrollRuns, mockPayrollStats } from '@/lib/mock-data/payroll'
-import { PayrollRun, PayrollStatus } from '@/types/payroll'
+import { Label } from '@/components/ui/label'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from '@/components/ui/select'
+import { cn, formatCurrency } from '@/lib/utils'
+import { payrollService, TAX_YEAR, FEDERAL_BPA, PROVINCIAL_TAX_RATES } from '@/services/payroll'
 
-const statusConfig: Record<PayrollStatus, { label: string; color: string; bg: string; icon: React.ElementType }> = {
-  draft: { label: 'Draft', color: 'text-gray-600', bg: 'bg-gray-100', icon: FileText },
-  pending: { label: 'Pending Approval', color: 'text-yellow-600', bg: 'bg-yellow-100', icon: Clock },
-  processing: { label: 'Processing', color: 'text-blue-600', bg: 'bg-blue-100', icon: PlayCircle },
-  completed: { label: 'Completed', color: 'text-green-600', bg: 'bg-green-100', icon: CheckCircle },
-  cancelled: { label: 'Cancelled', color: 'text-red-600', bg: 'bg-red-100', icon: AlertCircle },
-}
+const PROVINCES = [
+  { value: 'ON', label: 'Ontario' },
+  { value: 'BC', label: 'British Columbia' },
+  { value: 'AB', label: 'Alberta' },
+  { value: 'QC', label: 'Quebec' },
+  { value: 'MB', label: 'Manitoba' },
+  { value: 'SK', label: 'Saskatchewan' },
+  { value: 'NS', label: 'Nova Scotia' },
+  { value: 'NB', label: 'New Brunswick' },
+  { value: 'NL', label: 'Newfoundland' },
+  { value: 'PE', label: 'Prince Edward Island' },
+]
+
+const PAY_FREQUENCIES = [
+  { value: 'weekly', label: 'Weekly (52)', periods: 52 },
+  { value: 'biweekly', label: 'Bi-weekly (26)', periods: 26 },
+  { value: 'semi-monthly', label: 'Semi-monthly (24)', periods: 24 },
+  { value: 'monthly', label: 'Monthly (12)', periods: 12 },
+]
 
 function StatCard({ title, value, subtitle, icon: Icon, color }: { 
   title: string
@@ -51,217 +66,258 @@ function StatCard({ title, value, subtitle, icon: Icon, color }: {
   )
 }
 
-function PayrollRunCard({ run }: { run: PayrollRun }) {
-  const status = statusConfig[run.status]
-  const StatusIcon = status.icon
-  
-  return (
-    <Link href={`/payroll/${run.id}`}>
-      <Card className="hover:shadow-md transition-shadow cursor-pointer">
-        <CardContent className="pt-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="font-semibold">{run.name}</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                {formatDate(run.periodStart)} - {formatDate(run.periodEnd)}
-              </p>
-            </div>
-            <Badge className={cn(status.bg, status.color, "border-0")}>
-              <StatusIcon className="h-3 w-3 mr-1" />
-              {status.label}
-            </Badge>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4 mt-6">
-            <div>
-              <p className="text-sm text-muted-foreground">Employees</p>
-              <p className="text-lg font-semibold">{run.totalEmployees}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Gross Pay</p>
-              <p className="text-lg font-semibold">{formatCurrency(run.totalGross)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Net Pay</p>
-              <p className="text-lg font-semibold text-primary">{formatCurrency(run.totalNet)}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between mt-6 pt-4 border-t">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Calendar className="h-4 w-4" />
-              <span>Pay Date: {formatDate(run.payDate)}</span>
-            </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  )
-}
-
 export default function PayrollPage() {
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<PayrollStatus | 'all'>('all')
+  // Calculator state
+  const [annualSalary, setAnnualSalary] = useState(75000)
+  const [province, setProvince] = useState('ON')
+  const [payFrequency, setPayFrequency] = useState<'weekly' | 'biweekly' | 'semi-monthly' | 'monthly'>('biweekly')
 
-  const filteredRuns = mockPayrollRuns.filter(run => {
-    const matchesSearch = run.name.toLowerCase().includes(search.toLowerCase())
-    const matchesStatus = statusFilter === 'all' || run.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+  // Calculate payroll using real Canadian tax rates
+  const calculation = useMemo(() => {
+    const freq = PAY_FREQUENCIES.find(f => f.value === payFrequency)!
+    const periodicPay = annualSalary / freq.periods
+    return payrollService.calculatePreview(periodicPay, province, payFrequency)
+  }, [annualSalary, province, payFrequency])
+
+  const freq = PAY_FREQUENCIES.find(f => f.value === payFrequency)!
+  const periodicGross = annualSalary / freq.periods
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Payroll</h1>
-          <p className="text-muted-foreground">Manage payroll runs and employee compensation</p>
+          <p className="text-muted-foreground">Canadian payroll management with CPP, EI, and tax calculations</p>
         </div>
-        <Button>
+        <Button className="shadow-maple">
           <Plus className="h-4 w-4 mr-2" />
-          New Payroll Run
+          New Pay Run
         </Button>
       </div>
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard 
-          title="YTD Payroll" 
-          value={formatCurrency(mockPayrollStats.totalPayrollYTD)}
-          subtitle="Total processed"
-          icon={DollarSign}
+          title="Tax Year" 
+          value={TAX_YEAR.toString()}
+          subtitle="Current rates"
+          icon={Calendar}
         />
         <StatCard 
-          title="Last Payroll" 
-          value={formatCurrency(mockPayrollStats.lastPayrollAmount)}
-          subtitle="72 employees"
-          icon={TrendingUp}
-          color="bg-green-500"
-        />
-        <StatCard 
-          title="Avg Salary" 
-          value={formatCurrency(mockPayrollStats.avgSalary)}
-          subtitle="Per employee/year"
+          title="Federal BPA" 
+          value={formatCurrency(FEDERAL_BPA, 'CAD')}
+          subtitle="Basic personal amount"
           icon={Users}
         />
         <StatCard 
-          title="Next Payroll" 
-          value={formatDate(mockPayrollStats.nextPayrollDate, { month: 'short', day: 'numeric' })}
-          subtitle={`${mockPayrollStats.pendingApprovals} pending approvals`}
-          icon={Calendar}
+          title="CPP Max" 
+          value="$4,152"
+          subtitle="Annual contribution"
+          icon={DollarSign}
+        />
+        <StatCard 
+          title="EI Max" 
+          value="$1,058"
+          subtitle="Annual premium"
+          icon={TrendingUp}
+          color="bg-green-500"
         />
       </div>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-4">
-            <Button variant="outline">
-              <PlayCircle className="h-4 w-4 mr-2" />
-              Start Payroll Run
-            </Button>
-            <Button variant="outline">
-              <FileText className="h-4 w-4 mr-2" />
-              View Reports
-            </Button>
-            <Button variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Export Data
-            </Button>
-            <Button variant="outline">
-              <Users className="h-4 w-4 mr-2" />
-              Manage Employees
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search payroll runs..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                variant={statusFilter === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setStatusFilter('all')}
-              >
-                All
-              </Button>
-              {Object.entries(statusConfig).slice(0, 4).map(([key, config]) => (
-                <Button
-                  key={key}
-                  variant={statusFilter === key ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStatusFilter(key as PayrollStatus)}
-                >
-                  {config.label}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Payroll Runs */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Payroll Runs</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          {filteredRuns.map((run) => (
-            <PayrollRunCard key={run.id} run={run} />
-          ))}
-        </div>
-      </div>
-
-      {filteredRuns.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">No payroll runs found</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Upcoming */}
+      {/* Payroll Calculator */}
       <Card>
         <CardHeader>
-          <CardTitle>Upcoming</CardTitle>
-          <CardDescription>Scheduled payroll activities</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Calculator className="h-5 w-5 text-primary" />
+            Canadian Payroll Calculator
+          </CardTitle>
+          <CardDescription>
+            Calculate net pay with CPP, EI, and income tax deductions using {TAX_YEAR} rates
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-lg border">
-              <div className="flex items-center gap-4">
-                <div className="p-2 rounded-full bg-blue-100 text-blue-600">
-                  <Calendar className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="font-medium">March 2024 - Period 1</p>
-                  <p className="text-sm text-muted-foreground">Pay date: March 15, 2024</p>
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Input Section */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="salary">Annual Salary</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    id="salary"
+                    type="number"
+                    min="0"
+                    step="1000"
+                    value={annualSalary}
+                    onChange={(e) => setAnnualSalary(parseFloat(e.target.value) || 0)}
+                    className="pl-8"
+                  />
                 </div>
               </div>
-              <Button size="sm">Prepare</Button>
+
+              <div className="space-y-2">
+                <Label>Province</Label>
+                <Select value={province} onValueChange={setProvince}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROVINCES.map(p => (
+                      <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Pay Frequency</Label>
+                <Select 
+                  value={payFrequency} 
+                  onValueChange={(v) => setPayFrequency(v as typeof payFrequency)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAY_FREQUENCIES.map(f => (
+                      <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="flex items-center justify-between p-4 rounded-lg border">
-              <div className="flex items-center gap-4">
-                <div className="p-2 rounded-full bg-yellow-100 text-yellow-600">
-                  <AlertCircle className="h-5 w-5" />
+
+            {/* Results Section */}
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-muted/50">
+                <p className="text-sm text-muted-foreground mb-1">Gross Pay (per period)</p>
+                <p className="text-2xl font-bold">{formatCurrency(periodicGross, 'CAD')}</p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-muted-foreground">CPP Contribution</span>
+                  <span className="font-medium text-red-600">-{formatCurrency(calculation.cpp, 'CAD')}</span>
                 </div>
-                <div>
-                  <p className="font-medium">Tax Filing Deadline</p>
-                  <p className="text-sm text-muted-foreground">Q1 payroll taxes due: April 15, 2024</p>
+                {calculation.cpp2 > 0 && (
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-muted-foreground">CPP2 (Enhanced)</span>
+                    <span className="font-medium text-red-600">-{formatCurrency(calculation.cpp2, 'CAD')}</span>
+                  </div>
+                )}
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-muted-foreground">EI Premium</span>
+                  <span className="font-medium text-red-600">-{formatCurrency(calculation.ei, 'CAD')}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-muted-foreground">Federal Tax</span>
+                  <span className="font-medium text-red-600">-{formatCurrency(calculation.federalTax, 'CAD')}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-muted-foreground">Provincial Tax ({province})</span>
+                  <span className="font-medium text-red-600">-{formatCurrency(calculation.provincialTax, 'CAD')}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b">
+                  <span className="font-medium">Total Deductions</span>
+                  <span className="font-bold text-red-600">-{formatCurrency(calculation.totalDeductions, 'CAD')}</span>
                 </div>
               </div>
-              <Badge variant="warning">Upcoming</Badge>
+
+              <div className="p-4 rounded-lg bg-primary text-primary-foreground">
+                <p className="text-sm opacity-90 mb-1">Net Pay (per period)</p>
+                <p className="text-3xl font-bold">{formatCurrency(calculation.netPay, 'CAD')}</p>
+                <p className="text-sm opacity-75 mt-2">
+                  Annual: {formatCurrency(calculation.netPay * freq.periods, 'CAD')}
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-4">
+            <Button variant="outline" disabled>
+              <PlayCircle className="h-4 w-4 mr-2" />
+              Start Pay Run
+              <Badge variant="secondary" className="ml-2">Coming Soon</Badge>
+            </Button>
+            <Button variant="outline" disabled>
+              <FileText className="h-4 w-4 mr-2" />
+              Generate T4s
+              <Badge variant="secondary" className="ml-2">Coming Soon</Badge>
+            </Button>
+            <Button variant="outline" disabled>
+              <Download className="h-4 w-4 mr-2" />
+              Export ROE
+              <Badge variant="secondary" className="ml-2">Coming Soon</Badge>
+            </Button>
+            <Button variant="outline" disabled>
+              <Users className="h-4 w-4 mr-2" />
+              Manage Employees
+              <Badge variant="secondary" className="ml-2">Coming Soon</Badge>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Canadian Compliance Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Leaf className="h-5 w-5 text-red-600" />
+            Canadian Compliance
+          </CardTitle>
+          <CardDescription>
+            Built-in support for CRA requirements
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="p-4 rounded-lg border">
+              <h4 className="font-semibold mb-2">CPP/QPP</h4>
+              <p className="text-sm text-muted-foreground">
+                Canada Pension Plan contributions calculated automatically including CPP2 (enhanced tier).
+              </p>
+            </div>
+            <div className="p-4 rounded-lg border">
+              <h4 className="font-semibold mb-2">EI Premiums</h4>
+              <p className="text-sm text-muted-foreground">
+                Employment Insurance premiums with proper maximums and insurable earnings limits.
+              </p>
+            </div>
+            <div className="p-4 rounded-lg border">
+              <h4 className="font-semibold mb-2">Provincial Taxes</h4>
+              <p className="text-sm text-muted-foreground">
+                Tax brackets for all provinces including Quebec's unique system.
+              </p>
+            </div>
+            <div className="p-4 rounded-lg border">
+              <h4 className="font-semibold mb-2">T4 Generation</h4>
+              <p className="text-sm text-muted-foreground">
+                Year-end tax slips generated in CRA-compliant format.
+              </p>
+              <Badge variant="secondary" className="mt-2">Coming Soon</Badge>
+            </div>
+            <div className="p-4 rounded-lg border">
+              <h4 className="font-semibold mb-2">ROE Export</h4>
+              <p className="text-sm text-muted-foreground">
+                Record of Employment for Service Canada submissions.
+              </p>
+              <Badge variant="secondary" className="mt-2">Coming Soon</Badge>
+            </div>
+            <div className="p-4 rounded-lg border">
+              <h4 className="font-semibold mb-2">Pay Stubs</h4>
+              <p className="text-sm text-muted-foreground">
+                Professional PDF pay stubs with YTD totals and deduction breakdown.
+              </p>
+              <Badge variant="secondary" className="mt-2">Coming Soon</Badge>
             </div>
           </div>
         </CardContent>
