@@ -16,7 +16,7 @@
 ## Phase 3: Business Operations (Current Sprint)
 
 ### Week 1: Auth & Settings (Priority)
-- [ ] **Organization Settings Page**
+- [x] **Organization Settings Page** ✅
   - Company name, logo upload
   - Address, phone, email
   - GST/HST number for invoices
@@ -64,10 +64,10 @@
 ---
 
 ## Current Focus
-**Organization Settings Page** - needed so invoices show real company info
+**Email Invoice Sending** - send PDF invoices to customers
 
 ## Quick Wins Queue
-1. Org settings page (company info for invoices)
+1. ~~Org settings page~~ ✅
 2. Email invoice sending
 3. Payment recording on invoices
 4. User profile page
@@ -81,4 +81,5 @@
 - ✅ PDF invoice generation working
 - ✅ Invoice creation flow complete
 - ✅ Contacts CRUD working
-- 🔄 Starting org settings page
+- ✅ Organization settings page complete (Company, Billing, Alerts, Account tabs)
+- 🔄 Starting email invoice sending

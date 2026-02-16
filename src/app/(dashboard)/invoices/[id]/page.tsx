@@ -15,7 +15,6 @@ import { downloadInvoicePDF, type InvoicePDFData } from "@/services/pdf"
 import { useAuth } from "@/hooks/use-auth"
 import { useOrganization } from "@/hooks/use-organization"
 import { RecordPaymentDialog, type PaymentInput } from "@/components/modules/finance/record-payment-dialog"
-import { emailService } from "@/services/email"
 import { getInvoicePDFBlob } from "@/services/pdf"
 
 const statusConfig: Record<string, { label: string; color: string }> = {
@@ -214,21 +213,23 @@ export default function InvoiceDetailPage() {
         new Uint8Array(pdfBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
       )
 
-      // Send email
-      const result = await emailService.sendInvoice({
-        invoiceNumber: invoice.invoiceNumber,
-        customerName: invoice.customerName,
-        customerEmail: invoice.customerEmail,
-        amount: invoice.amountDue,
-        dueDate: invoice.dueDate,
-        companyName: organization?.name || 'Your Company',
-        companyEmail: organization?.email,
-        pdfAttachment: {
-          filename: `${invoice.invoiceNumber}.pdf`,
-          content: pdfBase64,
-          contentType: 'application/pdf',
-        },
+      // Send via API route
+      const response = await fetch('/api/invoices/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: invoice.customerEmail,
+          customerName: invoice.customerName,
+          invoiceNumber: invoice.invoiceNumber,
+          amount: formatCurrency(invoice.amountDue, 'CAD'),
+          dueDate: new Date(invoice.dueDate).toLocaleDateString('en-CA'),
+          pdfBase64,
+          companyName: organization?.name || 'Your Company',
+          companyEmail: organization?.email,
+        }),
       })
+
+      const result = await response.json()
 
       if (result.success) {
         // Update invoice status to sent
