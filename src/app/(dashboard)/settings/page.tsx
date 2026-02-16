@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from "react"
 import { 
-  Building2, User, Bell, Database,
-  Save, Upload, Loader2, Check, MapPin
+  Building2, User, Bell, Database, Key, Shield,
+  Save, Upload, Loader2, Check, MapPin, Mail
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,6 +15,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select"
 import { useOrganization } from "@/hooks/use-organization"
+import { useUserProfile } from "@/hooks/use-user-profile"
+import { useAuth } from "@/hooks/use-auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 const PROVINCES = [
@@ -43,9 +45,17 @@ const TIMEZONES = [
 ]
 
 export default function SettingsPage() {
-  const { organization, loading, saving, updateOrganization, uploadLogo } = useOrganization()
+  const { organization, loading: orgLoading, saving: orgSaving, updateOrganization, uploadLogo } = useOrganization()
+  const { profile, loading: profileLoading, saving: profileSaving, updateProfile, uploadAvatar, changePassword } = useUserProfile()
+  const { user } = useAuth()
+  
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [profileSaveSuccess, setProfileSaveSuccess] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordSuccess, setPasswordSuccess] = useState(false)
+  
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
   
   // Form state
   const [formData, setFormData] = useState({
@@ -63,6 +73,21 @@ export default function SettingsPage() {
     country: "CA",
     currency: "CAD",
     timezone: "America/Toronto",
+  })
+
+  // Profile form state
+  const [profileData, setProfileData] = useState({
+    firstName: "",
+    lastName: "",
+    phone: "",
+    jobTitle: "",
+    timezone: "America/Toronto",
+  })
+  
+  // Password form state
+  const [passwordData, setPasswordData] = useState({
+    newPassword: "",
+    confirmPassword: "",
   })
 
   // Load org data into form
@@ -86,6 +111,19 @@ export default function SettingsPage() {
       })
     }
   }, [organization])
+  
+  // Load profile data into form
+  useEffect(() => {
+    if (profile) {
+      setProfileData({
+        firstName: profile.firstName || "",
+        lastName: profile.lastName || "",
+        phone: profile.phone || "",
+        jobTitle: profile.jobTitle || "",
+        timezone: profile.timezone || "America/Toronto",
+      })
+    }
+  }, [profile])
 
   const handleSave = async () => {
     const success = await updateOrganization(formData)
@@ -101,8 +139,47 @@ export default function SettingsPage() {
       await uploadLogo(file)
     }
   }
+  
+  const handleProfileSave = async () => {
+    const success = await updateProfile(profileData)
+    if (success) {
+      setProfileSaveSuccess(true)
+      setTimeout(() => setProfileSaveSuccess(false), 2000)
+    }
+  }
+  
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      await uploadAvatar(file)
+    }
+  }
+  
+  const handlePasswordChange = async () => {
+    setPasswordError(null)
+    setPasswordSuccess(false)
+    
+    if (passwordData.newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters')
+      return
+    }
+    
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError('Passwords do not match')
+      return
+    }
+    
+    const result = await changePassword(passwordData.newPassword)
+    if (result.success) {
+      setPasswordSuccess(true)
+      setPasswordData({ newPassword: '', confirmPassword: '' })
+      setTimeout(() => setPasswordSuccess(false), 3000)
+    } else {
+      setPasswordError(result.error || 'Failed to change password')
+    }
+  }
 
-  if (loading) {
+  if (orgLoading || profileLoading) {
     return (
       <div className="flex-1 flex items-center justify-center p-6">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -120,8 +197,8 @@ export default function SettingsPage() {
             Manage your company and application settings
           </p>
         </div>
-        <Button onClick={handleSave} disabled={saving} className="shadow-maple">
-          {saving ? (
+        <Button onClick={handleSave} disabled={orgSaving} className="shadow-maple">
+          {orgSaving ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : saveSuccess ? (
             <Check className="mr-2 h-4 w-4" />
@@ -462,17 +539,190 @@ export default function SettingsPage() {
 
         {/* Account Tab */}
         <TabsContent value="account" className="space-y-6">
+          {/* Profile Card */}
           <Card>
             <CardHeader>
-              <CardTitle>Account Settings</CardTitle>
+              <CardTitle>Your Profile</CardTitle>
               <CardDescription>
-                Manage your personal account
+                Your personal account information
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Avatar Upload */}
+              <div className="flex items-center gap-6">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={profile?.avatarUrl} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
+                    {profileData.firstName?.charAt(0) || 'U'}{profileData.lastName?.charAt(0) || ''}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <input
+                    type="file"
+                    ref={avatarInputRef}
+                    onChange={handleAvatarUpload}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={profileSaving}
+                  >
+                    <Upload className="mr-2 h-4 w-4" /> Change Photo
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Square image recommended
+                  </p>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              {/* Email (read-only) */}
+              <div className="space-y-2">
+                <Label>Email Address</Label>
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <span>{user?.email || profile?.email || 'demo@ontyx.ca'}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Contact support to change your email address
+                </p>
+              </div>
+              
+              {/* Name */}
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    value={profileData.firstName}
+                    onChange={(e) => setProfileData(prev => ({ ...prev, firstName: e.target.value }))}
+                    placeholder="John"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    value={profileData.lastName}
+                    onChange={(e) => setProfileData(prev => ({ ...prev, lastName: e.target.value }))}
+                    placeholder="Doe"
+                  />
+                </div>
+              </div>
+              
+              {/* Phone & Job Title */}
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="profilePhone">Phone</Label>
+                  <Input
+                    id="profilePhone"
+                    value={profileData.phone}
+                    onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="(416) 555-0100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="jobTitle">Job Title</Label>
+                  <Input
+                    id="jobTitle"
+                    value={profileData.jobTitle}
+                    onChange={(e) => setProfileData(prev => ({ ...prev, jobTitle: e.target.value }))}
+                    placeholder="Business Owner"
+                  />
+                </div>
+              </div>
+              
+              {/* Timezone */}
+              <div className="space-y-2">
+                <Label htmlFor="profileTimezone">Your Timezone</Label>
+                <Select 
+                  value={profileData.timezone} 
+                  onValueChange={(v) => setProfileData(prev => ({ ...prev, timezone: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIMEZONES.map(tz => (
+                      <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex justify-end">
+                <Button 
+                  onClick={handleProfileSave} 
+                  disabled={profileSaving}
+                  className="shadow-maple"
+                >
+                  {profileSaving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : profileSaveSuccess ? (
+                    <Check className="mr-2 h-4 w-4" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  {profileSaveSuccess ? "Saved!" : "Save Profile"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Security Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Security
+              </CardTitle>
+              <CardDescription>
+                Manage your password and security settings
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
-                Account settings coming soon...
-              </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                    placeholder="••••••••"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
+              
+              {passwordError && (
+                <p className="text-sm text-destructive">{passwordError}</p>
+              )}
+              {passwordSuccess && (
+                <p className="text-sm text-green-600">Password changed successfully!</p>
+              )}
+              
+              <Button 
+                variant="outline"
+                onClick={handlePasswordChange}
+                disabled={profileSaving || !passwordData.newPassword}
+              >
+                <Key className="mr-2 h-4 w-4" />
+                Change Password
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
