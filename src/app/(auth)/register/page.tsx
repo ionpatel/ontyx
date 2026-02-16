@@ -117,12 +117,26 @@ export default function RegisterPage() {
         // Check if email confirmation is required
         if (data.user.identities?.length === 0) {
           setError("An account with this email already exists. Please sign in instead.")
-        } else if (data.session) {
-          // User is signed in immediately (email confirmation disabled)
-          router.push("/dashboard")
         } else {
-          // Email confirmation required
-          setSuccess(true)
+          // Call setup function to create org (trigger workaround)
+          try {
+            await supabase.rpc('setup_user_organization', {
+              p_user_id: data.user.id,
+              p_email: data.user.email,
+              p_full_name: formData.fullName,
+              p_company_name: formData.companyName,
+            })
+          } catch (setupErr) {
+            console.error("Org setup error (non-fatal):", setupErr)
+          }
+
+          if (data.session) {
+            // User is signed in immediately (email confirmation disabled)
+            router.push("/dashboard")
+          } else {
+            // Email confirmation required
+            setSuccess(true)
+          }
         }
       }
     } catch (err: any) {
