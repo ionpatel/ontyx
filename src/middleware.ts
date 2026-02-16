@@ -1,7 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
+// Check if Supabase is configured (demo mode if not)
+function isSupabaseConfigured(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  return !!(url && key && !url.includes('placeholder'))
+}
+
 // Routes that don't require authentication
+// NOTE: Dashboard routes are public for demo mode - users can explore without login
 const publicRoutes = [
   '/',
   '/login',
@@ -16,6 +24,25 @@ const publicRoutes = [
   '/privacy',
   '/security',
   '/pipeda',
+  // Demo mode - allow dashboard access without auth
+  '/dashboard',
+  '/contacts',
+  '/invoices',
+  '/sales',
+  '/inventory',
+  '/purchases',
+  '/bills',
+  '/accounting',
+  '/banking',
+  '/employees',
+  '/payroll',
+  '/reports',
+  '/settings',
+  '/projects',
+  '/manufacturing',
+  '/warehouses',
+  '/crm',
+  '/apps',
 ]
 
 // Routes that should redirect to dashboard if logged in
@@ -54,7 +81,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // If user is not logged in and trying to access protected routes
-  if (!user && !isPublicRoute) {
+  // BUT allow demo mode (when Supabase is not configured)
+  if (!user && !isPublicRoute && isSupabaseConfigured()) {
     const redirectUrl = new URL('/login', request.url)
     redirectUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(redirectUrl)
