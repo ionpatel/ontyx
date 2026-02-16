@@ -3,7 +3,9 @@
 import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { useUserProfile } from "@/hooks/use-user-profile"
+import { useAuth } from "@/hooks/use-auth"
 import { 
   LayoutDashboard, FileText, Receipt, Building2, BookOpen,
   BarChart3, Package, ShoppingCart, Users, Briefcase,
@@ -100,8 +102,21 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+  const router = useRouter()
+  const { profile } = useUserProfile()
+  const { signOut } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+
+  // Get user display info
+  const userName = profile?.fullName || 'Demo User'
+  const userRole = profile?.jobTitle || 'Admin'
+  const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+
+  const handleLogout = async () => {
+    await signOut()
+    router.push('/login')
+  }
 
   return (
     <ToastProvider>
@@ -237,12 +252,12 @@ export default function DashboardLayout({
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-2 px-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src="/avatars/user.png" alt="User" />
-                    <AvatarFallback>JD</AvatarFallback>
+                    <AvatarImage src={profile?.avatarUrl || "/avatars/user.png"} alt={userName} />
+                    <AvatarFallback>{userInitials}</AvatarFallback>
                   </Avatar>
                   <div className="hidden md:block text-left">
-                    <p className="text-sm font-medium">John Doe</p>
-                    <p className="text-xs text-muted-foreground">Admin</p>
+                    <p className="text-sm font-medium">{userName}</p>
+                    <p className="text-xs text-muted-foreground">{userRole}</p>
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 </Button>
@@ -250,14 +265,18 @@ export default function DashboardLayout({
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <User className="mr-2 h-4 w-4" /> Profile
+                <DropdownMenuItem asChild>
+                  <Link href="/settings?tab=account">
+                    <User className="mr-2 h-4 w-4" /> Profile
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" /> Settings
+                <DropdownMenuItem asChild>
+                  <Link href="/settings">
+                    <Settings className="mr-2 h-4 w-4" /> Settings
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive">
+                <DropdownMenuItem className="text-destructive cursor-pointer" onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" /> Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>
