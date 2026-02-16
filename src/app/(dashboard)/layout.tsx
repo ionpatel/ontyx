@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { 
   LayoutDashboard, FileText, Receipt, Building2, BookOpen,
@@ -123,11 +124,15 @@ export default function DashboardLayout({
       >
         {/* Logo */}
         <div className="flex h-16 items-center justify-between px-4 border-b">
-          <Link href="/dashboard" className="flex items-center gap-2 group">
-            <img 
+          <Link href="/dashboard" className="flex items-center group">
+            <Image 
               src="/logo.png" 
               alt="OntyX" 
-              className="h-9 w-9 rounded-lg group-hover:opacity-90 transition-opacity"
+              width={44}
+              height={44}
+              quality={100}
+              priority
+              className="rounded-xl group-hover:opacity-90 transition-opacity"
             />
           </Link>
           <Button

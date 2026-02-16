@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -109,10 +110,14 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
       {/* Logo */}
       <div className="flex h-16 items-center justify-between px-4 border-b border-border">
         <Link href="/dashboard" className={cn("flex items-center group", collapsed && "justify-center")}>
-          <img 
+          <Image 
             src="/logo.png" 
             alt="OntyX" 
-            className="h-9 w-9 rounded-lg group-hover:opacity-90 transition-opacity"
+            width={44}
+            height={44}
+            quality={100}
+            priority
+            className="rounded-xl group-hover:opacity-90 transition-opacity"
           />
         </Link>
       </div>

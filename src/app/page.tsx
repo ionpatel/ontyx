@@ -144,9 +144,11 @@ export default function LandingPage() {
             <Image 
               src="/logo.png" 
               alt="OntyX" 
-              width={44} 
-              height={44}
-              className="rounded-lg group-hover:opacity-90 transition-opacity"
+              width={52} 
+              height={52}
+              quality={100}
+              priority
+              className="rounded-xl group-hover:opacity-90 transition-opacity"
             />
           </Link>
 
@@ -519,9 +521,10 @@ export default function LandingPage() {
                 <Image 
                   src="/logo.png" 
                   alt="OntyX" 
-                  width={40} 
-                  height={40}
-                  className="rounded-lg group-hover:opacity-90 transition-opacity"
+                  width={48} 
+                  height={48}
+                  quality={100}
+                  className="rounded-xl group-hover:opacity-90 transition-opacity"
                 />
               </Link>
               <p className="text-sm text-text-secondary max-w-xs leading-relaxed">
