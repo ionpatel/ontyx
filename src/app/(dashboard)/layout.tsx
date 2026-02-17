@@ -79,19 +79,20 @@ const navigation = [
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { profile } = useUserProfile()
+  const { profile, loading: profileLoading } = useUserProfile()
   const { signOut, loading: authLoading, user, organizationId } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
 
-  // Get user display info - show cached data instantly, no "Loading..."
+  // Show skeleton while auth/profile loading, then show real data
+  const isLoadingUser = authLoading || profileLoading
   const userName = profile 
     ? `${profile.firstName} ${profile.lastName}`.trim() || profile.email 
-    : (user?.email?.split('@')[0] || 'User')
+    : (user?.user_metadata?.full_name || user?.email?.split('@')[0] || '')
   const userRole = profile?.jobTitle || 'Member'
   const userInitials = profile 
-    ? `${profile.firstName?.[0] || ''}${profile.lastName?.[0] || ''}`.toUpperCase() || profile.email?.[0]?.toUpperCase() || 'U'
-    : (user?.email?.[0]?.toUpperCase() || 'U')
+    ? `${profile.firstName?.[0] || ''}${profile.lastName?.[0] || ''}`.toUpperCase() || profile.email?.[0]?.toUpperCase() || ''
+    : (user?.user_metadata?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '')
 
   const handleLogout = async () => {
     try {
@@ -250,11 +251,20 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 <Button variant="ghost" className="gap-2 px-2">
                   <Avatar className="h-8 w-8">
                     {profile?.avatarUrl && <AvatarImage src={profile.avatarUrl} alt={userName} />}
-                    <AvatarFallback>{userInitials}</AvatarFallback>
+                    <AvatarFallback>{isLoadingUser ? '' : userInitials}</AvatarFallback>
                   </Avatar>
                   <div className="hidden md:block text-left">
-                    <p className="text-sm font-medium">{userName}</p>
-                    <p className="text-xs text-muted-foreground">{userRole}</p>
+                    {isLoadingUser ? (
+                      <>
+                        <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+                        <div className="h-3 w-16 bg-muted animate-pulse rounded mt-1" />
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium">{userName}</p>
+                        <p className="text-xs text-muted-foreground">{userRole}</p>
+                      </>
+                    )}
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 </Button>
