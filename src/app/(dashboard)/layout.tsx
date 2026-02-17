@@ -124,17 +124,17 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       >
         {/* Logo */}
         <div className="flex h-16 items-center justify-between px-4 border-b">
-          <Link href="/dashboard" className="flex items-center gap-2">
+          <Link href="/dashboard" className={cn(
+            "flex items-center",
+            collapsed ? "justify-center w-full" : ""
+          )}>
             <Image
               src="/logo.png"
               alt="Ontyx"
-              width={32}
-              height={32}
+              width={36}
+              height={36}
               className="dark:invert"
             />
-            {!collapsed && (
-              <span className="text-xl font-bold tracking-tight">Ontyx</span>
-            )}
           </Link>
           <Button
             variant="ghost"
