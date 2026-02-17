@@ -1,164 +1,333 @@
 'use client';
 
-import { useState } from 'react';
-import { useAuth } from '@/components/providers/auth-provider';
-import { useToast } from '@/components/ui/toast';
+import { useState, useEffect } from 'react';
+import { useOrganization } from '@/hooks/use-organization';
+import { salonService, SalonService, SalonStaff, SalonClient, SalonAppointment } from '@/services/salon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { CalendarView } from '@/components/calendar-view';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import {
-  Scissors, Calendar, Clock, User, Users, DollarSign, Plus,
-  Phone, Mail, Star, Heart, Package, Gift, CreditCard, Bell,
-  CheckCircle, XCircle, MessageSquare, History
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Scissors,
+  Search,
+  Plus,
+  Calendar,
+  Users,
+  Clock,
+  DollarSign,
+  Star,
+  UserCheck,
+  Edit,
+  Trash2,
+  Phone,
+  Mail,
+  CheckCircle,
+  XCircle,
+  Play,
 } from 'lucide-react';
-import { format, addMinutes, setHours, setMinutes, startOfDay } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { useToast } from '@/components/ui/toast';
 
-interface Service {
-  id: string;
-  name: string;
-  category: string;
-  duration: number; // minutes
-  price: number;
-  description?: string;
-}
-
-interface Staff {
-  id: string;
-  name: string;
-  role: string;
-  services: string[];
-  color: string;
-  availability: { day: number; start: string; end: string }[];
-}
-
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  preferences?: string;
-  notes?: string;
-  visits: number;
-  total_spent: number;
-  last_visit?: string;
-  membership?: string;
-}
-
-interface Appointment {
-  id: string;
-  client_id: string;
-  client_name: string;
-  staff_id: string;
-  staff_name: string;
-  service_id: string;
-  service_name: string;
-  date: string;
-  time: string;
-  duration: number;
-  price: number;
-  status: 'booked' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
-  notes?: string;
-}
-
-const statusColors: Record<string, string> = {
-  booked: 'bg-blue-100 text-blue-700',
-  confirmed: 'bg-green-100 text-green-700',
-  in_progress: 'bg-yellow-100 text-yellow-700',
-  completed: 'bg-gray-100 text-gray-700',
-  cancelled: 'bg-red-100 text-red-700',
-  no_show: 'bg-orange-100 text-orange-700',
-};
-
-// Demo data
-const demoServices: Service[] = [
-  { id: 's1', name: "Women's Haircut", category: 'Hair', duration: 45, price: 65 },
-  { id: 's2', name: "Men's Haircut", category: 'Hair', duration: 30, price: 35 },
-  { id: 's3', name: 'Color & Highlights', category: 'Hair', duration: 120, price: 150 },
-  { id: 's4', name: 'Blowout & Style', category: 'Hair', duration: 45, price: 55 },
-  { id: 's5', name: 'Classic Manicure', category: 'Nails', duration: 30, price: 35 },
-  { id: 's6', name: 'Gel Manicure', category: 'Nails', duration: 45, price: 50 },
-  { id: 's7', name: 'Pedicure', category: 'Nails', duration: 60, price: 65 },
-  { id: 's8', name: 'Deep Tissue Massage', category: 'Spa', duration: 60, price: 120 },
-  { id: 's9', name: 'Swedish Massage', category: 'Spa', duration: 60, price: 100 },
-  { id: 's10', name: 'Facial Treatment', category: 'Spa', duration: 75, price: 95 },
-];
-
-const demoStaff: Staff[] = [
-  { id: 'st1', name: 'Sarah Chen', role: 'Senior Stylist', services: ['s1', 's2', 's3', 's4'], color: '#DC2626', availability: [{ day: 1, start: '09:00', end: '18:00' }, { day: 2, start: '09:00', end: '18:00' }, { day: 3, start: '09:00', end: '18:00' }, { day: 4, start: '09:00', end: '18:00' }, { day: 5, start: '09:00', end: '18:00' }] },
-  { id: 'st2', name: 'Emily Rodriguez', role: 'Nail Technician', services: ['s5', 's6', 's7'], color: '#2563EB', availability: [{ day: 1, start: '10:00', end: '19:00' }, { day: 2, start: '10:00', end: '19:00' }, { day: 3, start: '10:00', end: '19:00' }, { day: 4, start: '10:00', end: '19:00' }, { day: 5, start: '10:00', end: '19:00' }, { day: 6, start: '09:00', end: '17:00' }] },
-  { id: 'st3', name: 'Michael Park', role: 'Massage Therapist', services: ['s8', 's9'], color: '#059669', availability: [{ day: 1, start: '11:00', end: '20:00' }, { day: 2, start: '11:00', end: '20:00' }, { day: 4, start: '11:00', end: '20:00' }, { day: 5, start: '11:00', end: '20:00' }, { day: 6, start: '10:00', end: '18:00' }] },
-  { id: 'st4', name: 'Jessica Lee', role: 'Esthetician', services: ['s10'], color: '#7C3AED', availability: [{ day: 2, start: '09:00', end: '17:00' }, { day: 3, start: '09:00', end: '17:00' }, { day: 4, start: '09:00', end: '17:00' }, { day: 5, start: '09:00', end: '17:00' }, { day: 6, start: '09:00', end: '15:00' }] },
-];
-
-const demoClients: Client[] = [
-  { id: 'c1', name: 'Amanda Wilson', email: 'amanda@email.com', phone: '416-555-0101', preferences: 'Prefers quiet environment, tea over coffee', visits: 24, total_spent: 2850, last_visit: '2026-02-10', membership: 'VIP' },
-  { id: 'c2', name: 'Jennifer Brown', email: 'jen.b@email.com', phone: '416-555-0102', visits: 12, total_spent: 1420, last_visit: '2026-02-05' },
-  { id: 'c3', name: 'Michelle Tran', email: 'mtran@email.com', phone: '416-555-0103', preferences: 'Allergic to certain dyes', visits: 8, total_spent: 890, last_visit: '2026-01-28' },
-];
-
-const demoAppointments: Appointment[] = [
-  { id: 'a1', client_id: 'c1', client_name: 'Amanda Wilson', staff_id: 'st1', staff_name: 'Sarah Chen', service_id: 's1', service_name: "Women's Haircut", date: '2026-02-17', time: '10:00', duration: 45, price: 65, status: 'confirmed' },
-  { id: 'a2', client_id: 'c2', client_name: 'Jennifer Brown', staff_id: 'st2', staff_name: 'Emily Rodriguez', service_id: 's6', service_name: 'Gel Manicure', date: '2026-02-17', time: '11:00', duration: 45, price: 50, status: 'booked' },
-  { id: 'a3', client_id: 'c3', client_name: 'Michelle Tran', staff_id: 'st3', staff_name: 'Michael Park', service_id: 's8', service_name: 'Deep Tissue Massage', date: '2026-02-17', time: '14:00', duration: 60, price: 120, status: 'confirmed' },
-  { id: 'a4', client_id: 'c1', client_name: 'Amanda Wilson', staff_id: 'st4', staff_name: 'Jessica Lee', service_id: 's10', service_name: 'Facial Treatment', date: '2026-02-18', time: '10:00', duration: 75, price: 95, status: 'booked' },
-];
-
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(amount);
+const SERVICE_CATEGORIES = ['Hair', 'Nails', 'Spa', 'Makeup', 'Waxing', 'Skin', 'Other'];
+const STAFF_ROLES = ['Stylist', 'Nail Technician', 'Esthetician', 'Massage Therapist', 'Barber', 'Colorist'];
+const APPOINTMENT_STATUSES = ['booked', 'confirmed', 'checked_in', 'in_progress', 'completed', 'cancelled', 'no_show'];
 
 export default function SalonPage() {
-  const { organizationId } = useAuth();
+  const { organization } = useOrganization();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('calendar');
-  const [services, setServices] = useState<Service[]>(demoServices);
-  const [staff, setStaff] = useState<Staff[]>(demoStaff);
-  const [clients, setClients] = useState<Client[]>(demoClients);
-  const [appointments, setAppointments] = useState<Appointment[]>(demoAppointments);
-  const [showNewAppointment, setShowNewAppointment] = useState(false);
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [selectedDate, setSelectedDate] = useState(new Date());
 
-  // Stats
-  const todayAppointments = appointments.filter(a => a.date === format(new Date(), 'yyyy-MM-dd'));
-  const stats = {
-    todayBookings: todayAppointments.length,
-    todayRevenue: todayAppointments.reduce((sum, a) => sum + a.price, 0),
-    totalClients: clients.length,
-    vipClients: clients.filter(c => c.membership === 'VIP').length,
-    avgTicket: clients.length > 0 ? clients.reduce((sum, c) => sum + c.total_spent, 0) / clients.reduce((sum, c) => sum + c.visits, 0) : 0,
+  const [services, setServices] = useState<SalonService[]>([]);
+  const [staff, setStaff] = useState<SalonStaff[]>([]);
+  const [clients, setClients] = useState<SalonClient[]>([]);
+  const [appointments, setAppointments] = useState<SalonAppointment[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [search, setSearch] = useState('');
+
+  // Dialogs
+  const [serviceDialog, setServiceDialog] = useState(false);
+  const [staffDialog, setStaffDialog] = useState(false);
+  const [clientDialog, setClientDialog] = useState(false);
+  const [appointmentDialog, setAppointmentDialog] = useState(false);
+
+  // Form states
+  const [editingService, setEditingService] = useState<SalonService | null>(null);
+  const [editingStaff, setEditingStaff] = useState<SalonStaff | null>(null);
+  const [editingClient, setEditingClient] = useState<SalonClient | null>(null);
+
+  const [serviceForm, setServiceForm] = useState({
+    name: '',
+    category: '',
+    description: '',
+    duration: 30,
+    price: 0,
+    commission_type: 'percentage' as const,
+    commission_value: 0,
+    color: '#3B82F6',
+  });
+
+  const [staffForm, setStaffForm] = useState({
+    display_name: '',
+    role: '',
+    bio: '',
+    photo_url: '',
+    color: '#10B981',
+    services: [] as string[],
+  });
+
+  const [clientForm, setClientForm] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    date_of_birth: '',
+    preferences: '',
+    allergies: '',
+    notes: '',
+    membership_type: '',
+  });
+
+  const [appointmentForm, setAppointmentForm] = useState({
+    client_id: '',
+    staff_id: '',
+    service_id: '',
+    appointment_date: selectedDate,
+    start_time: '09:00',
+    notes: '',
+  });
+
+  useEffect(() => {
+    if (organization?.id) {
+      loadData();
+    }
+  }, [organization?.id, selectedDate]);
+
+  const loadData = async () => {
+    if (!organization?.id) return;
+    setIsLoading(true);
+    try {
+      const [servicesData, staffData, clientsData, appointmentsData, statsData] = await Promise.all([
+        salonService.getServices(organization.id),
+        salonService.getStaff(organization.id),
+        salonService.getClients(organization.id),
+        salonService.getAppointments(organization.id, selectedDate),
+        salonService.getStats(organization.id, selectedDate),
+      ]);
+      setServices(servicesData);
+      setStaff(staffData);
+      setClients(clientsData);
+      setAppointments(appointmentsData);
+      setStats(statsData);
+    } catch (error) {
+      console.error('Failed to load salon data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const confirmAppointment = (id: string) => {
-    setAppointments(appointments.map(a =>
-      a.id === id ? { ...a, status: 'confirmed' } : a
-    ));
-    toast({ title: 'Appointment confirmed' });
+  // Service handlers
+  const handleSaveService = async () => {
+    if (!organization?.id) return;
+    try {
+      if (editingService) {
+        await salonService.updateService(editingService.id, serviceForm);
+        toast({ title: 'Service updated' });
+      } else {
+        await salonService.createService({ ...serviceForm, organization_id: organization.id, is_active: true });
+        toast({ title: 'Service created' });
+      }
+      setServiceDialog(false);
+      setEditingService(null);
+      loadData();
+    } catch (error) {
+      toast({ title: 'Error saving service', variant: 'destructive' });
+    }
   };
 
-  const cancelAppointment = (id: string) => {
-    setAppointments(appointments.map(a =>
-      a.id === id ? { ...a, status: 'cancelled' } : a
-    ));
-    toast({ title: 'Appointment cancelled' });
+  const openServiceDialog = (service?: SalonService) => {
+    if (service) {
+      setEditingService(service);
+      setServiceForm({
+        name: service.name,
+        category: service.category || '',
+        description: service.description || '',
+        duration: service.duration,
+        price: service.price,
+        commission_type: service.commission_type,
+        commission_value: service.commission_value,
+        color: service.color || '#3B82F6',
+      });
+    } else {
+      setEditingService(null);
+      setServiceForm({ name: '', category: '', description: '', duration: 30, price: 0, commission_type: 'percentage', commission_value: 0, color: '#3B82F6' });
+    }
+    setServiceDialog(true);
   };
 
-  const calendarEvents = appointments.map(apt => {
-    const staffMember = staff.find(s => s.id === apt.staff_id);
-    return {
-      id: apt.id,
-      title: `${apt.client_name} - ${apt.service_name}`,
-      start: new Date(`${apt.date}T${apt.time}`),
-      color: staffMember?.color || '#6B7280',
+  // Staff handlers
+  const handleSaveStaff = async () => {
+    if (!organization?.id) return;
+    try {
+      if (editingStaff) {
+        await salonService.updateStaff(editingStaff.id, staffForm);
+        toast({ title: 'Staff updated' });
+      } else {
+        await salonService.createStaff({ ...staffForm, organization_id: organization.id, is_active: true });
+        toast({ title: 'Staff added' });
+      }
+      setStaffDialog(false);
+      setEditingStaff(null);
+      loadData();
+    } catch (error) {
+      toast({ title: 'Error saving staff', variant: 'destructive' });
+    }
+  };
+
+  const openStaffDialog = (member?: SalonStaff) => {
+    if (member) {
+      setEditingStaff(member);
+      setStaffForm({
+        display_name: member.display_name,
+        role: member.role || '',
+        bio: member.bio || '',
+        photo_url: member.photo_url || '',
+        color: member.color || '#10B981',
+        services: member.services || [],
+      });
+    } else {
+      setEditingStaff(null);
+      setStaffForm({ display_name: '', role: '', bio: '', photo_url: '', color: '#10B981', services: [] });
+    }
+    setStaffDialog(true);
+  };
+
+  // Client handlers
+  const handleSaveClient = async () => {
+    if (!organization?.id) return;
+    try {
+      if (editingClient) {
+        await salonService.updateClient(editingClient.id, clientForm);
+        toast({ title: 'Client updated' });
+      } else {
+        await salonService.createClient({ ...clientForm, organization_id: organization.id });
+        toast({ title: 'Client added' });
+      }
+      setClientDialog(false);
+      setEditingClient(null);
+      loadData();
+    } catch (error) {
+      toast({ title: 'Error saving client', variant: 'destructive' });
+    }
+  };
+
+  const openClientDialog = (client?: SalonClient) => {
+    if (client) {
+      setEditingClient(client);
+      setClientForm({
+        first_name: client.first_name,
+        last_name: client.last_name,
+        email: client.email || '',
+        phone: client.phone || '',
+        date_of_birth: client.date_of_birth || '',
+        preferences: client.preferences || '',
+        allergies: client.allergies || '',
+        notes: client.notes || '',
+        membership_type: client.membership_type || '',
+      });
+    } else {
+      setEditingClient(null);
+      setClientForm({ first_name: '', last_name: '', email: '', phone: '', date_of_birth: '', preferences: '', allergies: '', notes: '', membership_type: '' });
+    }
+    setClientDialog(true);
+  };
+
+  // Appointment handlers
+  const handleSaveAppointment = async () => {
+    if (!organization?.id) return;
+    const selectedService = services.find(s => s.id === appointmentForm.service_id);
+    if (!selectedService) return;
+
+    const startTime = appointmentForm.start_time;
+    const [hours, mins] = startTime.split(':').map(Number);
+    const endMins = hours * 60 + mins + selectedService.duration;
+    const endTime = `${String(Math.floor(endMins / 60)).padStart(2, '0')}:${String(endMins % 60).padStart(2, '0')}`;
+
+    try {
+      await salonService.createAppointment({
+        organization_id: organization.id,
+        client_id: appointmentForm.client_id || undefined,
+        staff_id: appointmentForm.staff_id,
+        service_id: appointmentForm.service_id,
+        appointment_date: appointmentForm.appointment_date,
+        start_time: startTime,
+        end_time: endTime,
+        status: 'booked',
+        price: selectedService.price,
+        deposit_paid: 0,
+        notes: appointmentForm.notes,
+        reminder_sent: false,
+      });
+      toast({ title: 'Appointment booked' });
+      setAppointmentDialog(false);
+      loadData();
+    } catch (error) {
+      toast({ title: 'Error booking appointment', variant: 'destructive' });
+    }
+  };
+
+  const updateAppointmentStatus = async (id: string, status: SalonAppointment['status']) => {
+    try {
+      if (status === 'completed') {
+        await salonService.completeAppointment(id);
+      } else if (status === 'cancelled') {
+        await salonService.cancelAppointment(id);
+      } else {
+        await salonService.updateAppointmentStatus(id, status);
+      }
+      toast({ title: `Appointment ${status}` });
+      loadData();
+    } catch (error) {
+      toast({ title: 'Error updating appointment', variant: 'destructive' });
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const colors: Record<string, string> = {
+      booked: 'bg-blue-100 text-blue-700',
+      confirmed: 'bg-purple-100 text-purple-700',
+      checked_in: 'bg-amber-100 text-amber-700',
+      in_progress: 'bg-cyan-100 text-cyan-700',
+      completed: 'bg-green-100 text-green-700',
+      cancelled: 'bg-gray-100 text-gray-700',
+      no_show: 'bg-red-100 text-red-700',
     };
+    return <Badge className={colors[status] || 'bg-gray-100'}>{status.replace('_', ' ')}</Badge>;
+  };
+
+  const filteredClients = clients.filter(c => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return c.first_name.toLowerCase().includes(q) || c.last_name.toLowerCase().includes(q) || c.phone?.includes(q) || c.email?.toLowerCase().includes(q);
   });
 
   return (
@@ -166,394 +335,552 @@ export default function SalonPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Scissors className="h-6 w-6" />
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Scissors className="w-6 h-6 text-pink-600" />
             Salon & Spa
           </h1>
-          <p className="text-muted-foreground">Appointments, clients, and services management</p>
+          <p className="text-gray-600">Appointments, clients, services, and staff management</p>
         </div>
-        <Button onClick={() => setShowNewAppointment(true)}>
-          <Plus className="h-4 w-4 mr-2" /> Book Appointment
+        <Button onClick={() => { setAppointmentForm({ ...appointmentForm, appointment_date: selectedDate }); setAppointmentDialog(true); }} className="bg-pink-600 hover:bg-pink-700">
+          <Plus className="w-4 h-4 mr-2" />
+          Book Appointment
         </Button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100">
-                <Calendar className="h-5 w-5 text-blue-600" />
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <Calendar className="w-8 h-8 text-blue-500" />
+                <div>
+                  <p className="text-2xl font-bold">{stats.todayAppointments}</p>
+                  <p className="text-xs text-gray-500">Today&apos;s Appointments</p>
+                </div>
               </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Today</div>
-                <div className="text-2xl font-bold">{stats.todayBookings}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <UserCheck className="w-8 h-8 text-amber-500" />
+                <div>
+                  <p className="text-2xl font-bold">{stats.checkedIn}</p>
+                  <p className="text-xs text-gray-500">Checked In</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-100">
-                <DollarSign className="h-5 w-5 text-green-600" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <Play className="w-8 h-8 text-cyan-500" />
+                <div>
+                  <p className="text-2xl font-bold">{stats.inProgress}</p>
+                  <p className="text-xs text-gray-500">In Progress</p>
+                </div>
               </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Today's Revenue</div>
-                <div className="text-2xl font-bold text-green-600">{formatCurrency(stats.todayRevenue)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-8 h-8 text-green-500" />
+                <div>
+                  <p className="text-2xl font-bold">{stats.completed}</p>
+                  <p className="text-xs text-gray-500">Completed</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-purple-100">
-                <Users className="h-5 w-5 text-purple-600" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <Users className="w-8 h-8 text-purple-500" />
+                <div>
+                  <p className="text-2xl font-bold">{stats.totalClients}</p>
+                  <p className="text-xs text-gray-500">Total Clients</p>
+                </div>
               </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Total Clients</div>
-                <div className="text-2xl font-bold">{stats.totalClients}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <DollarSign className="w-8 h-8 text-green-500" />
+                <div>
+                  <p className="text-2xl font-bold">{formatCurrency(stats.todayRevenue)}</p>
+                  <p className="text-xs text-gray-500">Today&apos;s Revenue</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-yellow-100">
-                <Star className="h-5 w-5 text-yellow-600" />
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">VIP Clients</div>
-                <div className="text-2xl font-bold">{stats.vipClients}</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-indigo-100">
-                <CreditCard className="h-5 w-5 text-indigo-600" />
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Avg Ticket</div>
-                <div className="text-2xl font-bold">{formatCurrency(stats.avgTicket)}</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs defaultValue="appointments" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="calendar">Calendar</TabsTrigger>
           <TabsTrigger value="appointments">Appointments</TabsTrigger>
-          <TabsTrigger value="clients">Clients</TabsTrigger>
-          <TabsTrigger value="services">Services</TabsTrigger>
-          <TabsTrigger value="staff">Staff</TabsTrigger>
+          <TabsTrigger value="clients">Clients ({clients.length})</TabsTrigger>
+          <TabsTrigger value="services">Services ({services.length})</TabsTrigger>
+          <TabsTrigger value="staff">Staff ({staff.length})</TabsTrigger>
         </TabsList>
 
-        {/* Calendar */}
-        <TabsContent value="calendar">
-          <CalendarView events={calendarEvents} />
-        </TabsContent>
-
-        {/* Appointments */}
+        {/* Appointments Tab */}
         <TabsContent value="appointments">
           <Card>
-            <CardHeader>
-              <CardTitle>Today's Appointments</CardTitle>
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Today&apos;s Schedule</CardTitle>
+                  <CardDescription>{formatDate(selectedDate)}</CardDescription>
+                </div>
+                <Input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-40"
+                />
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Time</TableHead>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Service</TableHead>
+                    <TableHead>Staff</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {appointments.map((apt) => (
+                    <TableRow key={apt.id}>
+                      <TableCell className="font-mono">
+                        {apt.start_time?.slice(0, 5)} - {apt.end_time?.slice(0, 5)}
+                      </TableCell>
+                      <TableCell>
+                        {apt.client ? (
+                          <div>
+                            <p className="font-medium">{apt.client.first_name} {apt.client.last_name}</p>
+                            {apt.client.phone && <p className="text-xs text-gray-500">{apt.client.phone}</p>}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">Walk-in</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {apt.service?.color && (
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: apt.service.color }} />
+                          )}
+                          <span>{apt.service?.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{apt.staff?.display_name}</TableCell>
+                      <TableCell>{getStatusBadge(apt.status)}</TableCell>
+                      <TableCell>{formatCurrency(apt.price)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {apt.status === 'booked' && (
+                            <Button size="sm" variant="outline" onClick={() => updateAppointmentStatus(apt.id, 'confirmed')}>
+                              Confirm
+                            </Button>
+                          )}
+                          {apt.status === 'confirmed' && (
+                            <Button size="sm" variant="outline" onClick={() => updateAppointmentStatus(apt.id, 'checked_in')}>
+                              Check In
+                            </Button>
+                          )}
+                          {apt.status === 'checked_in' && (
+                            <Button size="sm" variant="outline" onClick={() => updateAppointmentStatus(apt.id, 'in_progress')}>
+                              Start
+                            </Button>
+                          )}
+                          {apt.status === 'in_progress' && (
+                            <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => updateAppointmentStatus(apt.id, 'completed')}>
+                              Complete
+                            </Button>
+                          )}
+                          {['booked', 'confirmed'].includes(apt.status) && (
+                            <Button size="sm" variant="ghost" onClick={() => updateAppointmentStatus(apt.id, 'cancelled')}>
+                              <XCircle className="w-4 h-4 text-red-500" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {appointments.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                        No appointments for this date
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Clients Tab */}
+        <TabsContent value="clients">
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input placeholder="Search clients..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+                </div>
+                <Button onClick={() => openClientDialog()} className="bg-pink-600 hover:bg-pink-700">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Client
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Membership</TableHead>
+                    <TableHead>Visits</TableHead>
+                    <TableHead>Total Spent</TableHead>
+                    <TableHead>Last Visit</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredClients.map((client) => (
+                    <TableRow key={client.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {client.membership_type === 'VIP' && <Star className="w-4 h-4 text-amber-500" />}
+                          <span className="font-medium">{client.first_name} {client.last_name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {client.phone && <div className="flex items-center gap-1"><Phone className="w-3 h-3" /> {client.phone}</div>}
+                          {client.email && <div className="flex items-center gap-1 text-gray-500"><Mail className="w-3 h-3" /> {client.email}</div>}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {client.membership_type ? (
+                          <Badge className={client.membership_type === 'VIP' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100'}>{client.membership_type}</Badge>
+                        ) : '—'}
+                      </TableCell>
+                      <TableCell>{client.total_visits}</TableCell>
+                      <TableCell>{formatCurrency(client.total_spent)}</TableCell>
+                      <TableCell>{client.last_visit ? formatDate(client.last_visit) : '—'}</TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" onClick={() => openClientDialog(client)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Services Tab */}
+        <TabsContent value="services">
+          <Card>
+            <CardHeader className="pb-4 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Services Menu</CardTitle>
+                <CardDescription>Manage your service offerings</CardDescription>
+              </div>
+              <Button onClick={() => openServiceDialog()} className="bg-pink-600 hover:bg-pink-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Service
+              </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {appointments.filter(a => a.date === '2026-02-17').map(apt => (
-                  <div key={apt.id} className="flex items-center gap-4 p-4 rounded-lg border">
-                    <div className="text-center min-w-[60px]">
-                      <div className="text-2xl font-bold">{apt.time.split(':')[0]}</div>
-                      <div className="text-sm text-muted-foreground">:{apt.time.split(':')[1]}</div>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{apt.client_name}</span>
-                        <Badge className={statusColors[apt.status]}>{apt.status}</Badge>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {apt.service_name} with {apt.staff_name}
-                      </div>
-                      <div className="text-sm text-muted-foreground flex items-center gap-4 mt-1">
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" /> {apt.duration} min
-                        </span>
-                        <span className="font-medium text-primary">{formatCurrency(apt.price)}</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      {apt.status === 'booked' && (
-                        <Button size="sm" variant="outline" onClick={() => confirmAppointment(apt.id)}>
-                          <CheckCircle className="h-4 w-4 mr-1" /> Confirm
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {services.map((service) => (
+                  <Card key={service.id} className="border">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-4 h-4 rounded-full" style={{ backgroundColor: service.color || '#3B82F6' }} />
+                          <div>
+                            <h3 className="font-semibold">{service.name}</h3>
+                            <p className="text-sm text-gray-500">{service.category}</p>
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => openServiceDialog(service)}>
+                          <Edit className="w-4 h-4" />
                         </Button>
-                      )}
-                      {['booked', 'confirmed'].includes(apt.status) && (
-                        <Button size="sm" variant="ghost" onClick={() => cancelAppointment(apt.id)}>
-                          <XCircle className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-1 text-gray-500">
+                          <Clock className="w-4 h-4" />
+                          {service.duration} min
+                        </div>
+                        <div className="font-semibold text-green-600">
+                          {formatCurrency(service.price)}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Clients */}
-        <TabsContent value="clients">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {clients.map(client => (
-              <Card key={client.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedClient(client)}>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Avatar className="h-12 w-12">
-                      <AvatarFallback>{client.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{client.name}</span>
-                        {client.membership === 'VIP' && (
-                          <Badge className="bg-yellow-100 text-yellow-700">
-                            <Star className="h-3 w-3 mr-1 fill-yellow-500" /> VIP
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Phone className="h-3 w-3" /> {client.phone}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Visits:</span>
-                      <span className="ml-2 font-medium">{client.visits}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Spent:</span>
-                      <span className="ml-2 font-medium">{formatCurrency(client.total_spent)}</span>
-                    </div>
-                  </div>
-                  {client.last_visit && (
-                    <div className="mt-3 pt-3 border-t text-sm text-muted-foreground">
-                      Last visit: {format(new Date(client.last_visit), 'MMM d, yyyy')}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-            <Card className="border-dashed flex items-center justify-center min-h-[200px] cursor-pointer hover:shadow-md transition-shadow">
-              <CardContent className="text-center">
-                <Plus className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <div className="font-medium">Add Client</div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Services */}
-        <TabsContent value="services">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {['Hair', 'Nails', 'Spa'].map(category => (
-              <Card key={category}>
-                <CardHeader>
-                  <CardTitle className="text-lg">{category}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {services.filter(s => s.category === category).map(service => (
-                      <div key={service.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                        <div>
-                          <div className="font-medium">{service.name}</div>
-                          <div className="text-sm text-muted-foreground flex items-center gap-2">
-                            <Clock className="h-3 w-3" /> {service.duration} min
-                          </div>
-                        </div>
-                        <div className="text-lg font-bold text-primary">{formatCurrency(service.price)}</div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* Staff */}
+        {/* Staff Tab */}
         <TabsContent value="staff">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {staff.map(member => (
-              <Card key={member.id}>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Avatar className="h-12 w-12" style={{ borderColor: member.color, borderWidth: 3 }}>
-                      <AvatarFallback style={{ backgroundColor: member.color + '20', color: member.color }}>
-                        {member.name.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-medium">{member.name}</div>
-                      <div className="text-sm text-muted-foreground">{member.role}</div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm text-muted-foreground">Services:</div>
-                    <div className="flex flex-wrap gap-1">
-                      {member.services.map(sId => {
-                        const service = services.find(s => s.id === sId);
-                        return service ? (
-                          <Badge key={sId} variant="outline" className="text-xs">{service.name}</Badge>
-                        ) : null;
-                      })}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <Card>
+            <CardHeader className="pb-4 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Team Members</CardTitle>
+                <CardDescription>Manage your salon staff</CardDescription>
+              </div>
+              <Button onClick={() => openStaffDialog()} className="bg-pink-600 hover:bg-pink-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Staff
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {staff.map((member) => (
+                  <Card key={member.id} className="border">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-4">
+                        <div
+                          className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg"
+                          style={{ backgroundColor: member.color || '#10B981' }}
+                        >
+                          {member.display_name.charAt(0)}
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold">{member.display_name}</h3>
+                          <p className="text-sm text-gray-500">{member.role}</p>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => openStaffDialog(member)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      {member.bio && (
+                        <p className="mt-3 text-sm text-gray-600 line-clamp-2">{member.bio}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
-      {/* Client Detail Dialog */}
-      <Dialog open={!!selectedClient} onOpenChange={() => setSelectedClient(null)}>
-        <DialogContent className="max-w-lg">
+      {/* Service Dialog */}
+      <Dialog open={serviceDialog} onOpenChange={setServiceDialog}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
-              <Avatar>
-                <AvatarFallback>{selectedClient?.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-              </Avatar>
-              <div>
-                <div className="flex items-center gap-2">
-                  {selectedClient?.name}
-                  {selectedClient?.membership === 'VIP' && (
-                    <Badge className="bg-yellow-100 text-yellow-700">VIP</Badge>
-                  )}
-                </div>
-                <div className="text-sm font-normal text-muted-foreground">{selectedClient?.email}</div>
-              </div>
-            </DialogTitle>
+            <DialogTitle>{editingService ? 'Edit Service' : 'Add Service'}</DialogTitle>
           </DialogHeader>
-          {selectedClient && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  {selectedClient.phone}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  {selectedClient.email}
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
-                <div className="text-center">
-                  <div className="text-2xl font-bold">{selectedClient.visits}</div>
-                  <div className="text-sm text-muted-foreground">Visits</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">{formatCurrency(selectedClient.total_spent)}</div>
-                  <div className="text-sm text-muted-foreground">Total Spent</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold">{formatCurrency(selectedClient.total_spent / selectedClient.visits)}</div>
-                  <div className="text-sm text-muted-foreground">Avg Ticket</div>
-                </div>
-              </div>
-              {selectedClient.preferences && (
-                <div>
-                  <Label className="text-muted-foreground">Preferences & Notes</Label>
-                  <p className="mt-1 text-sm p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <Heart className="h-4 w-4 inline mr-2 text-yellow-600" />
-                    {selectedClient.preferences}
-                  </p>
-                </div>
-              )}
+          <div className="grid gap-4 py-4">
+            <div>
+              <Label>Service Name *</Label>
+              <Input value={serviceForm.name} onChange={(e) => setServiceForm({ ...serviceForm, name: e.target.value })} />
             </div>
-          )}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Category</Label>
+                <Select value={serviceForm.category} onValueChange={(v) => setServiceForm({ ...serviceForm, category: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent>
+                    {SERVICE_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Color</Label>
+                <Input type="color" value={serviceForm.color} onChange={(e) => setServiceForm({ ...serviceForm, color: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Duration (min)</Label>
+                <Input type="number" value={serviceForm.duration} onChange={(e) => setServiceForm({ ...serviceForm, duration: parseInt(e.target.value) || 0 })} />
+              </div>
+              <div>
+                <Label>Price</Label>
+                <Input type="number" step="0.01" value={serviceForm.price} onChange={(e) => setServiceForm({ ...serviceForm, price: parseFloat(e.target.value) || 0 })} />
+              </div>
+            </div>
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedClient(null)}>Close</Button>
-            <Button>
-              <Calendar className="h-4 w-4 mr-2" /> Book Appointment
-            </Button>
+            <Button variant="outline" onClick={() => setServiceDialog(false)}>Cancel</Button>
+            <Button onClick={handleSaveService} className="bg-pink-600 hover:bg-pink-700">Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* New Appointment Dialog */}
-      <Dialog open={showNewAppointment} onOpenChange={setShowNewAppointment}>
+      {/* Staff Dialog */}
+      <Dialog open={staffDialog} onOpenChange={setStaffDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingStaff ? 'Edit Staff' : 'Add Staff'}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div>
+              <Label>Display Name *</Label>
+              <Input value={staffForm.display_name} onChange={(e) => setStaffForm({ ...staffForm, display_name: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Role</Label>
+                <Select value={staffForm.role} onValueChange={(v) => setStaffForm({ ...staffForm, role: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent>
+                    {STAFF_ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Color</Label>
+                <Input type="color" value={staffForm.color} onChange={(e) => setStaffForm({ ...staffForm, color: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <Label>Bio</Label>
+              <Input value={staffForm.bio} onChange={(e) => setStaffForm({ ...staffForm, bio: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStaffDialog(false)}>Cancel</Button>
+            <Button onClick={handleSaveStaff} className="bg-pink-600 hover:bg-pink-700">Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Client Dialog */}
+      <Dialog open={clientDialog} onOpenChange={setClientDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingClient ? 'Edit Client' : 'Add Client'}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>First Name *</Label>
+                <Input value={clientForm.first_name} onChange={(e) => setClientForm({ ...clientForm, first_name: e.target.value })} />
+              </div>
+              <div>
+                <Label>Last Name *</Label>
+                <Input value={clientForm.last_name} onChange={(e) => setClientForm({ ...clientForm, last_name: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Phone</Label>
+                <Input value={clientForm.phone} onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })} />
+              </div>
+              <div>
+                <Label>Email</Label>
+                <Input type="email" value={clientForm.email} onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Date of Birth</Label>
+                <Input type="date" value={clientForm.date_of_birth} onChange={(e) => setClientForm({ ...clientForm, date_of_birth: e.target.value })} />
+              </div>
+              <div>
+                <Label>Membership</Label>
+                <Select value={clientForm.membership_type} onValueChange={(v) => setClientForm({ ...clientForm, membership_type: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="Regular">Regular</SelectItem>
+                    <SelectItem value="Gold">Gold</SelectItem>
+                    <SelectItem value="VIP">VIP</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label>Preferences / Notes</Label>
+              <Input value={clientForm.preferences} onChange={(e) => setClientForm({ ...clientForm, preferences: e.target.value })} placeholder="Preferred stylist, products, etc." />
+            </div>
+            <div>
+              <Label>Allergies</Label>
+              <Input value={clientForm.allergies} onChange={(e) => setClientForm({ ...clientForm, allergies: e.target.value })} placeholder="Known allergies or sensitivities" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setClientDialog(false)}>Cancel</Button>
+            <Button onClick={handleSaveClient} className="bg-pink-600 hover:bg-pink-700">Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Appointment Dialog */}
+      <Dialog open={appointmentDialog} onOpenChange={setAppointmentDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Book Appointment</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
+          <div className="grid gap-4 py-4">
+            <div>
               <Label>Client</Label>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select client..." />
-                </SelectTrigger>
+              <Select value={appointmentForm.client_id} onValueChange={(v) => setAppointmentForm({ ...appointmentForm, client_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Select client (or walk-in)" /></SelectTrigger>
                 <SelectContent>
-                  {clients.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
+                  <SelectItem value="none">Walk-in</SelectItem>
+                  {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.first_name} {c.last_name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Service</Label>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select service..." />
-                </SelectTrigger>
+            <div>
+              <Label>Service *</Label>
+              <Select value={appointmentForm.service_id} onValueChange={(v) => setAppointmentForm({ ...appointmentForm, service_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Select service" /></SelectTrigger>
                 <SelectContent>
-                  {services.map(s => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name} ({s.duration} min) - {formatCurrency(s.price)}
-                    </SelectItem>
-                  ))}
+                  {services.map((s) => <SelectItem key={s.id} value={s.id}>{s.name} ({s.duration} min - {formatCurrency(s.price)})</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Staff</Label>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select staff member..." />
-                </SelectTrigger>
+            <div>
+              <Label>Staff *</Label>
+              <Select value={appointmentForm.staff_id} onValueChange={(v) => setAppointmentForm({ ...appointmentForm, staff_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Select staff" /></SelectTrigger>
                 <SelectContent>
-                  {staff.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.name} - {s.role}</SelectItem>
-                  ))}
+                  {staff.map((s) => <SelectItem key={s.id} value={s.id}>{s.display_name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Date</Label>
-                <Input type="date" />
+              <div>
+                <Label>Date *</Label>
+                <Input type="date" value={appointmentForm.appointment_date} onChange={(e) => setAppointmentForm({ ...appointmentForm, appointment_date: e.target.value })} />
               </div>
-              <div className="space-y-2">
-                <Label>Time</Label>
-                <Input type="time" />
+              <div>
+                <Label>Time *</Label>
+                <Input type="time" value={appointmentForm.start_time} onChange={(e) => setAppointmentForm({ ...appointmentForm, start_time: e.target.value })} />
               </div>
             </div>
-            <div className="space-y-2">
+            <div>
               <Label>Notes</Label>
-              <Textarea placeholder="Any special requests..." />
+              <Input value={appointmentForm.notes} onChange={(e) => setAppointmentForm({ ...appointmentForm, notes: e.target.value })} placeholder="Special requests..." />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewAppointment(false)}>Cancel</Button>
-            <Button>Book Appointment</Button>
+            <Button variant="outline" onClick={() => setAppointmentDialog(false)}>Cancel</Button>
+            <Button onClick={handleSaveAppointment} className="bg-pink-600 hover:bg-pink-700">Book</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
