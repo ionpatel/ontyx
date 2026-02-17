@@ -1,57 +1,72 @@
 import { createClient } from '@/lib/supabase/client'
 
 // ============================================================================
-// TYPES
+// TYPES (aligned with 00004_relations_hr_schema.sql)
 // ============================================================================
 
-export type EmployeeStatus = 'active' | 'on_leave' | 'terminated'
-export type PayType = 'hourly' | 'salary'
+export type EmployeeStatus = 'active' | 'on_leave' | 'terminated' | 'resigned'
+export type PayType = 'salary' | 'hourly'
+export type EmploymentType = 'full_time' | 'part_time' | 'contract' | 'intern' | 'freelance'
 
 export interface Employee {
   id: string
   organizationId: string
+  userId?: string
   
   // Personal
+  employeeNumber?: string
   firstName: string
   lastName: string
   email?: string
   phone?: string
+  mobile?: string
+  dateOfBirth?: string
+  gender?: string
   
   // Address
-  address?: string
+  addressLine1?: string
+  addressLine2?: string
   city?: string
-  province: string
+  state?: string
   postalCode?: string
+  country?: string
   
-  // Tax Info
-  sin?: string
-  dateOfBirth?: string
+  // Emergency Contact
+  emergencyContactName?: string
+  emergencyContactPhone?: string
+  emergencyContactRelationship?: string
   
   // Employment
-  employeeNumber?: string
-  department?: string
+  departmentId?: string
   jobTitle?: string
-  hireDate?: string
-  startDate?: string
+  employmentType: EmploymentType
+  employmentStatus: EmployeeStatus
+  managerId?: string
+  
+  // Dates
+  hireDate: string
+  probationEndDate?: string
   terminationDate?: string
-  status: EmployeeStatus
   
-  // Compensation
-  payType: PayType
-  payRate: number
-  hoursPerWeek: number
-  
-  // Tax Forms
-  td1FederalClaim: number
-  td1ProvincialClaim: number
+  // Work Schedule
+  workHoursPerWeek: number
   
   // Banking
+  bankName?: string
   bankAccountNumber?: string
-  bankTransitNumber?: string
-  bankInstitutionNumber?: string
+  bankRoutingNumber?: string
+  
+  // Tax
+  taxId?: string
+  taxFilingStatus?: string
+  taxWithholdingAllowances: number
+  
+  // Profile
+  avatarUrl?: string
+  bio?: string
   
   // Metadata
-  notes?: string
+  customFields?: Record<string, any>
   createdAt: string
   updatedAt: string
 }
@@ -61,25 +76,32 @@ export interface CreateEmployeeInput {
   lastName: string
   email?: string
   phone?: string
-  address?: string
-  city?: string
-  province?: string
-  postalCode?: string
-  sin?: string
+  mobile?: string
   dateOfBirth?: string
+  gender?: string
+  addressLine1?: string
+  addressLine2?: string
+  city?: string
+  state?: string
+  postalCode?: string
+  country?: string
+  emergencyContactName?: string
+  emergencyContactPhone?: string
+  emergencyContactRelationship?: string
   employeeNumber?: string
-  department?: string
+  departmentId?: string
   jobTitle?: string
+  employmentType?: EmploymentType
   hireDate?: string
-  payType?: PayType
-  payRate?: number
-  hoursPerWeek?: number
-  td1FederalClaim?: number
-  td1ProvincialClaim?: number
+  probationEndDate?: string
+  workHoursPerWeek?: number
+  bankName?: string
   bankAccountNumber?: string
-  bankTransitNumber?: string
-  bankInstitutionNumber?: string
-  notes?: string
+  bankRoutingNumber?: string
+  taxId?: string
+  taxFilingStatus?: string
+  taxWithholdingAllowances?: number
+  bio?: string
 }
 
 // ============================================================================
@@ -89,7 +111,7 @@ export interface CreateEmployeeInput {
 export const employeesService = {
   async getEmployees(organizationId: string, filters?: {
     status?: EmployeeStatus
-    department?: string
+    departmentId?: string
   }): Promise<Employee[]> {
     const supabase = createClient()
     
@@ -101,10 +123,10 @@ export const employeesService = {
       .order('first_name')
     
     if (filters?.status) {
-      query = query.eq('status', filters.status)
+      query = query.eq('employment_status', filters.status)
     }
-    if (filters?.department) {
-      query = query.eq('department', filters.department)
+    if (filters?.departmentId) {
+      query = query.eq('department_id', filters.departmentId)
     }
     
     const { data, error } = await query
@@ -146,27 +168,33 @@ export const employeesService = {
         last_name: input.lastName,
         email: input.email,
         phone: input.phone,
-        address: input.address,
-        city: input.city,
-        province: input.province || 'ON',
-        postal_code: input.postalCode,
-        sin: input.sin,
+        mobile: input.mobile,
         date_of_birth: input.dateOfBirth,
+        gender: input.gender,
+        address_line1: input.addressLine1,
+        address_line2: input.addressLine2,
+        city: input.city,
+        state: input.state || 'ON',
+        postal_code: input.postalCode,
+        country: input.country || 'CA',
+        emergency_contact_name: input.emergencyContactName,
+        emergency_contact_phone: input.emergencyContactPhone,
+        emergency_contact_relationship: input.emergencyContactRelationship,
         employee_number: input.employeeNumber,
-        department: input.department,
+        department_id: input.departmentId,
         job_title: input.jobTitle,
+        employment_type: input.employmentType || 'full_time',
+        employment_status: 'active',
         hire_date: input.hireDate || new Date().toISOString().split('T')[0],
-        start_date: input.hireDate || new Date().toISOString().split('T')[0],
-        status: 'active',
-        pay_type: input.payType || 'hourly',
-        pay_rate: input.payRate || 0,
-        hours_per_week: input.hoursPerWeek || 40,
-        td1_federal_claim: input.td1FederalClaim || 15000,
-        td1_provincial_claim: input.td1ProvincialClaim || 11865,
+        probation_end_date: input.probationEndDate,
+        work_hours_per_week: input.workHoursPerWeek || 40,
+        bank_name: input.bankName,
         bank_account_number: input.bankAccountNumber,
-        bank_transit_number: input.bankTransitNumber,
-        bank_institution_number: input.bankInstitutionNumber,
-        notes: input.notes,
+        bank_routing_number: input.bankRoutingNumber,
+        tax_id: input.taxId,
+        tax_filing_status: input.taxFilingStatus,
+        tax_withholding_allowances: input.taxWithholdingAllowances || 0,
+        bio: input.bio,
       })
       .select()
       .single()
@@ -184,29 +212,36 @@ export const employeesService = {
     
     const updates: Record<string, any> = { updated_at: new Date().toISOString() }
     
-    if (input.firstName) updates.first_name = input.firstName
-    if (input.lastName) updates.last_name = input.lastName
+    if (input.firstName !== undefined) updates.first_name = input.firstName
+    if (input.lastName !== undefined) updates.last_name = input.lastName
     if (input.email !== undefined) updates.email = input.email
     if (input.phone !== undefined) updates.phone = input.phone
-    if (input.address !== undefined) updates.address = input.address
-    if (input.city !== undefined) updates.city = input.city
-    if (input.province !== undefined) updates.province = input.province
-    if (input.postalCode !== undefined) updates.postal_code = input.postalCode
-    if (input.sin !== undefined) updates.sin = input.sin
+    if (input.mobile !== undefined) updates.mobile = input.mobile
     if (input.dateOfBirth !== undefined) updates.date_of_birth = input.dateOfBirth
+    if (input.gender !== undefined) updates.gender = input.gender
+    if (input.addressLine1 !== undefined) updates.address_line1 = input.addressLine1
+    if (input.addressLine2 !== undefined) updates.address_line2 = input.addressLine2
+    if (input.city !== undefined) updates.city = input.city
+    if (input.state !== undefined) updates.state = input.state
+    if (input.postalCode !== undefined) updates.postal_code = input.postalCode
+    if (input.country !== undefined) updates.country = input.country
+    if (input.emergencyContactName !== undefined) updates.emergency_contact_name = input.emergencyContactName
+    if (input.emergencyContactPhone !== undefined) updates.emergency_contact_phone = input.emergencyContactPhone
+    if (input.emergencyContactRelationship !== undefined) updates.emergency_contact_relationship = input.emergencyContactRelationship
     if (input.employeeNumber !== undefined) updates.employee_number = input.employeeNumber
-    if (input.department !== undefined) updates.department = input.department
+    if (input.departmentId !== undefined) updates.department_id = input.departmentId
     if (input.jobTitle !== undefined) updates.job_title = input.jobTitle
+    if (input.employmentType !== undefined) updates.employment_type = input.employmentType
     if (input.hireDate !== undefined) updates.hire_date = input.hireDate
-    if (input.payType !== undefined) updates.pay_type = input.payType
-    if (input.payRate !== undefined) updates.pay_rate = input.payRate
-    if (input.hoursPerWeek !== undefined) updates.hours_per_week = input.hoursPerWeek
-    if (input.td1FederalClaim !== undefined) updates.td1_federal_claim = input.td1FederalClaim
-    if (input.td1ProvincialClaim !== undefined) updates.td1_provincial_claim = input.td1ProvincialClaim
+    if (input.probationEndDate !== undefined) updates.probation_end_date = input.probationEndDate
+    if (input.workHoursPerWeek !== undefined) updates.work_hours_per_week = input.workHoursPerWeek
+    if (input.bankName !== undefined) updates.bank_name = input.bankName
     if (input.bankAccountNumber !== undefined) updates.bank_account_number = input.bankAccountNumber
-    if (input.bankTransitNumber !== undefined) updates.bank_transit_number = input.bankTransitNumber
-    if (input.bankInstitutionNumber !== undefined) updates.bank_institution_number = input.bankInstitutionNumber
-    if (input.notes !== undefined) updates.notes = input.notes
+    if (input.bankRoutingNumber !== undefined) updates.bank_routing_number = input.bankRoutingNumber
+    if (input.taxId !== undefined) updates.tax_id = input.taxId
+    if (input.taxFilingStatus !== undefined) updates.tax_filing_status = input.taxFilingStatus
+    if (input.taxWithholdingAllowances !== undefined) updates.tax_withholding_allowances = input.taxWithholdingAllowances
+    if (input.bio !== undefined) updates.bio = input.bio
     
     const { data, error } = await supabase
       .from('employees')
@@ -228,7 +263,7 @@ export const employeesService = {
     const supabase = createClient()
     
     const updates: Record<string, any> = { 
-      status,
+      employment_status: status,
       updated_at: new Date().toISOString()
     }
     
@@ -276,53 +311,67 @@ export const employeesService = {
   }> {
     const supabase = createClient()
     
-    const { data, error } = await supabase
+    // Get employees
+    const { data: employees, error: empError } = await supabase
       .from('employees')
-      .select('status, pay_type, pay_rate, hours_per_week')
+      .select('id, employment_status, work_hours_per_week')
       .eq('organization_id', organizationId)
     
-    if (error) {
-      console.error('Error fetching employee stats:', error)
+    if (empError) {
+      console.error('Error fetching employee stats:', empError)
       return { totalEmployees: 0, activeEmployees: 0, onLeave: 0, terminated: 0, totalPayroll: 0 }
     }
     
-    const employees = data || []
-    const active = employees.filter(e => e.status === 'active')
+    const empList = employees || []
+    const active = empList.filter(e => e.employment_status === 'active')
     
-    // Calculate monthly payroll estimate
+    // Get compensation for active employees
     let totalPayroll = 0
-    active.forEach(emp => {
-      if (emp.pay_type === 'salary') {
-        totalPayroll += (emp.pay_rate || 0) / 12
-      } else {
-        totalPayroll += (emp.pay_rate || 0) * (emp.hours_per_week || 40) * 4.33
+    if (active.length > 0) {
+      const { data: comps } = await supabase
+        .from('employee_compensation')
+        .select('employee_id, pay_type, amount')
+        .in('employee_id', active.map(e => e.id))
+        .is('end_date', null)
+      
+      if (comps) {
+        comps.forEach(comp => {
+          const emp = active.find(e => e.id === comp.employee_id)
+          if (comp.pay_type === 'salary') {
+            totalPayroll += (comp.amount || 0) / 12
+          } else {
+            // hourly - estimate monthly
+            totalPayroll += (comp.amount || 0) * (emp?.work_hours_per_week || 40) * 4.33
+          }
+        })
       }
-    })
+    }
     
     return {
-      totalEmployees: employees.length,
+      totalEmployees: empList.length,
       activeEmployees: active.length,
-      onLeave: employees.filter(e => e.status === 'on_leave').length,
-      terminated: employees.filter(e => e.status === 'terminated').length,
+      onLeave: empList.filter(e => e.employment_status === 'on_leave').length,
+      terminated: empList.filter(e => e.employment_status === 'terminated' || e.employment_status === 'resigned').length,
       totalPayroll,
     }
   },
   
-  async getDepartments(organizationId: string): Promise<string[]> {
+  async getDepartments(organizationId: string): Promise<{ id: string; name: string }[]> {
     const supabase = createClient()
     
-    const { data } = await supabase
-      .from('employees')
-      .select('department')
+    const { data, error } = await supabase
+      .from('departments')
+      .select('id, name')
       .eq('organization_id', organizationId)
-      .not('department', 'is', null)
+      .eq('is_active', true)
+      .order('name')
     
-    const departments = new Set<string>()
-    ;(data || []).forEach(e => {
-      if (e.department) departments.add(e.department)
-    })
+    if (error) {
+      console.error('Error fetching departments:', error)
+      return []
+    }
     
-    return Array.from(departments).sort()
+    return data || []
   },
 }
 
@@ -334,32 +383,42 @@ function mapEmployeeFromDb(row: any): Employee {
   return {
     id: row.id,
     organizationId: row.organization_id,
+    userId: row.user_id,
+    employeeNumber: row.employee_number,
     firstName: row.first_name,
     lastName: row.last_name,
     email: row.email,
     phone: row.phone,
-    address: row.address,
-    city: row.city,
-    province: row.province || 'ON',
-    postalCode: row.postal_code,
-    sin: row.sin,
+    mobile: row.mobile,
     dateOfBirth: row.date_of_birth,
-    employeeNumber: row.employee_number,
-    department: row.department,
+    gender: row.gender,
+    addressLine1: row.address_line1,
+    addressLine2: row.address_line2,
+    city: row.city,
+    state: row.state,
+    postalCode: row.postal_code,
+    country: row.country,
+    emergencyContactName: row.emergency_contact_name,
+    emergencyContactPhone: row.emergency_contact_phone,
+    emergencyContactRelationship: row.emergency_contact_relationship,
+    departmentId: row.department_id,
     jobTitle: row.job_title,
+    employmentType: row.employment_type || 'full_time',
+    employmentStatus: row.employment_status || 'active',
+    managerId: row.manager_id,
     hireDate: row.hire_date,
-    startDate: row.start_date,
+    probationEndDate: row.probation_end_date,
     terminationDate: row.termination_date,
-    status: row.status || 'active',
-    payType: row.pay_type || 'hourly',
-    payRate: row.pay_rate || 0,
-    hoursPerWeek: row.hours_per_week || 40,
-    td1FederalClaim: row.td1_federal_claim || 15000,
-    td1ProvincialClaim: row.td1_provincial_claim || 11865,
+    workHoursPerWeek: row.work_hours_per_week || 40,
+    bankName: row.bank_name,
     bankAccountNumber: row.bank_account_number,
-    bankTransitNumber: row.bank_transit_number,
-    bankInstitutionNumber: row.bank_institution_number,
-    notes: row.notes,
+    bankRoutingNumber: row.bank_routing_number,
+    taxId: row.tax_id,
+    taxFilingStatus: row.tax_filing_status,
+    taxWithholdingAllowances: row.tax_withholding_allowances || 0,
+    avatarUrl: row.avatar_url,
+    bio: row.bio,
+    customFields: row.custom_fields,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }

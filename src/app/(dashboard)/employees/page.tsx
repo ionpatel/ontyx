@@ -38,15 +38,24 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { formatCurrency, cn } from "@/lib/utils"
-import { useEmployees, useEmployeeStats } from "@/hooks/use-employees"
-import type { CreateEmployeeInput, EmployeeStatus, PayType } from "@/services/employees"
+import { useEmployees, useEmployeeStats, useDepartments } from "@/hooks/use-employees"
+import type { CreateEmployeeInput, EmployeeStatus, EmploymentType } from "@/services/employees"
 import { useToast } from "@/components/ui/toast"
 
 const statusConfig: Record<EmployeeStatus, { label: string; color: string }> = {
   active: { label: 'Active', color: 'bg-green-100 text-green-700' },
   on_leave: { label: 'On Leave', color: 'bg-amber-100 text-amber-700' },
   terminated: { label: 'Terminated', color: 'bg-slate-100 text-slate-700' },
+  resigned: { label: 'Resigned', color: 'bg-slate-100 text-slate-700' },
 }
+
+const employmentTypes: { value: EmploymentType; label: string }[] = [
+  { value: 'full_time', label: 'Full-time' },
+  { value: 'part_time', label: 'Part-time' },
+  { value: 'contract', label: 'Contract' },
+  { value: 'intern', label: 'Intern' },
+  { value: 'freelance', label: 'Freelance' },
+]
 
 const PROVINCES = [
   { code: 'AB', name: 'Alberta' },
@@ -67,6 +76,7 @@ const PROVINCES = [
 export default function EmployeesPage() {
   const { employees, loading, createEmployee, updateEmployee, updateStatus, deleteEmployee, refetch } = useEmployees()
   const { stats } = useEmployeeStats()
+  const { departments } = useDepartments()
   const { success, error: showError } = useToast()
 
   const [search, setSearch] = useState('')
@@ -80,13 +90,13 @@ export default function EmployeesPage() {
     lastName: '',
     email: '',
     phone: '',
-    department: '',
+    departmentId: '',
     jobTitle: '',
     hireDate: new Date().toISOString().split('T')[0],
-    payType: 'hourly',
-    payRate: 0,
-    hoursPerWeek: 40,
-    province: 'ON',
+    employmentType: 'full_time',
+    workHoursPerWeek: 40,
+    state: 'ON',
+    country: 'CA',
   })
 
   const resetForm = () => {
@@ -95,13 +105,13 @@ export default function EmployeesPage() {
       lastName: '',
       email: '',
       phone: '',
-      department: '',
+      departmentId: '',
       jobTitle: '',
       hireDate: new Date().toISOString().split('T')[0],
-      payType: 'hourly',
-      payRate: 0,
-      hoursPerWeek: 40,
-      province: 'ON',
+      employmentType: 'full_time',
+      workHoursPerWeek: 40,
+      state: 'ON',
+      country: 'CA',
     })
   }
 
@@ -110,9 +120,9 @@ export default function EmployeesPage() {
       emp.firstName.toLowerCase().includes(search.toLowerCase()) ||
       emp.lastName.toLowerCase().includes(search.toLowerCase()) ||
       emp.email?.toLowerCase().includes(search.toLowerCase()) ||
-      emp.department?.toLowerCase().includes(search.toLowerCase())
+      emp.jobTitle?.toLowerCase().includes(search.toLowerCase())
     
-    const matchesStatus = statusFilter === 'all' || emp.status === statusFilter
+    const matchesStatus = statusFilter === 'all' || emp.employmentStatus === statusFilter
     
     return matchesSearch && matchesStatus
   })
@@ -178,17 +188,22 @@ export default function EmployeesPage() {
       lastName: emp.lastName,
       email: emp.email || '',
       phone: emp.phone || '',
-      department: emp.department || '',
+      mobile: emp.mobile || '',
+      departmentId: emp.departmentId || '',
       jobTitle: emp.jobTitle || '',
       hireDate: emp.hireDate || '',
-      payType: emp.payType,
-      payRate: emp.payRate,
-      hoursPerWeek: emp.hoursPerWeek,
-      province: emp.province,
-      sin: emp.sin || '',
-      address: emp.address || '',
+      employmentType: emp.employmentType,
+      workHoursPerWeek: emp.workHoursPerWeek,
+      addressLine1: emp.addressLine1 || '',
+      addressLine2: emp.addressLine2 || '',
       city: emp.city || '',
+      state: emp.state || 'ON',
       postalCode: emp.postalCode || '',
+      country: emp.country || 'CA',
+      taxId: emp.taxId || '',
+      emergencyContactName: emp.emergencyContactName || '',
+      emergencyContactPhone: emp.emergencyContactPhone || '',
+      emergencyContactRelationship: emp.emergencyContactRelationship || '',
     })
     setShowEdit(emp.id)
   }
@@ -200,6 +215,12 @@ export default function EmployeesPage() {
       month: 'short',
       day: 'numeric',
     })
+  }
+
+  const getDepartmentName = (deptId?: string) => {
+    if (!deptId) return '—'
+    const dept = departments.find(d => d.id === deptId)
+    return dept?.name || '—'
   }
 
   if (loading) {
@@ -286,6 +307,7 @@ export default function EmployeesPage() {
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="on_leave">On Leave</SelectItem>
             <SelectItem value="terminated">Terminated</SelectItem>
+            <SelectItem value="resigned">Resigned</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -316,14 +338,14 @@ export default function EmployeesPage() {
                   <TableHead>Department</TableHead>
                   <TableHead>Job Title</TableHead>
                   <TableHead>Hire Date</TableHead>
-                  <TableHead>Compensation</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-[80px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredEmployees.map((emp) => {
-                  const status = statusConfig[emp.status]
+                  const status = statusConfig[emp.employmentStatus]
                   return (
                     <TableRow key={emp.id}>
                       <TableCell>
@@ -336,21 +358,11 @@ export default function EmployeesPage() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{emp.department || '—'}</TableCell>
+                      <TableCell>{getDepartmentName(emp.departmentId)}</TableCell>
                       <TableCell>{emp.jobTitle || '—'}</TableCell>
                       <TableCell>{formatDate(emp.hireDate)}</TableCell>
                       <TableCell>
-                        <div className="font-medium">
-                          {emp.payType === 'salary' 
-                            ? `${formatCurrency(emp.payRate)}/yr`
-                            : `${formatCurrency(emp.payRate)}/hr`
-                          }
-                        </div>
-                        {emp.payType === 'hourly' && (
-                          <div className="text-xs text-muted-foreground">
-                            {emp.hoursPerWeek} hrs/week
-                          </div>
-                        )}
+                        {employmentTypes.find(t => t.value === emp.employmentType)?.label || emp.employmentType}
                       </TableCell>
                       <TableCell>
                         <Badge className={cn("text-xs", status.color)}>
@@ -368,7 +380,7 @@ export default function EmployeesPage() {
                             <DropdownMenuItem onClick={() => openEdit(emp)}>
                               <Edit className="mr-2 h-4 w-4" /> Edit
                             </DropdownMenuItem>
-                            {emp.status === 'active' && (
+                            {emp.employmentStatus === 'active' && (
                               <DropdownMenuItem 
                                 onClick={() => handleTerminate(emp.id, `${emp.firstName} ${emp.lastName}`)}
                               >
@@ -411,10 +423,11 @@ export default function EmployeesPage() {
           </DialogHeader>
           
           <Tabs defaultValue="personal" className="mt-4">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="personal">Personal</TabsTrigger>
+              <TabsTrigger value="address">Address</TabsTrigger>
               <TabsTrigger value="employment">Employment</TabsTrigger>
-              <TabsTrigger value="compensation">Compensation</TabsTrigger>
+              <TabsTrigger value="emergency">Emergency</TabsTrigger>
             </TabsList>
 
             <TabsContent value="personal" className="space-y-4 mt-4">
@@ -455,15 +468,53 @@ export default function EmployeesPage() {
                   />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Mobile</Label>
+                  <Input
+                    value={form.mobile}
+                    onChange={(e) => setForm(f => ({ ...f, mobile: e.target.value }))}
+                    placeholder="(416) 555-0124"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Date of Birth</Label>
+                  <Input
+                    type="date"
+                    value={form.dateOfBirth}
+                    onChange={(e) => setForm(f => ({ ...f, dateOfBirth: e.target.value }))}
+                  />
+                </div>
+              </div>
               <div className="space-y-2">
-                <Label>Address</Label>
+                <Label>SIN / Tax ID</Label>
                 <Input
-                  value={form.address}
-                  onChange={(e) => setForm(f => ({ ...f, address: e.target.value }))}
+                  value={form.taxId}
+                  onChange={(e) => setForm(f => ({ ...f, taxId: e.target.value }))}
+                  placeholder="XXX-XXX-XXX"
+                />
+                <p className="text-xs text-muted-foreground">Required for payroll and T4</p>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="address" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Address Line 1</Label>
+                <Input
+                  value={form.addressLine1}
+                  onChange={(e) => setForm(f => ({ ...f, addressLine1: e.target.value }))}
                   placeholder="123 Main Street"
                 />
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Address Line 2</Label>
+                <Input
+                  value={form.addressLine2}
+                  onChange={(e) => setForm(f => ({ ...f, addressLine2: e.target.value }))}
+                  placeholder="Suite 100"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>City</Label>
                   <Input
@@ -473,10 +524,10 @@ export default function EmployeesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Province</Label>
+                  <Label>Province/State</Label>
                   <Select
-                    value={form.province}
-                    onValueChange={(v) => setForm(f => ({ ...f, province: v }))}
+                    value={form.state}
+                    onValueChange={(v) => setForm(f => ({ ...f, state: v }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -488,6 +539,8 @@ export default function EmployeesPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Postal Code</Label>
                   <Input
@@ -496,15 +549,21 @@ export default function EmployeesPage() {
                     placeholder="M5V 1A1"
                   />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>SIN (Social Insurance Number)</Label>
-                <Input
-                  value={form.sin}
-                  onChange={(e) => setForm(f => ({ ...f, sin: e.target.value }))}
-                  placeholder="XXX-XXX-XXX"
-                />
-                <p className="text-xs text-muted-foreground">Required for payroll and T4</p>
+                <div className="space-y-2">
+                  <Label>Country</Label>
+                  <Select
+                    value={form.country}
+                    onValueChange={(v) => setForm(f => ({ ...f, country: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CA">Canada</SelectItem>
+                      <SelectItem value="US">United States</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </TabsContent>
 
@@ -512,11 +571,20 @@ export default function EmployeesPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Department</Label>
-                  <Input
-                    value={form.department}
-                    onChange={(e) => setForm(f => ({ ...f, department: e.target.value }))}
-                    placeholder="Sales"
-                  />
+                  <Select
+                    value={form.departmentId || ''}
+                    onValueChange={(v) => setForm(f => ({ ...f, departmentId: v || undefined }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">No Department</SelectItem>
+                      {departments.map(d => (
+                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Job Title</Label>
@@ -527,84 +595,78 @@ export default function EmployeesPage() {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Hire Date</Label>
-                <Input
-                  type="date"
-                  value={form.hireDate}
-                  onChange={(e) => setForm(f => ({ ...f, hireDate: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Employee Number (Optional)</Label>
-                <Input
-                  value={form.employeeNumber}
-                  onChange={(e) => setForm(f => ({ ...f, employeeNumber: e.target.value }))}
-                  placeholder="EMP-001"
-                />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="compensation" className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label>Pay Type</Label>
-                <Select
-                  value={form.payType}
-                  onValueChange={(v) => setForm(f => ({ ...f, payType: v as PayType }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hourly">Hourly</SelectItem>
-                    <SelectItem value="salary">Salary</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Employment Type</Label>
+                  <Select
+                    value={form.employmentType}
+                    onValueChange={(v) => setForm(f => ({ ...f, employmentType: v as EmploymentType }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {employmentTypes.map(t => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Hours per Week</Label>
+                  <Input
+                    type="number"
+                    value={form.workHoursPerWeek || ''}
+                    onChange={(e) => setForm(f => ({ ...f, workHoursPerWeek: parseFloat(e.target.value) || 40 }))}
+                    placeholder="40"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>{form.payType === 'salary' ? 'Annual Salary' : 'Hourly Rate'}</Label>
+                  <Label>Hire Date *</Label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    value={form.payRate || ''}
-                    onChange={(e) => setForm(f => ({ ...f, payRate: parseFloat(e.target.value) || 0 }))}
-                    placeholder={form.payType === 'salary' ? '50000' : '25.00'}
+                    type="date"
+                    value={form.hireDate}
+                    onChange={(e) => setForm(f => ({ ...f, hireDate: e.target.value }))}
                   />
                 </div>
-                {form.payType === 'hourly' && (
-                  <div className="space-y-2">
-                    <Label>Hours per Week</Label>
-                    <Input
-                      type="number"
-                      value={form.hoursPerWeek || ''}
-                      onChange={(e) => setForm(f => ({ ...f, hoursPerWeek: parseFloat(e.target.value) || 40 }))}
-                      placeholder="40"
-                    />
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label>Employee Number</Label>
+                  <Input
+                    value={form.employeeNumber}
+                    onChange={(e) => setForm(f => ({ ...f, employeeNumber: e.target.value }))}
+                    placeholder="EMP-001"
+                  />
+                </div>
               </div>
-              <div className="bg-muted/30 p-4 rounded-lg">
-                <h4 className="font-medium mb-2">Tax Deduction Claims</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>TD1 Federal Claim</Label>
-                    <Input
-                      type="number"
-                      value={form.td1FederalClaim || ''}
-                      onChange={(e) => setForm(f => ({ ...f, td1FederalClaim: parseFloat(e.target.value) || 15000 }))}
-                      placeholder="15000"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>TD1 Provincial Claim</Label>
-                    <Input
-                      type="number"
-                      value={form.td1ProvincialClaim || ''}
-                      onChange={(e) => setForm(f => ({ ...f, td1ProvincialClaim: parseFloat(e.target.value) || 11865 }))}
-                      placeholder="11865"
-                    />
-                  </div>
+            </TabsContent>
+
+            <TabsContent value="emergency" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Emergency Contact Name</Label>
+                <Input
+                  value={form.emergencyContactName}
+                  onChange={(e) => setForm(f => ({ ...f, emergencyContactName: e.target.value }))}
+                  placeholder="Jane Doe"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Emergency Contact Phone</Label>
+                  <Input
+                    value={form.emergencyContactPhone}
+                    onChange={(e) => setForm(f => ({ ...f, emergencyContactPhone: e.target.value }))}
+                    placeholder="(416) 555-0125"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Relationship</Label>
+                  <Input
+                    value={form.emergencyContactRelationship}
+                    onChange={(e) => setForm(f => ({ ...f, emergencyContactRelationship: e.target.value }))}
+                    placeholder="Spouse"
+                  />
                 </div>
               </div>
             </TabsContent>

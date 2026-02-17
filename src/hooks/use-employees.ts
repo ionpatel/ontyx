@@ -9,7 +9,7 @@ import {
 } from '@/services/employees'
 import { useAuth } from './use-auth'
 
-export function useEmployees(filters?: { status?: EmployeeStatus; department?: string }) {
+export function useEmployees(filters?: { status?: EmployeeStatus; departmentId?: string }) {
   const { organizationId, loading: authLoading } = useAuth()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
@@ -30,7 +30,7 @@ export function useEmployees(filters?: { status?: EmployeeStatus; department?: s
     } finally {
       setLoading(false)
     }
-  }, [organizationId, filters?.status, filters?.department, authLoading])
+  }, [organizationId, filters?.status, filters?.departmentId, authLoading])
 
   useEffect(() => {
     fetchEmployees()
@@ -76,7 +76,7 @@ export function useEmployees(filters?: { status?: EmployeeStatus; department?: s
       if (success) {
         setEmployees(prev => prev.map(e => 
           e.id === id 
-            ? { ...e, status, terminationDate: terminationDate || e.terminationDate }
+            ? { ...e, employmentStatus: status, terminationDate: terminationDate || e.terminationDate }
             : e
         ))
       }
@@ -168,7 +168,7 @@ export function useEmployeeStats() {
 
 export function useDepartments() {
   const { organizationId, loading: authLoading } = useAuth()
-  const [departments, setDepartments] = useState<string[]>([])
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
