@@ -4,9 +4,11 @@ import {
   DollarSign, FileText, TrendingUp, TrendingDown,
   ArrowUpRight, Users, AlertCircle, Clock,
   Package, Activity, ShoppingCart, Building2,
-  CheckCircle, Send, Eye, CreditCard
+  CheckCircle, Send, Eye, CreditCard, Plus,
+  Receipt, Truck, UserPlus, Calendar, Zap
 } from "lucide-react"
 import Link from "next/link"
+import { BusinessInsights } from './insights'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -122,6 +124,38 @@ export default function DashboardPage() {
           </Button>
         </div>
       </div>
+
+      {/* Quick Actions Bar - Like Odoo */}
+      <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+        <CardContent className="py-3">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <span className="text-sm font-medium text-muted-foreground whitespace-nowrap flex items-center gap-2">
+              <Zap className="h-4 w-4" /> Quick Actions:
+            </span>
+            <Button variant="outline" size="sm" asChild className="whitespace-nowrap">
+              <Link href="/invoices/new"><Plus className="h-3 w-3 mr-1" /> Invoice</Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild className="whitespace-nowrap">
+              <Link href="/sales/new"><ShoppingCart className="h-3 w-3 mr-1" /> Sale</Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild className="whitespace-nowrap">
+              <Link href="/purchases/new"><Truck className="h-3 w-3 mr-1" /> Purchase</Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild className="whitespace-nowrap">
+              <Link href="/contacts/new"><UserPlus className="h-3 w-3 mr-1" /> Contact</Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild className="whitespace-nowrap">
+              <Link href="/appointments/new"><Calendar className="h-3 w-3 mr-1" /> Appointment</Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild className="whitespace-nowrap">
+              <Link href="/pos"><Receipt className="h-3 w-3 mr-1" /> Open POS</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Business Insights & Alerts */}
+      <BusinessInsights />
 
       {/* Main Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

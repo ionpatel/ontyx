@@ -528,6 +528,24 @@ export default function SettingsPage() {
               </Button>
             </CardContent>
           </Card>
+
+          <Card className="border-yellow-200 bg-gradient-to-r from-yellow-50 to-orange-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span className="text-yellow-500">⚡</span> Automations
+              </CardTitle>
+              <CardDescription>
+                Automate workflows and connect your apps
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" asChild className="border-yellow-300">
+                <Link href="/settings/automations">
+                  Configure Automations →
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Billing Tab */}
