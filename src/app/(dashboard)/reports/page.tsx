@@ -2,14 +2,16 @@
 
 import { useState } from "react"
 import { 
-  FileText, TrendingUp, TrendingDown, DollarSign, 
-  Calendar, Download, BarChart3, PieChart, 
-  ArrowUpRight, ArrowDownRight, Clock
+  BarChart3, TrendingUp, TrendingDown, DollarSign, 
+  FileText, Download, Calendar, Loader2, AlertCircle,
+  PieChart, ArrowUpRight, ArrowDownRight, Wallet
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -17,149 +19,83 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { 
-  Table, TableBody, TableCell, TableHead, 
-  TableHeader, TableRow, TableFooter 
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table"
-import { Separator } from "@/components/ui/separator"
-import { formatCurrency, formatDate, cn } from "@/lib/utils"
-import { mockInvoices, mockBills, mockChartOfAccounts } from "@/lib/mock-data"
+import { formatCurrency, cn } from "@/lib/utils"
+import { 
+  useProfitAndLoss, 
+  useBalanceSheet, 
+  useTaxSummary, 
+  useAccountsAging,
+  useFinancialSummary 
+} from "@/hooks/use-reports"
+import type { DateRange } from "@/services/reports"
 
-// Mock report data
-const profitLossData = {
-  period: { start: "2024-01-01", end: "2024-02-14" },
-  revenue: [
-    { name: "Sales Revenue", amount: 125000 },
-    { name: "Service Revenue", amount: 85000 },
-    { name: "Other Income", amount: 5000 },
-  ],
-  expenses: [
-    { name: "Cost of Goods Sold", amount: 45000 },
-    { name: "Salaries & Wages", amount: 65000 },
-    { name: "Rent Expense", amount: 24000 },
-    { name: "Utilities", amount: 4500 },
-    { name: "Office Supplies", amount: 3850 },
-    { name: "Software & Services", amount: 12000 },
-    { name: "Marketing & Advertising", amount: 8000 },
-    { name: "Professional Fees", amount: 5000 },
-    { name: "Depreciation", amount: 5000 },
-  ],
-}
-
-const balanceSheetData = {
-  assets: {
-    current: [
-      { name: "Cash and Cash Equivalents", amount: 211170.50 },
-      { name: "Accounts Receivable", amount: 24650 },
-      { name: "Inventory", amount: 15000 },
-      { name: "Prepaid Expenses", amount: 5000 },
-    ],
-    nonCurrent: [
-      { name: "Fixed Assets", amount: 75000 },
-      { name: "Less: Accumulated Depreciation", amount: -15000 },
-    ],
-  },
-  liabilities: {
-    current: [
-      { name: "Accounts Payable", amount: 9275 },
-      { name: "Accrued Expenses", amount: 3500 },
-      { name: "Sales Tax Payable", amount: 2650 },
-    ],
-    nonCurrent: [
-      { name: "Long-term Debt", amount: 50000 },
-    ],
-  },
-  equity: [
-    { name: "Owner's Equity", amount: 150000 },
-    { name: "Retained Earnings", amount: 75000 },
-    { name: "Current Period Earnings", amount: 25395.50 },
-  ],
-}
-
-const cashFlowData = {
-  operating: [
-    { name: "Net Income", amount: 42650 },
-    { name: "Depreciation", amount: 5000 },
-    { name: "Changes in Accounts Receivable", amount: -8500 },
-    { name: "Changes in Accounts Payable", amount: 2500 },
-    { name: "Changes in Inventory", amount: -3000 },
-  ],
-  investing: [
-    { name: "Purchase of Equipment", amount: -15000 },
-    { name: "Sale of Assets", amount: 0 },
-  ],
-  financing: [
-    { name: "Loan Proceeds", amount: 0 },
-    { name: "Loan Repayments", amount: -5000 },
-    { name: "Owner Distributions", amount: -10000 },
-  ],
-  opening: 192170.50,
-}
-
-// Generate aged receivables from invoices
-const generateAgedReceivables = () => {
-  const today = new Date()
-  const items: { name: string; current: number; days30: number; days60: number; days90: number; over90: number; total: number }[] = []
+// Date range helpers
+function getDateRange(period: string): DateRange {
+  const now = new Date()
+  let startDate: Date
+  let endDate = now
   
-  const customerInvoices = mockInvoices.reduce((acc, inv) => {
-    if (inv.amountDue > 0) {
-      const key = inv.customerName
-      if (!acc[key]) acc[key] = { name: key, current: 0, days30: 0, days60: 0, days90: 0, over90: 0, total: 0 }
-      
-      const dueDate = new Date(inv.dueDate)
-      const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))
-      
-      if (daysOverdue <= 0) acc[key].current += inv.amountDue
-      else if (daysOverdue <= 30) acc[key].days30 += inv.amountDue
-      else if (daysOverdue <= 60) acc[key].days60 += inv.amountDue
-      else if (daysOverdue <= 90) acc[key].days90 += inv.amountDue
-      else acc[key].over90 += inv.amountDue
-      
-      acc[key].total += inv.amountDue
-    }
-    return acc
-  }, {} as Record<string, any>)
+  switch (period) {
+    case 'this-month':
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      break
+    case 'last-month':
+      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      endDate = new Date(now.getFullYear(), now.getMonth(), 0)
+      break
+    case 'this-quarter':
+      const quarter = Math.floor(now.getMonth() / 3)
+      startDate = new Date(now.getFullYear(), quarter * 3, 1)
+      endDate = new Date(now.getFullYear(), (quarter + 1) * 3, 0)
+      break
+    case 'this-year':
+      startDate = new Date(now.getFullYear(), 0, 1)
+      endDate = new Date(now.getFullYear(), 11, 31)
+      break
+    case 'last-year':
+      startDate = new Date(now.getFullYear() - 1, 0, 1)
+      endDate = new Date(now.getFullYear() - 1, 11, 31)
+      break
+    default:
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+      endDate = now
+  }
   
-  return Object.values(customerInvoices)
+  return {
+    startDate: startDate.toISOString().split('T')[0],
+    endDate: endDate.toISOString().split('T')[0],
+  }
 }
-
-const agedReceivables = generateAgedReceivables()
 
 export default function ReportsPage() {
-  const [dateRange, setDateRange] = useState("ytd")
+  const [period, setPeriod] = useState('this-month')
+  const [dateRange, setDateRange] = useState<DateRange>(getDateRange('this-month'))
+  const [asOfDate, setAsOfDate] = useState(new Date().toISOString().split('T')[0])
+  
+  const { summary, loading: summaryLoading } = useFinancialSummary()
+  const { report: pnl, loading: pnlLoading } = useProfitAndLoss(dateRange)
+  const { report: balance, loading: balanceLoading } = useBalanceSheet(asOfDate)
+  const { report: tax, loading: taxLoading } = useTaxSummary(dateRange)
+  const { report: aging, loading: agingLoading } = useAccountsAging(asOfDate)
 
-  const totalRevenue = profitLossData.revenue.reduce((sum, r) => sum + r.amount, 0)
-  const totalExpenses = profitLossData.expenses.reduce((sum, e) => sum + e.amount, 0)
-  const netProfit = totalRevenue - totalExpenses
-  const grossProfit = totalRevenue - profitLossData.expenses.find(e => e.name === "Cost of Goods Sold")!.amount
+  const handlePeriodChange = (value: string) => {
+    setPeriod(value)
+    if (value !== 'custom') {
+      setDateRange(getDateRange(value))
+    }
+  }
 
-  const totalCurrentAssets = balanceSheetData.assets.current.reduce((sum, a) => sum + a.amount, 0)
-  const totalNonCurrentAssets = balanceSheetData.assets.nonCurrent.reduce((sum, a) => sum + a.amount, 0)
-  const totalAssets = totalCurrentAssets + totalNonCurrentAssets
-
-  const totalCurrentLiabilities = balanceSheetData.liabilities.current.reduce((sum, l) => sum + l.amount, 0)
-  const totalNonCurrentLiabilities = balanceSheetData.liabilities.nonCurrent.reduce((sum, l) => sum + l.amount, 0)
-  const totalLiabilities = totalCurrentLiabilities + totalNonCurrentLiabilities
-
-  const totalEquity = balanceSheetData.equity.reduce((sum, e) => sum + e.amount, 0)
-
-  const netOperatingCash = cashFlowData.operating.reduce((sum, o) => sum + o.amount, 0)
-  const netInvestingCash = cashFlowData.investing.reduce((sum, i) => sum + i.amount, 0)
-  const netFinancingCash = cashFlowData.financing.reduce((sum, f) => sum + f.amount, 0)
-  const netCashChange = netOperatingCash + netInvestingCash + netFinancingCash
-  const closingCash = cashFlowData.opening + netCashChange
-
-  const arTotals = agedReceivables.reduce(
-    (acc, item) => ({
-      current: acc.current + item.current,
-      days30: acc.days30 + item.days30,
-      days60: acc.days60 + item.days60,
-      days90: acc.days90 + item.days90,
-      over90: acc.over90 + item.over90,
-      total: acc.total + item.total,
-    }),
-    { current: 0, days30: 0, days60: 0, days90: 0, over90: 0, total: 0 }
-  )
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-CA', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+  }
 
   return (
     <div className="flex-1 space-y-6 p-6">
@@ -168,541 +104,492 @@ export default function ReportsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Reports</h1>
           <p className="text-muted-foreground">
-            Financial reports and analytics
+            Financial reports and business insights
           </p>
         </div>
-        <div className="flex gap-2">
-          <Select value={dateRange} onValueChange={setDateRange}>
+        <div className="flex gap-2 items-center">
+          <Select value={period} onValueChange={handlePeriodChange}>
             <SelectTrigger className="w-[180px]">
               <Calendar className="mr-2 h-4 w-4" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="mtd">Month to Date</SelectItem>
-              <SelectItem value="qtd">Quarter to Date</SelectItem>
-              <SelectItem value="ytd">Year to Date</SelectItem>
+              <SelectItem value="this-month">This Month</SelectItem>
               <SelectItem value="last-month">Last Month</SelectItem>
-              <SelectItem value="last-quarter">Last Quarter</SelectItem>
+              <SelectItem value="this-quarter">This Quarter</SelectItem>
+              <SelectItem value="this-year">This Year</SelectItem>
               <SelectItem value="last-year">Last Year</SelectItem>
               <SelectItem value="custom">Custom Range</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline">
-            <Download className="mr-2 h-4 w-4" /> Export
-          </Button>
+          {period === 'custom' && (
+            <>
+              <Input
+                type="date"
+                value={dateRange.startDate}
+                onChange={(e) => setDateRange(r => ({ ...r, startDate: e.target.value }))}
+                className="w-[150px]"
+              />
+              <span className="text-muted-foreground">to</span>
+              <Input
+                type="date"
+                value={dateRange.endDate}
+                onChange={(e) => setDateRange(r => ({ ...r, endDate: e.target.value }))}
+                className="w-[150px]"
+              />
+            </>
+          )}
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      {/* Quick Summary */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <TrendingUp className="h-4 w-4 text-success" />
+            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <ArrowUpRight className="h-3 w-3 text-success" />
-              <span className="text-success">+12.5%</span> from last period
-            </p>
+            <div className="text-2xl font-bold text-green-600">
+              {summaryLoading ? '...' : formatCurrency(summary?.totalRevenue || 0)}
+            </div>
+            <p className="text-xs text-muted-foreground">This month</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-            <TrendingDown className="h-4 w-4 text-destructive" />
+            <CardTitle className="text-sm font-medium">Expenses</CardTitle>
+            <TrendingDown className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalExpenses)}</div>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <ArrowDownRight className="h-3 w-3 text-destructive" />
-              <span className="text-destructive">+5.2%</span> from last period
-            </p>
+            <div className="text-2xl font-bold text-red-600">
+              {summaryLoading ? '...' : formatCurrency(summary?.totalExpenses || 0)}
+            </div>
+            <p className="text-xs text-muted-foreground">This month</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
+            <CardTitle className="text-sm font-medium">Net Income</CardTitle>
             <DollarSign className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className={cn("text-2xl font-bold", netProfit >= 0 ? "text-success" : "text-destructive")}>
-              {formatCurrency(netProfit)}
+            <div className={cn(
+              "text-2xl font-bold",
+              (summary?.netIncome || 0) >= 0 ? "text-green-600" : "text-red-600"
+            )}>
+              {summaryLoading ? '...' : formatCurrency(summary?.netIncome || 0)}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {((netProfit / totalRevenue) * 100).toFixed(1)}% profit margin
-            </p>
+            <p className="text-xs text-muted-foreground">This month</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Outstanding AR</CardTitle>
-            <Clock className="h-4 w-4 text-warning" />
+            <CardTitle className="text-sm font-medium">Receivables</CardTitle>
+            <ArrowDownRight className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(arTotals.total)}</div>
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(arTotals.days30 + arTotals.days60 + arTotals.days90 + arTotals.over90)} overdue
-            </p>
+            <div className="text-2xl font-bold text-amber-600">
+              {summaryLoading ? '...' : formatCurrency(summary?.accountsReceivable || 0)}
+            </div>
+            <p className="text-xs text-muted-foreground">Outstanding</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Cash</CardTitle>
+            <Wallet className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {summaryLoading ? '...' : formatCurrency(summary?.cashOnHand || 0)}
+            </div>
+            <p className="text-xs text-muted-foreground">On hand</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Report Tabs */}
-      <Tabs defaultValue="pl" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-none lg:flex">
-          <TabsTrigger value="pl">
-            <BarChart3 className="mr-2 h-4 w-4" />
-            Profit & Loss
-          </TabsTrigger>
-          <TabsTrigger value="balance">
-            <PieChart className="mr-2 h-4 w-4" />
-            Balance Sheet
-          </TabsTrigger>
-          <TabsTrigger value="cashflow">
-            <DollarSign className="mr-2 h-4 w-4" />
-            Cash Flow
-          </TabsTrigger>
-          <TabsTrigger value="aged">
-            <Clock className="mr-2 h-4 w-4" />
-            Aged Reports
-          </TabsTrigger>
+      <Tabs defaultValue="pnl" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="pnl">Profit & Loss</TabsTrigger>
+          <TabsTrigger value="balance">Balance Sheet</TabsTrigger>
+          <TabsTrigger value="tax">Tax Summary</TabsTrigger>
+          <TabsTrigger value="aging">Accounts Aging</TabsTrigger>
         </TabsList>
 
-        {/* Profit & Loss */}
-        <TabsContent value="pl">
+        {/* Profit & Loss Tab */}
+        <TabsContent value="pnl">
           <Card>
             <CardHeader>
-              <CardTitle>Profit & Loss Statement</CardTitle>
-              <CardDescription>
-                {formatDate(profitLossData.period.start)} - {formatDate(profitLossData.period.end)}
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Profit & Loss Statement</CardTitle>
+                  <CardDescription>
+                    {formatDate(dateRange.startDate)} to {formatDate(dateRange.endDate)}
+                  </CardDescription>
+                </div>
+                <Button variant="outline" size="sm">
+                  <Download className="mr-2 h-4 w-4" /> Export
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {/* Revenue Section */}
-                <div>
-                  <h3 className="font-semibold text-lg mb-3 text-success">Revenue</h3>
-                  <Table>
-                    <TableBody>
-                      {profitLossData.revenue.map((item, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell className="pl-6">{item.name}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(item.amount)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                    <TableFooter>
-                      <TableRow className="font-semibold">
-                        <TableCell>Total Revenue</TableCell>
-                        <TableCell className="text-right">{formatCurrency(totalRevenue)}</TableCell>
-                      </TableRow>
-                    </TableFooter>
-                  </Table>
+              {pnlLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-
-                <Separator />
-
-                {/* Expenses Section */}
-                <div>
-                  <h3 className="font-semibold text-lg mb-3 text-destructive">Expenses</h3>
-                  <Table>
-                    <TableBody>
-                      {profitLossData.expenses.map((item, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell className="pl-6">{item.name}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(item.amount)}</TableCell>
-                        </TableRow>
+              ) : pnl ? (
+                <div className="space-y-6">
+                  {/* Revenue */}
+                  <div>
+                    <h3 className="font-semibold text-primary mb-3">REVENUE</h3>
+                    <div className="space-y-2">
+                      {pnl.revenue.items.map((item, idx) => (
+                        <div key={idx} className="flex justify-between py-1">
+                          <span className="text-muted-foreground">{item.category}</span>
+                          <span className="font-medium">{formatCurrency(item.amount)}</span>
+                        </div>
                       ))}
-                    </TableBody>
-                    <TableFooter>
-                      <TableRow className="font-semibold">
-                        <TableCell>Total Expenses</TableCell>
-                        <TableCell className="text-right">{formatCurrency(totalExpenses)}</TableCell>
-                      </TableRow>
-                    </TableFooter>
-                  </Table>
-                </div>
-
-                <Separator />
-
-                {/* Summary */}
-                <div className="bg-muted/50 rounded-lg p-6">
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Gross Profit</p>
-                      <p className="text-2xl font-bold">{formatCurrency(grossProfit)}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {((grossProfit / totalRevenue) * 100).toFixed(1)}% margin
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Operating Expenses</p>
-                      <p className="text-2xl font-bold">{formatCurrency(totalExpenses - 45000)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Net Profit</p>
-                      <p className={cn("text-2xl font-bold", netProfit >= 0 ? "text-success" : "text-destructive")}>
-                        {formatCurrency(netProfit)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {((netProfit / totalRevenue) * 100).toFixed(1)}% margin
-                      </p>
+                      <div className="flex justify-between py-2 border-t font-semibold">
+                        <span>Total Revenue</span>
+                        <span className="text-green-600">{formatCurrency(pnl.revenue.total)}</span>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Expenses */}
+                  <div>
+                    <h3 className="font-semibold text-primary mb-3">EXPENSES</h3>
+                    <div className="space-y-2">
+                      {pnl.expenses.items.map((item, idx) => (
+                        <div key={idx} className="flex justify-between py-1">
+                          <span className="text-muted-foreground">{item.category}</span>
+                          <span className="font-medium">{formatCurrency(item.amount)}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between py-2 border-t font-semibold">
+                        <span>Total Expenses</span>
+                        <span className="text-red-600">{formatCurrency(pnl.expenses.total)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Net Income */}
+                  <div className="bg-primary text-primary-foreground p-4 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-semibold">Net Income</span>
+                      <span className="text-2xl font-bold">
+                        {formatCurrency(pnl.netIncome)}
+                      </span>
+                    </div>
+                    <p className="text-sm opacity-80 mt-1">
+                      Profit margin: {pnl.profitMargin.toFixed(1)}%
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  No data available for this period
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Balance Sheet */}
+        {/* Balance Sheet Tab */}
         <TabsContent value="balance">
           <Card>
             <CardHeader>
-              <CardTitle>Balance Sheet</CardTitle>
-              <CardDescription>As of {formatDate(new Date().toISOString())}</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Balance Sheet</CardTitle>
+                  <CardDescription>As of {formatDate(asOfDate)}</CardDescription>
+                </div>
+                <Button variant="outline" size="sm">
+                  <Download className="mr-2 h-4 w-4" /> Export
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-6 lg:grid-cols-2">
-                {/* Assets */}
-                <div>
-                  <h3 className="font-semibold text-lg mb-3">Assets</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="font-medium text-muted-foreground mb-2">Current Assets</h4>
-                      <Table>
-                        <TableBody>
-                          {balanceSheetData.assets.current.map((item, idx) => (
-                            <TableRow key={idx}>
-                              <TableCell className="pl-6">{item.name}</TableCell>
-                              <TableCell className="text-right">{formatCurrency(item.amount)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                        <TableFooter>
-                          <TableRow>
-                            <TableCell className="font-medium">Total Current Assets</TableCell>
-                            <TableCell className="text-right font-medium">{formatCurrency(totalCurrentAssets)}</TableCell>
-                          </TableRow>
-                        </TableFooter>
-                      </Table>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-muted-foreground mb-2">Non-Current Assets</h4>
-                      <Table>
-                        <TableBody>
-                          {balanceSheetData.assets.nonCurrent.map((item, idx) => (
-                            <TableRow key={idx}>
-                              <TableCell className="pl-6">{item.name}</TableCell>
-                              <TableCell className="text-right">{formatCurrency(item.amount)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                        <TableFooter>
-                          <TableRow>
-                            <TableCell className="font-medium">Total Non-Current Assets</TableCell>
-                            <TableCell className="text-right font-medium">{formatCurrency(totalNonCurrentAssets)}</TableCell>
-                          </TableRow>
-                        </TableFooter>
-                      </Table>
-                    </div>
-                  </div>
-                  <div className="mt-4 p-4 bg-primary/10 rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-lg">Total Assets</span>
-                      <span className="font-bold text-xl">{formatCurrency(totalAssets)}</span>
-                    </div>
-                  </div>
+              {balanceLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
+              ) : balance ? (
+                <div className="grid md:grid-cols-2 gap-8">
+                  {/* Assets */}
+                  <div>
+                    <h3 className="font-semibold text-primary mb-4">ASSETS</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground mb-2">Current Assets</h4>
+                        <div className="space-y-2 pl-4">
+                          <div className="flex justify-between">
+                            <span>Cash</span>
+                            <span>{formatCurrency(balance.assets.currentAssets.cash)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Accounts Receivable</span>
+                            <span>{formatCurrency(balance.assets.currentAssets.accountsReceivable)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Inventory</span>
+                            <span>{formatCurrency(balance.assets.currentAssets.inventory)}</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between font-medium border-t mt-2 pt-2">
+                          <span>Total Current Assets</span>
+                          <span>{formatCurrency(balance.assets.currentAssets.total)}</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between font-semibold text-lg border-t pt-4">
+                        <span>Total Assets</span>
+                        <span className="text-primary">{formatCurrency(balance.assets.totalAssets)}</span>
+                      </div>
+                    </div>
+                  </div>
 
-                {/* Liabilities & Equity */}
-                <div>
-                  <h3 className="font-semibold text-lg mb-3">Liabilities & Equity</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="font-medium text-muted-foreground mb-2">Current Liabilities</h4>
-                      <Table>
-                        <TableBody>
-                          {balanceSheetData.liabilities.current.map((item, idx) => (
-                            <TableRow key={idx}>
-                              <TableCell className="pl-6">{item.name}</TableCell>
-                              <TableCell className="text-right">{formatCurrency(item.amount)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                        <TableFooter>
-                          <TableRow>
-                            <TableCell className="font-medium">Total Current Liabilities</TableCell>
-                            <TableCell className="text-right font-medium">{formatCurrency(totalCurrentLiabilities)}</TableCell>
-                          </TableRow>
-                        </TableFooter>
-                      </Table>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-muted-foreground mb-2">Non-Current Liabilities</h4>
-                      <Table>
-                        <TableBody>
-                          {balanceSheetData.liabilities.nonCurrent.map((item, idx) => (
-                            <TableRow key={idx}>
-                              <TableCell className="pl-6">{item.name}</TableCell>
-                              <TableCell className="text-right">{formatCurrency(item.amount)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                        <TableFooter>
-                          <TableRow>
-                            <TableCell className="font-medium">Total Liabilities</TableCell>
-                            <TableCell className="text-right font-medium">{formatCurrency(totalLiabilities)}</TableCell>
-                          </TableRow>
-                        </TableFooter>
-                      </Table>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-muted-foreground mb-2">Equity</h4>
-                      <Table>
-                        <TableBody>
-                          {balanceSheetData.equity.map((item, idx) => (
-                            <TableRow key={idx}>
-                              <TableCell className="pl-6">{item.name}</TableCell>
-                              <TableCell className="text-right">{formatCurrency(item.amount)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                        <TableFooter>
-                          <TableRow>
-                            <TableCell className="font-medium">Total Equity</TableCell>
-                            <TableCell className="text-right font-medium">{formatCurrency(totalEquity)}</TableCell>
-                          </TableRow>
-                        </TableFooter>
-                      </Table>
-                    </div>
-                  </div>
-                  <div className="mt-4 p-4 bg-primary/10 rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-lg">Total Liabilities & Equity</span>
-                      <span className="font-bold text-xl">{formatCurrency(totalLiabilities + totalEquity)}</span>
+                  {/* Liabilities & Equity */}
+                  <div>
+                    <h3 className="font-semibold text-primary mb-4">LIABILITIES & EQUITY</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground mb-2">Liabilities</h4>
+                        <div className="flex justify-between pl-4">
+                          <span>Total Liabilities</span>
+                          <span>{formatCurrency(balance.liabilities.totalLiabilities)}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground mb-2">Equity</h4>
+                        <div className="flex justify-between pl-4">
+                          <span>Owner's Equity</span>
+                          <span>{formatCurrency(balance.equity.ownerEquity)}</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between font-semibold text-lg border-t pt-4">
+                        <span>Total Liabilities & Equity</span>
+                        <span className="text-primary">
+                          {formatCurrency(balance.liabilities.totalLiabilities + balance.equity.totalEquity)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  No data available
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Cash Flow */}
-        <TabsContent value="cashflow">
+        {/* Tax Summary Tab */}
+        <TabsContent value="tax">
           <Card>
             <CardHeader>
-              <CardTitle>Cash Flow Statement</CardTitle>
-              <CardDescription>
-                {formatDate(profitLossData.period.start)} - {formatDate(profitLossData.period.end)}
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>GST/HST Summary</CardTitle>
+                  <CardDescription>
+                    {formatDate(dateRange.startDate)} to {formatDate(dateRange.endDate)}
+                  </CardDescription>
+                </div>
+                <Button variant="outline" size="sm">
+                  <Download className="mr-2 h-4 w-4" /> Export
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {/* Operating Activities */}
-                <div>
-                  <h3 className="font-semibold text-lg mb-3">Operating Activities</h3>
-                  <Table>
-                    <TableBody>
-                      {cashFlowData.operating.map((item, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell className="pl-6">{item.name}</TableCell>
-                          <TableCell className={cn("text-right", item.amount < 0 && "text-destructive")}>
-                            {formatCurrency(item.amount)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                    <TableFooter>
-                      <TableRow>
-                        <TableCell className="font-semibold">Net Cash from Operating</TableCell>
-                        <TableCell className={cn("text-right font-semibold", netOperatingCash >= 0 ? "text-success" : "text-destructive")}>
-                          {formatCurrency(netOperatingCash)}
-                        </TableCell>
-                      </TableRow>
-                    </TableFooter>
-                  </Table>
+              {taxLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-
-                {/* Investing Activities */}
-                <div>
-                  <h3 className="font-semibold text-lg mb-3">Investing Activities</h3>
-                  <Table>
-                    <TableBody>
-                      {cashFlowData.investing.map((item, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell className="pl-6">{item.name}</TableCell>
-                          <TableCell className={cn("text-right", item.amount < 0 && "text-destructive")}>
-                            {item.amount === 0 ? "—" : formatCurrency(item.amount)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                    <TableFooter>
-                      <TableRow>
-                        <TableCell className="font-semibold">Net Cash from Investing</TableCell>
-                        <TableCell className={cn("text-right font-semibold", netInvestingCash >= 0 ? "text-success" : "text-destructive")}>
-                          {formatCurrency(netInvestingCash)}
-                        </TableCell>
-                      </TableRow>
-                    </TableFooter>
-                  </Table>
-                </div>
-
-                {/* Financing Activities */}
-                <div>
-                  <h3 className="font-semibold text-lg mb-3">Financing Activities</h3>
-                  <Table>
-                    <TableBody>
-                      {cashFlowData.financing.map((item, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell className="pl-6">{item.name}</TableCell>
-                          <TableCell className={cn("text-right", item.amount < 0 && "text-destructive")}>
-                            {item.amount === 0 ? "—" : formatCurrency(item.amount)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                    <TableFooter>
-                      <TableRow>
-                        <TableCell className="font-semibold">Net Cash from Financing</TableCell>
-                        <TableCell className={cn("text-right font-semibold", netFinancingCash >= 0 ? "text-success" : "text-destructive")}>
-                          {formatCurrency(netFinancingCash)}
-                        </TableCell>
-                      </TableRow>
-                    </TableFooter>
-                  </Table>
-                </div>
-
-                <Separator />
-
-                {/* Summary */}
-                <div className="bg-muted/50 rounded-lg p-6 space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Opening Cash Balance</span>
-                    <span className="font-medium">{formatCurrency(cashFlowData.opening)}</span>
+              ) : tax ? (
+                <div className="space-y-6">
+                  <div className="grid md:grid-cols-3 gap-6">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                          GST/HST Collected
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-green-600">
+                          {formatCurrency(tax.gstHstCollected)}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                          GST/HST Paid (ITCs)
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-red-600">
+                          {formatCurrency(tax.gstHstPaid)}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-primary text-primary-foreground">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium opacity-80">
+                          Net Tax Owing
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">
+                          {formatCurrency(tax.gstHstOwing)}
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Net Change in Cash</span>
-                    <span className={cn("font-medium", netCashChange >= 0 ? "text-success" : "text-destructive")}>
-                      {netCashChange >= 0 ? "+" : ""}{formatCurrency(netCashChange)}
-                    </span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between">
-                    <span className="font-semibold text-lg">Closing Cash Balance</span>
-                    <span className="font-bold text-xl">{formatCurrency(closingCash)}</span>
+
+                  <div className="bg-muted/30 p-4 rounded-lg">
+                    <h4 className="font-medium mb-2">📋 CRA Remittance</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Based on your collected GST/HST of {formatCurrency(tax.gstHstCollected)} and 
+                      Input Tax Credits (ITCs) of {formatCurrency(tax.gstHstPaid)}, 
+                      you {tax.gstHstOwing >= 0 ? 'owe' : 'are owed'} {formatCurrency(Math.abs(tax.gstHstOwing))} to CRA.
+                    </p>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  No tax data for this period
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Aged Reports */}
-        <TabsContent value="aged">
-          <div className="space-y-6">
-            {/* Aged Receivables */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Aged Receivables</CardTitle>
-                <CardDescription>Outstanding customer invoices by age</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Customer</TableHead>
-                      <TableHead className="text-right">Current</TableHead>
-                      <TableHead className="text-right">1-30 Days</TableHead>
-                      <TableHead className="text-right">31-60 Days</TableHead>
-                      <TableHead className="text-right">61-90 Days</TableHead>
-                      <TableHead className="text-right">90+ Days</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {agedReceivables.map((item, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell className="text-right">{item.current > 0 ? formatCurrency(item.current) : "—"}</TableCell>
-                        <TableCell className="text-right">{item.days30 > 0 ? formatCurrency(item.days30) : "—"}</TableCell>
-                        <TableCell className="text-right">{item.days60 > 0 ? formatCurrency(item.days60) : "—"}</TableCell>
-                        <TableCell className="text-right">{item.days90 > 0 ? formatCurrency(item.days90) : "—"}</TableCell>
-                        <TableCell className="text-right text-destructive">{item.over90 > 0 ? formatCurrency(item.over90) : "—"}</TableCell>
-                        <TableCell className="text-right font-semibold">{formatCurrency(item.total)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                  <TableFooter>
-                    <TableRow className="font-semibold">
-                      <TableCell>Total</TableCell>
-                      <TableCell className="text-right">{arTotals.current > 0 ? formatCurrency(arTotals.current) : "—"}</TableCell>
-                      <TableCell className="text-right">{arTotals.days30 > 0 ? formatCurrency(arTotals.days30) : "—"}</TableCell>
-                      <TableCell className="text-right">{arTotals.days60 > 0 ? formatCurrency(arTotals.days60) : "—"}</TableCell>
-                      <TableCell className="text-right">{arTotals.days90 > 0 ? formatCurrency(arTotals.days90) : "—"}</TableCell>
-                      <TableCell className="text-right text-destructive">{arTotals.over90 > 0 ? formatCurrency(arTotals.over90) : "—"}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(arTotals.total)}</TableCell>
-                    </TableRow>
-                  </TableFooter>
-                </Table>
-              </CardContent>
-            </Card>
+        {/* Accounts Aging Tab */}
+        <TabsContent value="aging">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Accounts Receivable Aging</CardTitle>
+                  <CardDescription>As of {formatDate(asOfDate)}</CardDescription>
+                </div>
+                <Button variant="outline" size="sm">
+                  <Download className="mr-2 h-4 w-4" /> Export
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {agingLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : aging ? (
+                <div className="space-y-6">
+                  {/* Aging Summary */}
+                  <div className="grid grid-cols-6 gap-4">
+                    <Card>
+                      <CardContent className="pt-4">
+                        <div className="text-sm text-muted-foreground">Current</div>
+                        <div className="text-xl font-bold text-green-600">
+                          {formatCurrency(aging.receivables.current)}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4">
+                        <div className="text-sm text-muted-foreground">1-30 Days</div>
+                        <div className="text-xl font-bold text-amber-500">
+                          {formatCurrency(aging.receivables.days1to30)}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4">
+                        <div className="text-sm text-muted-foreground">31-60 Days</div>
+                        <div className="text-xl font-bold text-orange-500">
+                          {formatCurrency(aging.receivables.days31to60)}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4">
+                        <div className="text-sm text-muted-foreground">61-90 Days</div>
+                        <div className="text-xl font-bold text-red-500">
+                          {formatCurrency(aging.receivables.days61to90)}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4">
+                        <div className="text-sm text-muted-foreground">90+ Days</div>
+                        <div className="text-xl font-bold text-red-700">
+                          {formatCurrency(aging.receivables.over90)}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-primary text-primary-foreground">
+                      <CardContent className="pt-4">
+                        <div className="text-sm opacity-80">Total</div>
+                        <div className="text-xl font-bold">
+                          {formatCurrency(aging.receivables.total)}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
 
-            {/* Aged Payables Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Aged Payables</CardTitle>
-                <CardDescription>Outstanding vendor bills by age</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Vendor</TableHead>
-                      <TableHead className="text-right">Current</TableHead>
-                      <TableHead className="text-right">1-30 Days</TableHead>
-                      <TableHead className="text-right">31-60 Days</TableHead>
-                      <TableHead className="text-right">61-90 Days</TableHead>
-                      <TableHead className="text-right">90+ Days</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mockBills.filter(b => b.amountDue > 0).map((bill) => (
-                      <TableRow key={bill.id}>
-                        <TableCell className="font-medium">{bill.vendorName}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(bill.amountDue)}</TableCell>
-                        <TableCell className="text-right">—</TableCell>
-                        <TableCell className="text-right">—</TableCell>
-                        <TableCell className="text-right">—</TableCell>
-                        <TableCell className="text-right">—</TableCell>
-                        <TableCell className="text-right font-semibold">{formatCurrency(bill.amountDue)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                  <TableFooter>
-                    <TableRow className="font-semibold">
-                      <TableCell>Total</TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(mockBills.filter(b => b.amountDue > 0).reduce((sum, b) => sum + b.amountDue, 0))}
-                      </TableCell>
-                      <TableCell className="text-right">—</TableCell>
-                      <TableCell className="text-right">—</TableCell>
-                      <TableCell className="text-right">—</TableCell>
-                      <TableCell className="text-right">—</TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(mockBills.filter(b => b.amountDue > 0).reduce((sum, b) => sum + b.amountDue, 0))}
-                      </TableCell>
-                    </TableRow>
-                  </TableFooter>
-                </Table>
-              </CardContent>
-            </Card>
-          </div>
+                  {/* Invoice Details */}
+                  {aging.receivables.items.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Customer</TableHead>
+                          <TableHead>Invoice #</TableHead>
+                          <TableHead>Invoice Date</TableHead>
+                          <TableHead>Due Date</TableHead>
+                          <TableHead>Days Overdue</TableHead>
+                          <TableHead>Bucket</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {aging.receivables.items.map((item, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="font-medium">{item.customerName}</TableCell>
+                            <TableCell>{item.invoiceNumber}</TableCell>
+                            <TableCell>{formatDate(item.invoiceDate)}</TableCell>
+                            <TableCell>{formatDate(item.dueDate)}</TableCell>
+                            <TableCell>
+                              {item.daysOverdue > 0 ? (
+                                <Badge variant="destructive">{item.daysOverdue} days</Badge>
+                              ) : (
+                                <Badge variant="outline">Current</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{item.bucket}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {formatCurrency(item.amount)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No outstanding receivables 🎉
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  No data available
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
