@@ -168,18 +168,16 @@ function generateInvoicePDFWithLogo(data: InvoicePDFData, logoBase64: string | n
   }
   
   // Logo size in mm
-  const logoSizes = { small: 15, medium: 20, large: 25 }
-  const logoSize = logoSizes[template.logoSize]
+  const logoSizes = { small: 20, medium: 28, large: 36 }
+  const logoHeight = logoSizes[template.logoSize]
 
   // -------------------------------------------------------------------------
   // HEADER WITH LOGO
   // -------------------------------------------------------------------------
   
-  // Add logo if available
-  const logoSizes = { small: 15, medium: 20, large: 25 }
-  const logoHeight = logoSizes[template.logoSize]
   let logoAdded = false
   
+  // Try to add logo image if available
   if (template.showLogo && logoBase64) {
     try {
       const logoX = template.logoPosition === 'center' 
@@ -190,43 +188,57 @@ function generateInvoicePDFWithLogo(data: InvoicePDFData, logoBase64: string | n
       
       doc.addImage(logoBase64, 'AUTO', logoX, y - 5, logoHeight, logoHeight)
       logoAdded = true
+      
+      // Position INVOICE text on opposite side of logo
+      doc.setFontSize(28)
+      doc.setTextColor(COLORS.text)
+      doc.setFont(FONTS.bold, 'bold')
+      if (template.logoPosition === 'left') {
+        doc.text('INVOICE', pageWidth - margin, y + 10, { align: 'right' })
+      } else if (template.logoPosition === 'right') {
+        doc.text('INVOICE', margin, y + 10)
+      } else {
+        doc.text('INVOICE', pageWidth / 2, y + logoHeight + 5, { align: 'center' })
+      }
+      
+      y += logoHeight + 5
     } catch (err) {
       console.error('Failed to add logo:', err)
+      logoAdded = false
     }
   }
   
-  // Header layout based on logo position
-  if (template.logoPosition === 'center') {
-    // Centered logo layout
-    doc.setFontSize(24)
-    doc.setTextColor(COLORS.primary)
-    doc.setFont(FONTS.bold, 'bold')
-    doc.text(data.companyName, pageWidth / 2, y, { align: 'center' })
-    
-    doc.setFontSize(28)
-    doc.setTextColor(COLORS.text)
-    doc.text('INVOICE', pageWidth / 2, y + 12, { align: 'center' })
-    y += 20
-  } else if (template.logoPosition === 'right') {
-    // Right-aligned company, left invoice
-    doc.setFontSize(32)
-    doc.setTextColor(COLORS.text)
-    doc.text('INVOICE', margin, y)
-    
-    doc.setFontSize(24)
-    doc.setTextColor(COLORS.primary)
-    doc.setFont(FONTS.bold, 'bold')
-    doc.text(data.companyName, pageWidth - margin, y, { align: 'right' })
-  } else {
-    // Default: Left company, right invoice
-    doc.setFontSize(24)
-    doc.setTextColor(COLORS.primary)
-    doc.setFont(FONTS.bold, 'bold')
-    doc.text(data.companyName, margin, y)
-    
-    doc.setFontSize(32)
-    doc.setTextColor(COLORS.text)
-    doc.text('INVOICE', pageWidth - margin, y, { align: 'right' })
+  // Fallback: show company name as text if no logo
+  if (!logoAdded) {
+    if (template.logoPosition === 'center') {
+      doc.setFontSize(24)
+      doc.setTextColor(COLORS.primary)
+      doc.setFont(FONTS.bold, 'bold')
+      doc.text(data.companyName, pageWidth / 2, y, { align: 'center' })
+      
+      doc.setFontSize(28)
+      doc.setTextColor(COLORS.text)
+      doc.text('INVOICE', pageWidth / 2, y + 12, { align: 'center' })
+      y += 20
+    } else if (template.logoPosition === 'right') {
+      doc.setFontSize(32)
+      doc.setTextColor(COLORS.text)
+      doc.text('INVOICE', margin, y)
+      
+      doc.setFontSize(24)
+      doc.setTextColor(COLORS.primary)
+      doc.setFont(FONTS.bold, 'bold')
+      doc.text(data.companyName, pageWidth - margin, y, { align: 'right' })
+    } else {
+      doc.setFontSize(24)
+      doc.setTextColor(COLORS.primary)
+      doc.setFont(FONTS.bold, 'bold')
+      doc.text(data.companyName, margin, y)
+      
+      doc.setFontSize(32)
+      doc.setTextColor(COLORS.text)
+      doc.text('INVOICE', pageWidth - margin, y, { align: 'right' })
+    }
   }
   
   y += 12
