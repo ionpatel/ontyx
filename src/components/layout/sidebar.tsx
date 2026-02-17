@@ -82,6 +82,7 @@ const navigation: NavGroup[] = [
       { title: "Employees", href: "/employees", icon: UserCircle },
       { title: "Payroll", href: "/payroll", icon: Wallet },
       { title: "T4 Tax Slips", href: "/payroll/t4", icon: FileText },
+      { title: "ROE Export", href: "/payroll/roe", icon: FileText },
     ],
   },
   {
