@@ -63,9 +63,8 @@
 ## Phase 5: Polish & Launch (IN PROGRESS)
 - [x] **Onboarding wizard** ✅ - 4-step setup flow for new users
 - [x] **Employees module** ✅ - CRUD, SIN, tax info, compensation
-- [ ] **Multi-user** - invite team members with roles
-- [ ] **Audit log** - track all changes
-- [ ] **Data backup** - export everything
+- [x] **Multi-user** ✅ - invite team members with roles (owner/admin/member/viewer)
+- [ ] **Data export** - export all data to CSV/JSON
 - [ ] **Stripe billing** - subscription management
 - [ ] **Help docs** - in-app guidance
 - [ ] **Mobile responsive** - works on phone/tablet
