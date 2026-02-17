@@ -44,12 +44,12 @@
 - [ ] **Plaid integration** - connect Canadian banks (auto-import)
 - [ ] **Bank reconciliation v2** - auto-match with invoices/bills
 
-### Week 4: Canadian Payroll
-- [ ] **Employee profiles** - SIN, tax info, pay rate
-- [ ] **Pay runs** - calculate CPP/EI deductions
-- [ ] **Pay stubs** - generate PDF stubs
-- [ ] **T4 generation** - year-end tax slips
-- [ ] **ROE export** - Record of Employment
+### Week 4: Canadian Payroll ✅ COMPLETE
+- [x] **Employee profiles** ✅ - SIN, tax info, pay rate (migration ready)
+- [x] **Pay runs** ✅ - calculate CPP/EI deductions
+- [x] **Pay stubs** ✅ - generate PDF stubs
+- [x] **T4 generation** ✅ - year-end tax slips
+- [x] **ROE export** ✅ - Record of Employment for Service Canada
 
 ## Phase 4: Reports & Analytics
 - [ ] **Profit & Loss** - income vs expenses
@@ -71,7 +71,7 @@
 ---
 
 ## Current Focus
-**Complete Payroll** - Employee profiles, ROE export
+**Phase 4: Reports** - P&L, Balance Sheet, Cash Flow, Tax Summary
 
 ## Quick Wins Queue
 1. ~~Org settings page~~ ✅
@@ -82,8 +82,11 @@
 6. ~~Invoice templates~~ ✅
 7. ~~Banking module~~ ✅ (manual transactions, categorization, reconciliation)
 8. ~~Canadian Payroll~~ ✅ (CPP/EI, pay runs, T4)
-9. ROE export
-10. Plaid integration (auto-import from banks)
+9. ~~ROE export~~ ✅
+10. P&L Report
+11. Balance Sheet
+12. Cash Flow Report
+13. Plaid integration (auto-import from banks)
 
 ---
 
@@ -96,6 +99,13 @@
   - Transaction categorization
   - Reconciliation workflow
   - Summary stats (inflow/outflow)
+- ✅ ROE (Record of Employment) COMPLETE
+  - Generate ROE from payroll data
+  - All CRA reason codes supported
+  - Insurable earnings by pay period
+  - Employee/employer info blocks
+  - Draft → Submitted workflow
+- ✅ Employees table migration (SIN, tax info, compensation)
 - ✅ Email domain verified (ontyx.ca via Resend)
 - ✅ PDF invoice layout fixed (logo alignment)
 - ✅ Invoice edit fixed (column name mismatches)
