@@ -123,7 +123,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         <div className="flex h-16 items-center justify-between px-4 border-b">
           <Link href="/dashboard" className="flex items-center gap-2">
             <Image
-              src="/logo.svg"
+              src="/logo.png"
               alt="Ontyx"
               width={32}
               height={32}
