@@ -1,4 +1,4 @@
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 
 // ============================================================================
 // CONTACT TYPES
@@ -70,185 +70,12 @@ export interface CreateContactInput {
 }
 
 // ============================================================================
-// DEMO DATA
-// ============================================================================
-
-const demoContacts: Contact[] = [
-  {
-    id: 'demo-1',
-    organizationId: 'demo',
-    type: 'customer',
-    code: 'CUST-001',
-    name: 'Maple Leaf Pharmacy',
-    email: 'orders@mapleleafpharmacy.ca',
-    phone: '416-555-0101',
-    company: 'Maple Leaf Pharmacy Inc.',
-    street: '123 Yonge Street',
-    city: 'Toronto',
-    province: 'ON',
-    postalCode: 'M5B 1M4',
-    country: 'CA',
-    currency: 'CAD',
-    paymentTerms: 'Net 30',
-    creditLimit: 50000,
-    currentBalance: 2500,
-    totalOrders: 45,
-    totalSpent: 125000,
-    totalReceived: 122500,
-    isActive: true,
-    createdAt: '2024-01-15',
-    updatedAt: '2024-02-10',
-  },
-  {
-    id: 'demo-2',
-    organizationId: 'demo',
-    type: 'customer',
-    code: 'CUST-002',
-    name: 'Northern Health Clinic',
-    email: 'purchasing@northernhealth.ca',
-    phone: '905-555-0202',
-    company: 'Northern Health Services Ltd.',
-    street: '456 King Street West',
-    city: 'Mississauga',
-    province: 'ON',
-    postalCode: 'L5B 3M7',
-    country: 'CA',
-    currency: 'CAD',
-    paymentTerms: 'Net 15',
-    creditLimit: 25000,
-    currentBalance: 0,
-    totalOrders: 28,
-    totalSpent: 67500,
-    totalReceived: 67500,
-    isActive: true,
-    createdAt: '2024-02-01',
-    updatedAt: '2024-02-12',
-  },
-  {
-    id: 'demo-3',
-    organizationId: 'demo',
-    type: 'vendor',
-    code: 'VEND-001',
-    name: 'Canadian Medical Supplies',
-    email: 'sales@canmedsupplies.com',
-    phone: '604-555-0303',
-    company: 'Canadian Medical Supplies Inc.',
-    street: '789 Granville Street',
-    city: 'Vancouver',
-    province: 'BC',
-    postalCode: 'V6Z 1K3',
-    country: 'CA',
-    currency: 'CAD',
-    paymentTerms: 'Net 45',
-    currentBalance: -15000,
-    totalOrders: 52,
-    totalSpent: 0,
-    totalReceived: 285000,
-    isActive: true,
-    createdAt: '2023-06-15',
-    updatedAt: '2024-02-08',
-  },
-  {
-    id: 'demo-4',
-    organizationId: 'demo',
-    type: 'both',
-    code: 'CONT-001',
-    name: 'PharmaCare Distribution',
-    email: 'info@pharmacare.ca',
-    phone: '403-555-0404',
-    company: 'PharmaCare Distribution Ltd.',
-    street: '321 Centre Street',
-    city: 'Calgary',
-    province: 'AB',
-    postalCode: 'T2G 0B5',
-    country: 'CA',
-    currency: 'CAD',
-    paymentTerms: 'Net 30',
-    creditLimit: 100000,
-    currentBalance: 5000,
-    totalOrders: 78,
-    totalSpent: 45000,
-    totalReceived: 180000,
-    isActive: true,
-    createdAt: '2023-08-01',
-    updatedAt: '2024-02-11',
-  },
-]
-
-// ============================================================================
-// LOCALSTORAGE PERSISTENCE FOR DEMO MODE
-// ============================================================================
-
-const DEMO_CONTACTS_STORAGE_KEY = 'ontyx_demo_contacts'
-
-function getDemoContactStore(): Contact[] {
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = localStorage.getItem(DEMO_CONTACTS_STORAGE_KEY)
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        // Validate it's a non-empty array
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed
-        }
-        // Reset to defaults if empty or invalid
-        console.warn('Demo contacts localStorage was empty/invalid, resetting to defaults')
-        localStorage.removeItem(DEMO_CONTACTS_STORAGE_KEY)
-      }
-    } catch (e) {
-      console.error('Error reading demo contacts from localStorage:', e)
-      localStorage.removeItem(DEMO_CONTACTS_STORAGE_KEY)
-    }
-  }
-  return [...demoContacts]
-}
-
-function saveDemoContactStore(contacts: Contact[]): void {
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(DEMO_CONTACTS_STORAGE_KEY, JSON.stringify(contacts))
-    } catch (e) {
-      console.error('Error saving demo contacts to localStorage:', e)
-    }
-  }
-}
-
-// ============================================================================
 // SERVICE FUNCTIONS
 // ============================================================================
 
-function generateContactCode(type: ContactType): string {
-  const prefix = type === 'customer' ? 'CUST' : type === 'vendor' ? 'VEND' : 'CONT'
-  return `${prefix}-${Date.now().toString(36).toUpperCase()}`
-}
-
 export const contactsService = {
-  // Get all contacts
   async getContacts(organizationId: string, type?: ContactType): Promise<Contact[]> {
-    // Demo mode check FIRST - never hit Supabase in demo mode
-    if (organizationId === 'demo') {
-      const store = getDemoContactStore()
-      // Filter by isActive AND type
-      const filtered = store.filter(c => {
-        if (!c.isActive) return false
-        if (!type) return true
-        return c.type === type || c.type === 'both'
-      })
-      return filtered
-    }
-    
     const supabase = createClient()
-    
-    // Return demo data if Supabase not configured
-    if (!supabase || !isSupabaseConfigured()) {
-      const store = getDemoContactStore()
-      const filtered = store.filter(c => {
-        if (!c.isActive) return false
-        if (!type) return true
-        return c.type === type || c.type === 'both'
-      })
-      return filtered
-    }
 
     let query = supabase
       .from('contacts')
@@ -269,24 +96,14 @@ export const contactsService = {
 
     if (error) {
       console.error('Error fetching contacts:', error)
-      return demoContacts
+      return []
     }
 
     return (data || []).map(mapContactFromDb)
   },
 
-  // Get single contact
   async getContact(id: string, organizationId: string): Promise<Contact | null> {
-    // Demo mode check FIRST
-    if (organizationId === 'demo') {
-      return getDemoContactStore().find(c => c.id === id) || null
-    }
-    
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured()) {
-      return getDemoContactStore().find(c => c.id === id) || null
-    }
 
     const { data, error } = await supabase
       .from('contacts')
@@ -303,86 +120,8 @@ export const contactsService = {
     return mapContactFromDb(data)
   },
 
-  // Create contact
   async createContact(input: CreateContactInput, organizationId: string): Promise<Contact | null> {
-    // Demo mode check FIRST
-    if (organizationId === 'demo') {
-      const newContact: Contact = {
-        id: `demo-${Date.now()}`,
-        organizationId: 'demo',
-        code: generateContactCode(input.type),
-        type: input.type,
-        name: input.name,
-        email: input.email,
-        phone: input.phone,
-        mobile: input.mobile,
-        company: input.company,
-        jobTitle: input.jobTitle,
-        website: input.website,
-        street: input.street,
-        city: input.city,
-        province: input.province,
-        postalCode: input.postalCode,
-        country: input.country || 'CA',
-        currency: input.currency || 'CAD',
-        taxNumber: input.taxNumber,
-        paymentTerms: input.paymentTerms || 'Net 30',
-        creditLimit: input.creditLimit,
-        currentBalance: 0,
-        totalOrders: 0,
-        totalSpent: 0,
-        totalReceived: 0,
-        tags: input.tags,
-        notes: input.notes,
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-      const store = getDemoContactStore()
-      store.push(newContact)
-      saveDemoContactStore(store)
-      return newContact
-    }
-    
     const supabase = createClient()
-    if (!supabase || !isSupabaseConfigured()) {
-      // Fallback to demo mode if Supabase not configured
-      const newContact: Contact = {
-        id: `demo-${Date.now()}`,
-        organizationId: 'demo',
-        code: generateContactCode(input.type),
-        type: input.type,
-        name: input.name,
-        email: input.email,
-        phone: input.phone,
-        mobile: input.mobile,
-        company: input.company,
-        jobTitle: input.jobTitle,
-        website: input.website,
-        street: input.street,
-        city: input.city,
-        province: input.province,
-        postalCode: input.postalCode,
-        country: input.country || 'CA',
-        currency: input.currency || 'CAD',
-        taxNumber: input.taxNumber,
-        paymentTerms: input.paymentTerms || 'Net 30',
-        creditLimit: input.creditLimit,
-        currentBalance: 0,
-        totalOrders: 0,
-        totalSpent: 0,
-        totalReceived: 0,
-        tags: input.tags,
-        notes: input.notes,
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-      const store = getDemoContactStore()
-      store.push(newContact)
-      saveDemoContactStore(store)
-      return newContact
-    }
 
     const { data, error } = await supabase
       .from('contacts')
@@ -421,28 +160,8 @@ export const contactsService = {
     return mapContactFromDb(data)
   },
 
-  // Update contact
   async updateContact(id: string, updates: Partial<CreateContactInput>, organizationId: string): Promise<Contact | null> {
-    // Demo mode check FIRST
-    if (organizationId === 'demo') {
-      const store = getDemoContactStore()
-      const index = store.findIndex(c => c.id === id)
-      if (index === -1) return null
-      store[index] = { ...store[index], ...updates, updatedAt: new Date().toISOString() }
-      saveDemoContactStore(store)
-      return store[index]
-    }
-    
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured()) {
-      const store = getDemoContactStore()
-      const index = store.findIndex(c => c.id === id)
-      if (index === -1) return null
-      store[index] = { ...store[index], ...updates, updatedAt: new Date().toISOString() }
-      saveDemoContactStore(store)
-      return store[index]
-    }
 
     const { data, error } = await supabase
       .from('contacts')
@@ -463,29 +182,8 @@ export const contactsService = {
     return mapContactFromDb(data)
   },
 
-  // Delete (soft delete for Supabase, hard delete for demo mode)
   async deleteContact(id: string, organizationId: string): Promise<boolean> {
-    // Demo mode check FIRST
-    if (organizationId === 'demo') {
-      const store = getDemoContactStore()
-      const index = store.findIndex(c => c.id === id)
-      if (index === -1) return false
-      // Hard delete for demo mode - actually remove from array
-      store.splice(index, 1)
-      saveDemoContactStore(store)
-      return true
-    }
-    
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured()) {
-      const store = getDemoContactStore()
-      const index = store.findIndex(c => c.id === id)
-      if (index === -1) return false
-      store.splice(index, 1)
-      saveDemoContactStore(store)
-      return true
-    }
 
     const { error } = await supabase
       .from('contacts')
@@ -501,20 +199,8 @@ export const contactsService = {
     return true
   },
 
-  // Search contacts
   async searchContacts(query: string, organizationId: string, type?: ContactType): Promise<Contact[]> {
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured() ) {
-      const q = query.toLowerCase()
-      return getDemoContactStore().filter(c => 
-        c.isActive &&
-        (c.name.toLowerCase().includes(q) || 
-         c.email?.toLowerCase().includes(q) ||
-         c.company?.toLowerCase().includes(q)) &&
-        (!type || c.type === type || c.type === 'both')
-      )
-    }
 
     let dbQuery = supabase
       .from('contacts')
@@ -522,7 +208,7 @@ export const contactsService = {
       .eq('organization_id', organizationId)
       .eq('is_active', true)
       .or(`display_name.ilike.%${query}%,email.ilike.%${query}%,company_name.ilike.%${query}%`)
-      .order('display_name')
+      .order('display_name', { ascending: true })
       .limit(20)
 
     if (type === 'customer') {
@@ -541,14 +227,26 @@ export const contactsService = {
     return (data || []).map(mapContactFromDb)
   },
 
-  // Get customers only
-  async getCustomers(organizationId: string): Promise<Contact[]> {
-    return this.getContacts(organizationId, 'customer')
-  },
+  async getContactStats(organizationId: string): Promise<{ customers: number; vendors: number; total: number }> {
+    const supabase = createClient()
 
-  // Get vendors only  
-  async getVendors(organizationId: string): Promise<Contact[]> {
-    return this.getContacts(organizationId, 'vendor')
+    const { data, error } = await supabase
+      .from('contacts')
+      .select('is_customer, is_vendor')
+      .eq('organization_id', organizationId)
+      .eq('is_active', true)
+
+    if (error) {
+      console.error('Error fetching contact stats:', error)
+      return { customers: 0, vendors: 0, total: 0 }
+    }
+
+    const contacts = data || []
+    return {
+      customers: contacts.filter(c => c.is_customer).length,
+      vendors: contacts.filter(c => c.is_vendor).length,
+      total: contacts.length,
+    }
   },
 }
 
@@ -557,21 +255,15 @@ export const contactsService = {
 // ============================================================================
 
 function mapContactFromDb(row: any): Contact {
-  // Determine type from is_customer/is_vendor flags
   let type: ContactType = 'customer'
-  if (row.is_customer && row.is_vendor) {
-    type = 'both'
-  } else if (row.is_vendor) {
-    type = 'vendor'
-  } else {
-    type = 'customer'
-  }
-  
+  if (row.is_customer && row.is_vendor) type = 'both'
+  else if (row.is_vendor) type = 'vendor'
+
   return {
     id: row.id,
     organizationId: row.organization_id,
     type,
-    code: row.code || `CONT-${row.id?.slice(0, 8)?.toUpperCase()}`,
+    code: row.account_number || '',
     name: row.display_name,
     email: row.email,
     phone: row.phone,
@@ -586,9 +278,9 @@ function mapContactFromDb(row: any): Contact {
     country: row.billing_country || 'CA',
     currency: row.currency || 'CAD',
     taxNumber: row.tax_id,
-    paymentTerms: row.payment_terms ? `Net ${row.payment_terms}` : 'Net 30',
+    paymentTerms: `Net ${row.payment_terms || 30}`,
     creditLimit: row.credit_limit,
-    currentBalance: (row.outstanding_receivable || 0) - (row.outstanding_payable || 0),
+    currentBalance: row.balance || 0,
     totalOrders: row.total_orders || 0,
     totalSpent: row.total_spent || 0,
     totalReceived: row.total_received || 0,
@@ -601,39 +293,31 @@ function mapContactFromDb(row: any): Contact {
   }
 }
 
-function mapContactToDb(input: Partial<CreateContactInput>): Record<string, any> {
-  const result: Record<string, any> = {}
+function mapContactToDb(updates: Partial<CreateContactInput>): Record<string, any> {
+  const mapped: Record<string, any> = {}
   
-  // Map type to is_customer/is_vendor flags
-  if (input.type !== undefined) {
-    result.is_customer = input.type === 'customer' || input.type === 'both'
-    result.is_vendor = input.type === 'vendor' || input.type === 'both'
+  if (updates.type !== undefined) {
+    mapped.is_customer = updates.type === 'customer' || updates.type === 'both'
+    mapped.is_vendor = updates.type === 'vendor' || updates.type === 'both'
   }
+  if (updates.name !== undefined) mapped.display_name = updates.name
+  if (updates.company !== undefined) mapped.company_name = updates.company
+  if (updates.email !== undefined) mapped.email = updates.email
+  if (updates.phone !== undefined) mapped.phone = updates.phone
+  if (updates.mobile !== undefined) mapped.mobile = updates.mobile
+  if (updates.website !== undefined) mapped.website = updates.website
+  if (updates.street !== undefined) mapped.billing_address_line1 = updates.street
+  if (updates.city !== undefined) mapped.billing_city = updates.city
+  if (updates.province !== undefined) mapped.billing_state = updates.province
+  if (updates.postalCode !== undefined) mapped.billing_postal_code = updates.postalCode
+  if (updates.country !== undefined) mapped.billing_country = updates.country
+  if (updates.currency !== undefined) mapped.currency = updates.currency
+  if (updates.taxNumber !== undefined) mapped.tax_id = updates.taxNumber
+  if (updates.creditLimit !== undefined) mapped.credit_limit = updates.creditLimit
+  if (updates.tags !== undefined) mapped.tags = updates.tags
+  if (updates.notes !== undefined) mapped.notes = updates.notes
   
-  if (input.name !== undefined) result.display_name = input.name
-  if (input.email !== undefined) result.email = input.email
-  if (input.phone !== undefined) result.phone = input.phone
-  if (input.mobile !== undefined) result.mobile = input.mobile
-  if (input.company !== undefined) result.company_name = input.company
-  if (input.jobTitle !== undefined) result.job_title = input.jobTitle
-  if (input.website !== undefined) result.website = input.website
-  if (input.street !== undefined) result.billing_address_line1 = input.street
-  if (input.city !== undefined) result.billing_city = input.city
-  if (input.province !== undefined) result.billing_state = input.province
-  if (input.postalCode !== undefined) result.billing_postal_code = input.postalCode
-  if (input.country !== undefined) result.billing_country = input.country
-  if (input.currency !== undefined) result.currency = input.currency
-  if (input.taxNumber !== undefined) result.tax_id = input.taxNumber
-  if (input.paymentTerms !== undefined) {
-    // Convert "Net 30" to integer 30
-    const match = input.paymentTerms.match(/\d+/)
-    result.payment_terms = match ? parseInt(match[0]) : 30
-  }
-  if (input.creditLimit !== undefined) result.credit_limit = input.creditLimit
-  if (input.tags !== undefined) result.tags = input.tags
-  if (input.notes !== undefined) result.notes = input.notes
-  
-  return result
+  return mapped
 }
 
 export default contactsService

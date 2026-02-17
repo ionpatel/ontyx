@@ -10,7 +10,7 @@
  * Based on CRA 2026 rates (placeholder - update with actual rates)
  */
 
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 
 // ============================================================================
 // 2026 TAX RATES & THRESHOLDS (These need to be updated annually)
@@ -390,51 +390,6 @@ export function getPeriodsPerYear(type: 'weekly' | 'biweekly' | 'semi-monthly' |
 }
 
 // ============================================================================
-// DEMO DATA
-// ============================================================================
-
-const demoEmployees: Employee[] = [
-  {
-    id: 'emp-001',
-    organizationId: 'demo',
-    firstName: 'John',
-    lastName: 'Smith',
-    email: 'john.smith@company.ca',
-    phone: '(416) 555-0101',
-    hireDate: '2024-03-15',
-    employmentType: 'full-time',
-    payType: 'salary',
-    payRate: 75000,
-    hoursPerWeek: 40,
-    province: 'ON',
-    td1FederalClaim: FEDERAL_BPA,
-    td1ProvincialClaim: PROVINCIAL_TAX_RATES.ON.bpa,
-    isActive: true,
-    createdAt: '2024-03-15T00:00:00Z',
-    updatedAt: '2024-03-15T00:00:00Z',
-  },
-  {
-    id: 'emp-002',
-    organizationId: 'demo',
-    firstName: 'Sarah',
-    lastName: 'Johnson',
-    email: 'sarah.johnson@company.ca',
-    phone: '(416) 555-0102',
-    hireDate: '2023-06-01',
-    employmentType: 'full-time',
-    payType: 'salary',
-    payRate: 95000,
-    hoursPerWeek: 40,
-    province: 'ON',
-    td1FederalClaim: FEDERAL_BPA,
-    td1ProvincialClaim: PROVINCIAL_TAX_RATES.ON.bpa,
-    isActive: true,
-    createdAt: '2023-06-01T00:00:00Z',
-    updatedAt: '2023-06-01T00:00:00Z',
-  },
-]
-
-// ============================================================================
 // SERVICE
 // ============================================================================
 
@@ -458,10 +413,6 @@ export const payrollService = {
    */
   async getEmployees(organizationId: string): Promise<Employee[]> {
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured() ) {
-      return demoEmployees
-    }
 
     const { data, error } = await supabase
       .from('employees')

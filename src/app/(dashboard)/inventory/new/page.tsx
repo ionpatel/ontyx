@@ -15,7 +15,7 @@ import {
 import { useCategories } from "@/hooks/use-inventory"
 import { inventoryService } from "@/services/inventory"
 import { motion } from "framer-motion"
-import { isSupabaseConfigured } from "@/lib/supabase/client"
+
 
 export default function NewProductPage() {
   const router = useRouter()
@@ -83,7 +83,7 @@ export default function NewProductPage() {
   return (
     <div className="flex-1 space-y-6 p-6">
       {/* Demo Mode Banner */}
-      {!isSupabaseConfigured() && (
+      { false && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}

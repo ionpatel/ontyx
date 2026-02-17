@@ -1,4 +1,4 @@
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 
 // ============================================================================
 // TYPES
@@ -12,9 +12,11 @@ export interface UserProfile {
   avatarUrl?: string
   phone?: string
   jobTitle?: string
-  timezone: string
-  dateFormat: string
+  department?: string
+  theme: 'light' | 'dark' | 'system'
   language: string
+  timezone: string
+  notificationsEnabled: boolean
   createdAt: string
   updatedAt: string
 }
@@ -24,55 +26,11 @@ export interface UpdateProfileInput {
   lastName?: string
   phone?: string
   jobTitle?: string
-  timezone?: string
-  dateFormat?: string
+  department?: string
+  theme?: 'light' | 'dark' | 'system'
   language?: string
-}
-
-// ============================================================================
-// DEMO DATA
-// ============================================================================
-
-const demoProfile: UserProfile = {
-  id: 'demo',
-  email: 'demo@ontyx.ca',
-  firstName: 'Demo',
-  lastName: 'User',
-  avatarUrl: undefined,
-  phone: '(416) 555-0100',
-  jobTitle: 'Business Owner',
-  timezone: 'America/Toronto',
-  dateFormat: 'YYYY-MM-DD',
-  language: 'en',
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-}
-
-// Mutable demo store with localStorage persistence
-const DEMO_PROFILE_STORAGE_KEY = 'ontyx_demo_profile'
-
-function getDemoProfileStore(): UserProfile {
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = localStorage.getItem(DEMO_PROFILE_STORAGE_KEY)
-      if (stored) {
-        return { ...demoProfile, ...JSON.parse(stored) }
-      }
-    } catch (e) {
-      console.error('Error reading demo profile from localStorage:', e)
-    }
-  }
-  return { ...demoProfile }
-}
-
-function saveDemoProfileStore(profile: UserProfile): void {
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(DEMO_PROFILE_STORAGE_KEY, JSON.stringify(profile))
-    } catch (e) {
-      console.error('Error saving demo profile to localStorage:', e)
-    }
-  }
+  timezone?: string
+  notificationsEnabled?: boolean
 }
 
 // ============================================================================
@@ -80,15 +38,8 @@ function saveDemoProfileStore(profile: UserProfile): void {
 // ============================================================================
 
 export const userProfileService = {
-  /**
-   * Get current user profile
-   */
-  async getProfile(userId?: string): Promise<UserProfile | null> {
+  async getProfile(userId: string): Promise<UserProfile | null> {
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured() || !userId ) {
-      return getDemoProfileStore()
-    }
 
     const { data, error } = await supabase
       .from('users')
@@ -97,49 +48,37 @@ export const userProfileService = {
       .single()
 
     if (error) {
-      console.error('Error fetching profile:', error)
-      return getDemoProfileStore()
+      console.error('Error fetching user profile:', error)
+      return null
     }
 
     return mapProfileFromDb(data)
   },
 
-  /**
-   * Update user profile
-   */
   async updateProfile(userId: string, updates: UpdateProfileInput): Promise<UserProfile | null> {
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured() ) {
-      const currentProfile = getDemoProfileStore()
-      const updatedProfile = {
-        ...currentProfile,
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      }
-      saveDemoProfileStore(updatedProfile)
-      return updatedProfile
-    }
 
-    // Combine first and last name for full_name field
-    let fullName: string | undefined
-    if (updates.firstName !== undefined || updates.lastName !== undefined) {
-      const currentProfile = await this.getProfile(userId)
-      const first = updates.firstName ?? currentProfile?.firstName ?? ''
-      const last = updates.lastName ?? currentProfile?.lastName ?? ''
-      fullName = `${first} ${last}`.trim()
-    }
-
-    const updateData: Record<string, any> = {
+    // Map fields to database columns
+    const dbUpdates: Record<string, any> = {
       updated_at: new Date().toISOString(),
     }
-    if (fullName !== undefined) updateData.full_name = fullName
-    if (updates.phone !== undefined) updateData.phone = updates.phone
-    if (updates.language !== undefined) updateData.locale = updates.language
+    
+    // Combine firstName + lastName into full_name
+    if (updates.firstName !== undefined || updates.lastName !== undefined) {
+      const currentProfile = await this.getProfile(userId)
+      const firstName = updates.firstName ?? currentProfile?.firstName ?? ''
+      const lastName = updates.lastName ?? currentProfile?.lastName ?? ''
+      dbUpdates.full_name = `${firstName} ${lastName}`.trim()
+    }
+    
+    if (updates.phone !== undefined) dbUpdates.phone = updates.phone
+    if (updates.theme !== undefined) dbUpdates.theme = updates.theme
+    if (updates.language !== undefined) dbUpdates.locale = updates.language
+    if (updates.notificationsEnabled !== undefined) dbUpdates.notifications_enabled = updates.notificationsEnabled
 
     const { data, error } = await supabase
       .from('users')
-      .update(updateData)
+      .update(dbUpdates)
       .eq('id', userId)
       .select()
       .single()
@@ -152,26 +91,8 @@ export const userProfileService = {
     return mapProfileFromDb(data)
   },
 
-  /**
-   * Upload avatar image
-   */
   async uploadAvatar(userId: string, file: File): Promise<string | null> {
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured() ) {
-      // For demo mode, convert to base64 data URL (survives page refresh)
-      return new Promise((resolve) => {
-        const reader = new FileReader()
-        reader.onloadend = () => {
-          const base64Url = reader.result as string
-          const currentProfile = getDemoProfileStore()
-          saveDemoProfileStore({ ...currentProfile, avatarUrl: base64Url, updatedAt: new Date().toISOString() })
-          resolve(base64Url)
-        }
-        reader.onerror = () => resolve(null)
-        reader.readAsDataURL(file)
-      })
-    }
 
     const fileExt = file.name.split('.').pop()
     const fileName = `${userId}/avatar.${fileExt}`
@@ -189,7 +110,7 @@ export const userProfileService = {
       .from('avatars')
       .getPublicUrl(fileName)
 
-    // Update profile with new avatar URL
+    // Update user's avatar_url
     await supabase
       .from('users')
       .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
@@ -198,15 +119,8 @@ export const userProfileService = {
     return publicUrl
   },
 
-  /**
-   * Change password
-   */
-  async changePassword(newPassword: string): Promise<{ success: boolean; error?: string }> {
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured()) {
-      return { success: false, error: 'Not configured' }
-    }
 
     const { error } = await supabase.auth.updateUser({
       password: newPassword,
@@ -221,15 +135,15 @@ export const userProfileService = {
 }
 
 // ============================================================================
-// HELPERS
+// MAPPER
 // ============================================================================
 
 function mapProfileFromDb(row: any): UserProfile {
-  // Split full_name into first and last name
-  const nameParts = (row.full_name || '').trim().split(' ')
+  // Parse full_name into firstName/lastName
+  const nameParts = (row.full_name || '').split(' ')
   const firstName = nameParts[0] || ''
   const lastName = nameParts.slice(1).join(' ') || ''
-  
+
   return {
     id: row.id,
     email: row.email,
@@ -237,10 +151,12 @@ function mapProfileFromDb(row: any): UserProfile {
     lastName,
     avatarUrl: row.avatar_url,
     phone: row.phone,
-    jobTitle: '', // Not in database, store in demo mode only
-    timezone: 'America/Toronto', // Not in database, use default
-    dateFormat: 'YYYY-MM-DD', // Not in database, use default
-    language: row.locale || 'en',
+    jobTitle: row.job_title,
+    department: row.department,
+    theme: row.theme || 'system',
+    language: row.locale || 'en-CA',
+    timezone: row.timezone || 'America/Toronto',
+    notificationsEnabled: row.notifications_enabled ?? true,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }

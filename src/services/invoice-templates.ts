@@ -1,15 +1,4 @@
-/**
- * Invoice Template Service
- * 
- * Manages customizable invoice branding including:
- * - Logo position and size
- * - Brand colors (primary, accent)
- * - Font style
- * - Footer content
- * - Payment instructions
- */
-
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 
 // ============================================================================
 // TYPES
@@ -20,32 +9,21 @@ export interface InvoiceTemplate {
   organizationId: string
   name: string
   isDefault: boolean
-  
-  // Branding
-  primaryColor: string      // Hex color for headers, accents
-  secondaryColor: string    // Hex color for secondary elements
-  
-  // Logo
+  primaryColor: string
+  secondaryColor: string
   logoPosition: 'left' | 'center' | 'right'
-  logoSize: 'small' | 'medium' | 'large'  // small=60px, medium=80px, large=100px
-  
-  // Typography
+  logoSize: 'small' | 'medium' | 'large'
   fontStyle: 'modern' | 'classic' | 'minimal'
-  
-  // Content
-  headerText?: string       // Optional text above invoice
-  footerText?: string       // Footer on every page
-  paymentInstructions?: string  // Payment terms section
-  thankYouMessage?: string  // Message after totals
-  
-  // Display options
+  headerText?: string
+  footerText?: string
+  paymentInstructions?: string
+  thankYouMessage?: string
   showLogo: boolean
   showCompanyAddress: boolean
   showCustomerAddress: boolean
   showPaymentTerms: boolean
   showDueDate: boolean
   showInvoiceNumber: boolean
-  
   createdAt: string
   updatedAt: string
 }
@@ -78,14 +56,14 @@ export type UpdateTemplateInput = Partial<CreateTemplateInput> & { isDefault?: b
 export const DEFAULT_TEMPLATE: Omit<InvoiceTemplate, 'id' | 'organizationId' | 'createdAt' | 'updatedAt'> = {
   name: 'Default',
   isDefault: true,
-  primaryColor: '#DC2626',      // Maple red
-  secondaryColor: '#1f2937',    // Dark gray
+  primaryColor: '#DC2626',
+  secondaryColor: '#1f2937',
   logoPosition: 'left',
   logoSize: 'medium',
   fontStyle: 'modern',
   headerText: '',
   footerText: 'Thank you for your business!',
-  paymentInstructions: 'Payment is due within the terms specified above. Please include the invoice number with your payment.',
+  paymentInstructions: 'Payment is due within the terms specified above.',
   thankYouMessage: '',
   showLogo: true,
   showCompanyAddress: true,
@@ -95,95 +73,21 @@ export const DEFAULT_TEMPLATE: Omit<InvoiceTemplate, 'id' | 'organizationId' | '
   showInvoiceNumber: true,
 }
 
-// Pre-built template themes
 export const TEMPLATE_THEMES = {
-  maple: {
-    name: 'Maple Professional',
-    primaryColor: '#DC2626',
-    secondaryColor: '#1f2937',
-    fontStyle: 'modern' as const,
-  },
-  ocean: {
-    name: 'Ocean Blue',
-    primaryColor: '#0284c7',
-    secondaryColor: '#0f172a',
-    fontStyle: 'modern' as const,
-  },
-  forest: {
-    name: 'Forest Green',
-    primaryColor: '#059669',
-    secondaryColor: '#1f2937',
-    fontStyle: 'classic' as const,
-  },
-  minimal: {
-    name: 'Minimal Dark',
-    primaryColor: '#18181b',
-    secondaryColor: '#71717a',
-    fontStyle: 'minimal' as const,
-  },
-  sunset: {
-    name: 'Sunset Orange',
-    primaryColor: '#ea580c',
-    secondaryColor: '#1c1917',
-    fontStyle: 'modern' as const,
-  },
-}
-
-// ============================================================================
-// DEMO DATA
-// ============================================================================
-
-const demoTemplates: InvoiceTemplate[] = [
-  {
-    id: 'tpl-001',
-    organizationId: 'demo',
-    ...DEFAULT_TEMPLATE,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
-
-// localStorage persistence for demo mode
-const DEMO_TEMPLATES_STORAGE_KEY = 'ontyx_demo_invoice_templates'
-
-function getDemoTemplateStore(): InvoiceTemplate[] {
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = localStorage.getItem(DEMO_TEMPLATES_STORAGE_KEY)
-      if (stored) {
-        return JSON.parse(stored)
-      }
-    } catch (e) {
-      console.error('Error reading demo templates from localStorage:', e)
-    }
-  }
-  return [...demoTemplates]
-}
-
-function saveDemoTemplateStore(templates: InvoiceTemplate[]): void {
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(DEMO_TEMPLATES_STORAGE_KEY, JSON.stringify(templates))
-    } catch (e) {
-      console.error('Error saving demo templates to localStorage:', e)
-    }
-  }
+  maple: { name: 'Maple Professional', primaryColor: '#DC2626', secondaryColor: '#1f2937' },
+  ocean: { name: 'Ocean Blue', primaryColor: '#0891b2', secondaryColor: '#164e63' },
+  forest: { name: 'Forest Green', primaryColor: '#059669', secondaryColor: '#064e3b' },
+  minimal: { name: 'Minimal Gray', primaryColor: '#6b7280', secondaryColor: '#374151' },
+  sunset: { name: 'Sunset Orange', primaryColor: '#ea580c', secondaryColor: '#9a3412' },
 }
 
 // ============================================================================
 // SERVICE
 // ============================================================================
 
-export const invoiceTemplateService = {
-  /**
-   * Get all templates for an organization
-   */
+export const invoiceTemplatesService = {
   async getTemplates(organizationId: string): Promise<InvoiceTemplate[]> {
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured() ) {
-      return getDemoTemplateStore().filter(t => t.organizationId === 'demo')
-    }
 
     const { data, error } = await supabase
       .from('invoice_templates')
@@ -196,52 +100,58 @@ export const invoiceTemplateService = {
       return []
     }
 
-    return data.map(mapFromDb)
+    return (data || []).map(mapTemplateFromDb)
   },
 
-  /**
-   * Get the default template for an organization
-   */
-  async getDefaultTemplate(organizationId: string): Promise<InvoiceTemplate> {
-    const templates = await this.getTemplates(organizationId)
-    return templates.find(t => t.isDefault) || {
-      id: 'default',
-      organizationId,
-      ...DEFAULT_TEMPLATE,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-  },
-
-  /**
-   * Create a new template
-   */
-  async createTemplate(
-    input: CreateTemplateInput,
-    organizationId: string
-  ): Promise<InvoiceTemplate | null> {
+  async getDefaultTemplate(organizationId: string): Promise<InvoiceTemplate | null> {
     const supabase = createClient()
-    
-    const newTemplate: InvoiceTemplate = {
-      id: `tpl-${Date.now()}`,
-      organizationId,
-      isDefault: false,
-      ...DEFAULT_TEMPLATE,
-      ...input,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-    
-    if (!supabase || !isSupabaseConfigured() ) {
-      const store = getDemoTemplateStore()
-      store.push(newTemplate)
-      saveDemoTemplateStore(store)
-      return newTemplate
-    }
 
     const { data, error } = await supabase
       .from('invoice_templates')
-      .insert(mapToDb(newTemplate))
+      .select('*')
+      .eq('organization_id', organizationId)
+      .eq('is_default', true)
+      .single()
+
+    if (error) {
+      // Return a default if none exists
+      return {
+        id: 'default',
+        organizationId,
+        ...DEFAULT_TEMPLATE,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+    }
+
+    return mapTemplateFromDb(data)
+  },
+
+  async createTemplate(input: CreateTemplateInput, organizationId: string): Promise<InvoiceTemplate | null> {
+    const supabase = createClient()
+
+    const { data, error } = await supabase
+      .from('invoice_templates')
+      .insert({
+        organization_id: organizationId,
+        name: input.name,
+        is_default: false,
+        primary_color: input.primaryColor || DEFAULT_TEMPLATE.primaryColor,
+        secondary_color: input.secondaryColor || DEFAULT_TEMPLATE.secondaryColor,
+        logo_position: input.logoPosition || DEFAULT_TEMPLATE.logoPosition,
+        logo_size: input.logoSize || DEFAULT_TEMPLATE.logoSize,
+        font_style: input.fontStyle || DEFAULT_TEMPLATE.fontStyle,
+        header_text: input.headerText,
+        footer_text: input.footerText || DEFAULT_TEMPLATE.footerText,
+        payment_instructions: input.paymentInstructions || DEFAULT_TEMPLATE.paymentInstructions,
+        thank_you_message: input.thankYouMessage,
+        show_logo: input.showLogo ?? DEFAULT_TEMPLATE.showLogo,
+        show_company_address: input.showCompanyAddress ?? DEFAULT_TEMPLATE.showCompanyAddress,
+        show_customer_address: input.showCustomerAddress ?? DEFAULT_TEMPLATE.showCustomerAddress,
+        show_payment_terms: input.showPaymentTerms ?? DEFAULT_TEMPLATE.showPaymentTerms,
+        show_due_date: input.showDueDate ?? DEFAULT_TEMPLATE.showDueDate,
+        show_invoice_number: input.showInvoiceNumber ?? DEFAULT_TEMPLATE.showInvoiceNumber,
+      })
       .select()
       .single()
 
@@ -250,42 +160,13 @@ export const invoiceTemplateService = {
       return null
     }
 
-    return mapFromDb(data)
+    return mapTemplateFromDb(data)
   },
 
-  /**
-   * Update a template
-   */
-  async updateTemplate(
-    id: string,
-    updates: UpdateTemplateInput,
-    organizationId: string
-  ): Promise<InvoiceTemplate | null> {
+  async updateTemplate(id: string, updates: UpdateTemplateInput, organizationId: string): Promise<InvoiceTemplate | null> {
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured() ) {
-      let store = getDemoTemplateStore()
-      const idx = store.findIndex(t => t.id === id)
-      if (idx === -1) return null
-      
-      // If setting as default, unset others
-      if (updates.isDefault) {
-        store = store.map(t => ({
-          ...t,
-          isDefault: t.id === id,
-        }))
-      }
-      
-      store[idx] = {
-        ...store[idx],
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      }
-      saveDemoTemplateStore(store)
-      return store[idx]
-    }
 
-    // If setting as default, unset others first
+    // If setting as default, unset other defaults first
     if (updates.isDefault) {
       await supabase
         .from('invoice_templates')
@@ -293,12 +174,28 @@ export const invoiceTemplateService = {
         .eq('organization_id', organizationId)
     }
 
+    const dbUpdates: Record<string, any> = { updated_at: new Date().toISOString() }
+    if (updates.name !== undefined) dbUpdates.name = updates.name
+    if (updates.isDefault !== undefined) dbUpdates.is_default = updates.isDefault
+    if (updates.primaryColor !== undefined) dbUpdates.primary_color = updates.primaryColor
+    if (updates.secondaryColor !== undefined) dbUpdates.secondary_color = updates.secondaryColor
+    if (updates.logoPosition !== undefined) dbUpdates.logo_position = updates.logoPosition
+    if (updates.logoSize !== undefined) dbUpdates.logo_size = updates.logoSize
+    if (updates.fontStyle !== undefined) dbUpdates.font_style = updates.fontStyle
+    if (updates.headerText !== undefined) dbUpdates.header_text = updates.headerText
+    if (updates.footerText !== undefined) dbUpdates.footer_text = updates.footerText
+    if (updates.paymentInstructions !== undefined) dbUpdates.payment_instructions = updates.paymentInstructions
+    if (updates.thankYouMessage !== undefined) dbUpdates.thank_you_message = updates.thankYouMessage
+    if (updates.showLogo !== undefined) dbUpdates.show_logo = updates.showLogo
+    if (updates.showCompanyAddress !== undefined) dbUpdates.show_company_address = updates.showCompanyAddress
+    if (updates.showCustomerAddress !== undefined) dbUpdates.show_customer_address = updates.showCustomerAddress
+    if (updates.showPaymentTerms !== undefined) dbUpdates.show_payment_terms = updates.showPaymentTerms
+    if (updates.showDueDate !== undefined) dbUpdates.show_due_date = updates.showDueDate
+    if (updates.showInvoiceNumber !== undefined) dbUpdates.show_invoice_number = updates.showInvoiceNumber
+
     const { data, error } = await supabase
       .from('invoice_templates')
-      .update({
-        ...mapUpdatesToDb(updates),
-        updated_at: new Date().toISOString(),
-      })
+      .update(dbUpdates)
       .eq('id', id)
       .eq('organization_id', organizationId)
       .select()
@@ -309,142 +206,55 @@ export const invoiceTemplateService = {
       return null
     }
 
-    return mapFromDb(data)
+    return mapTemplateFromDb(data)
   },
 
-  /**
-   * Delete a template
-   */
   async deleteTemplate(id: string, organizationId: string): Promise<boolean> {
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured() ) {
-      const store = getDemoTemplateStore()
-      const idx = store.findIndex(t => t.id === id)
-      if (idx === -1 || store[idx].isDefault) return false
-      store.splice(idx, 1)
-      saveDemoTemplateStore(store)
-      return true
-    }
-
-    // Don't allow deleting default template
-    const { data: template } = await supabase
-      .from('invoice_templates')
-      .select('is_default')
-      .eq('id', id)
-      .single()
-    
-    if (template?.is_default) return false
 
     const { error } = await supabase
       .from('invoice_templates')
       .delete()
       .eq('id', id)
       .eq('organization_id', organizationId)
+      .eq('is_default', false) // Can't delete default
 
     if (error) {
       console.error('Error deleting template:', error)
       return false
     }
-
     return true
-  },
-
-  /**
-   * Apply a preset theme to a template
-   */
-  async applyTheme(
-    templateId: string,
-    themeName: keyof typeof TEMPLATE_THEMES,
-    organizationId: string
-  ): Promise<InvoiceTemplate | null> {
-    const theme = TEMPLATE_THEMES[themeName]
-    if (!theme) return null
-    
-    return this.updateTemplate(templateId, {
-      primaryColor: theme.primaryColor,
-      secondaryColor: theme.secondaryColor,
-      fontStyle: theme.fontStyle,
-    }, organizationId)
   },
 }
 
 // ============================================================================
-// DB MAPPING
+// MAPPER
 // ============================================================================
 
-function mapFromDb(row: any): InvoiceTemplate {
+function mapTemplateFromDb(row: any): InvoiceTemplate {
   return {
     id: row.id,
     organizationId: row.organization_id,
     name: row.name,
     isDefault: row.is_default,
-    primaryColor: row.primary_color,
-    secondaryColor: row.secondary_color,
-    logoPosition: row.logo_position,
-    logoSize: row.logo_size,
-    fontStyle: row.font_style,
+    primaryColor: row.primary_color || DEFAULT_TEMPLATE.primaryColor,
+    secondaryColor: row.secondary_color || DEFAULT_TEMPLATE.secondaryColor,
+    logoPosition: row.logo_position || DEFAULT_TEMPLATE.logoPosition,
+    logoSize: row.logo_size || DEFAULT_TEMPLATE.logoSize,
+    fontStyle: row.font_style || DEFAULT_TEMPLATE.fontStyle,
     headerText: row.header_text,
     footerText: row.footer_text,
     paymentInstructions: row.payment_instructions,
     thankYouMessage: row.thank_you_message,
-    showLogo: row.show_logo,
-    showCompanyAddress: row.show_company_address,
-    showCustomerAddress: row.show_customer_address,
-    showPaymentTerms: row.show_payment_terms,
-    showDueDate: row.show_due_date,
-    showInvoiceNumber: row.show_invoice_number,
+    showLogo: row.show_logo ?? DEFAULT_TEMPLATE.showLogo,
+    showCompanyAddress: row.show_company_address ?? DEFAULT_TEMPLATE.showCompanyAddress,
+    showCustomerAddress: row.show_customer_address ?? DEFAULT_TEMPLATE.showCustomerAddress,
+    showPaymentTerms: row.show_payment_terms ?? DEFAULT_TEMPLATE.showPaymentTerms,
+    showDueDate: row.show_due_date ?? DEFAULT_TEMPLATE.showDueDate,
+    showInvoiceNumber: row.show_invoice_number ?? DEFAULT_TEMPLATE.showInvoiceNumber,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
 }
 
-function mapToDb(template: InvoiceTemplate): any {
-  return {
-    id: template.id,
-    organization_id: template.organizationId,
-    name: template.name,
-    is_default: template.isDefault,
-    primary_color: template.primaryColor,
-    secondary_color: template.secondaryColor,
-    logo_position: template.logoPosition,
-    logo_size: template.logoSize,
-    font_style: template.fontStyle,
-    header_text: template.headerText,
-    footer_text: template.footerText,
-    payment_instructions: template.paymentInstructions,
-    thank_you_message: template.thankYouMessage,
-    show_logo: template.showLogo,
-    show_company_address: template.showCompanyAddress,
-    show_customer_address: template.showCustomerAddress,
-    show_payment_terms: template.showPaymentTerms,
-    show_due_date: template.showDueDate,
-    show_invoice_number: template.showInvoiceNumber,
-    created_at: template.createdAt,
-    updated_at: template.updatedAt,
-  }
-}
-
-function mapUpdatesToDb(updates: UpdateTemplateInput): any {
-  const result: any = {}
-  if (updates.name !== undefined) result.name = updates.name
-  if (updates.isDefault !== undefined) result.is_default = updates.isDefault
-  if (updates.primaryColor !== undefined) result.primary_color = updates.primaryColor
-  if (updates.secondaryColor !== undefined) result.secondary_color = updates.secondaryColor
-  if (updates.logoPosition !== undefined) result.logo_position = updates.logoPosition
-  if (updates.logoSize !== undefined) result.logo_size = updates.logoSize
-  if (updates.fontStyle !== undefined) result.font_style = updates.fontStyle
-  if (updates.headerText !== undefined) result.header_text = updates.headerText
-  if (updates.footerText !== undefined) result.footer_text = updates.footerText
-  if (updates.paymentInstructions !== undefined) result.payment_instructions = updates.paymentInstructions
-  if (updates.thankYouMessage !== undefined) result.thank_you_message = updates.thankYouMessage
-  if (updates.showLogo !== undefined) result.show_logo = updates.showLogo
-  if (updates.showCompanyAddress !== undefined) result.show_company_address = updates.showCompanyAddress
-  if (updates.showCustomerAddress !== undefined) result.show_customer_address = updates.showCustomerAddress
-  if (updates.showPaymentTerms !== undefined) result.show_payment_terms = updates.showPaymentTerms
-  if (updates.showDueDate !== undefined) result.show_due_date = updates.showDueDate
-  if (updates.showInvoiceNumber !== undefined) result.show_invoice_number = updates.showInvoiceNumber
-  return result
-}
-
-export default invoiceTemplateService
+export default invoiceTemplatesService

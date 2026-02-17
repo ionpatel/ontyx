@@ -118,13 +118,6 @@ export default function DashboardLayout({
   const handleLogout = async () => {
     try {
       await signOut()
-      // Clear demo mode localStorage data
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('ontyx_demo_profile')
-        localStorage.removeItem('ontyx_demo_organization')
-        localStorage.removeItem('ontyx_demo_contacts')
-        localStorage.removeItem('ontyx_demo_invoice_templates')
-      }
       router.push('/login')
     } catch (err) {
       console.error('Logout error:', err)

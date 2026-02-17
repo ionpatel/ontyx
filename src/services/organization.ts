@@ -1,4 +1,4 @@
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 
 // ============================================================================
 // TYPES
@@ -61,78 +61,13 @@ export interface UpdateOrganizationInput {
 }
 
 // ============================================================================
-// DEMO DATA
-// ============================================================================
-
-const demoOrganization: Organization = {
-  id: 'demo',
-  name: 'Demo Company',
-  slug: 'demo-company',
-  legalName: 'Demo Company Inc.',
-  email: 'hello@democompany.ca',
-  phone: '(416) 555-0100',
-  website: 'https://democompany.ca',
-  addressLine1: '123 Main Street',
-  city: 'Toronto',
-  province: 'ON',
-  postalCode: 'M5V 1A1',
-  country: 'CA',
-  taxNumber: '123456789 RT0001',
-  currency: 'CAD',
-  fiscalYearStart: 1,
-  timezone: 'America/Toronto',
-  dateFormat: 'YYYY-MM-DD',
-  plan: 'trial',
-  status: 'trial',
-  trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-}
-
-// Mutable demo store with localStorage persistence
-const DEMO_ORG_STORAGE_KEY = 'ontyx_demo_organization'
-
-function getDemoOrgStore(): Organization {
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = localStorage.getItem(DEMO_ORG_STORAGE_KEY)
-      if (stored) {
-        return { ...demoOrganization, ...JSON.parse(stored) }
-      }
-    } catch (e) {
-      console.error('Error reading demo org from localStorage:', e)
-    }
-  }
-  return { ...demoOrganization }
-}
-
-function saveDemoOrgStore(org: Organization): void {
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(DEMO_ORG_STORAGE_KEY, JSON.stringify(org))
-    } catch (e) {
-      console.error('Error saving demo org to localStorage:', e)
-    }
-  }
-}
-
-// ============================================================================
 // SERVICE
 // ============================================================================
 
 export const organizationService = {
   // Get organization by ID
   async getOrganization(organizationId: string): Promise<Organization | null> {
-    // Demo mode check FIRST
-    if (organizationId === 'demo') {
-      return getDemoOrgStore()
-    }
-    
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured()) {
-      return getDemoOrgStore()
-    }
 
     const { data, error } = await supabase
       .from('organizations')
@@ -142,7 +77,7 @@ export const organizationService = {
 
     if (error) {
       console.error('Error fetching organization:', error)
-      return getDemoOrgStore()
+      return null
     }
 
     return mapOrgFromDb(data)
@@ -153,36 +88,12 @@ export const organizationService = {
     organizationId: string, 
     updates: UpdateOrganizationInput
   ): Promise<Organization | null> {
-    // Demo mode check FIRST
-    if (organizationId === 'demo') {
-      const currentOrg = getDemoOrgStore()
-      const updatedOrg = { 
-        ...currentOrg, 
-        ...updates, 
-        updatedAt: new Date().toISOString() 
-      }
-      saveDemoOrgStore(updatedOrg)
-      return updatedOrg
-    }
-    
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured()) {
-      const currentOrg = getDemoOrgStore()
-      const updatedOrg = { 
-        ...currentOrg, 
-        ...updates, 
-        updatedAt: new Date().toISOString() 
-      }
-      saveDemoOrgStore(updatedOrg)
-      return updatedOrg
-    }
 
     const { data, error } = await supabase
       .from('organizations')
       .update({
         name: updates.name,
-        // legal_name: updates.legalName,
         logo_url: updates.logoUrl,
         website: updates.website,
         email: updates.email,
@@ -193,7 +104,6 @@ export const organizationService = {
         state: updates.province,
         postal_code: updates.postalCode,
         country: updates.country,
-        // tax_number: updates.taxNumber,
         currency: updates.currency,
         fiscal_year_start: updates.fiscalYearStart,
         timezone: updates.timezone,
@@ -212,43 +122,14 @@ export const organizationService = {
     return mapOrgFromDb(data)
   },
 
-  // Upload logo
+  // Upload logo to Supabase Storage
   async uploadLogo(organizationId: string, file: File): Promise<string | null> {
-    // Demo mode check FIRST - use base64 for localStorage persistence
-    if (organizationId === 'demo') {
-      return new Promise((resolve) => {
-        const reader = new FileReader()
-        reader.onloadend = () => {
-          const base64Url = reader.result as string
-          const currentOrg = getDemoOrgStore()
-          saveDemoOrgStore({ ...currentOrg, logoUrl: base64Url, updatedAt: new Date().toISOString() })
-          resolve(base64Url)
-        }
-        reader.onerror = () => resolve(null)
-        reader.readAsDataURL(file)
-      })
-    }
-    
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured()) {
-      // Fallback to base64 if Supabase not configured
-      return new Promise((resolve) => {
-        const reader = new FileReader()
-        reader.onloadend = () => {
-          const base64Url = reader.result as string
-          const currentOrg = getDemoOrgStore()
-          saveDemoOrgStore({ ...currentOrg, logoUrl: base64Url, updatedAt: new Date().toISOString() })
-          resolve(base64Url)
-        }
-        reader.onerror = () => resolve(null)
-        reader.readAsDataURL(file)
-      })
-    }
 
     const fileExt = file.name.split('.').pop()
     const fileName = `${organizationId}/logo.${fileExt}`
 
+    // Upload to storage
     const { error: uploadError } = await supabase.storage
       .from('logos')
       .upload(fileName, file, { upsert: true })
@@ -258,11 +139,12 @@ export const organizationService = {
       return null
     }
 
+    // Get public URL
     const { data: { publicUrl } } = supabase.storage
       .from('logos')
       .getPublicUrl(fileName)
 
-    // Update org with new logo URL
+    // Update organization with logo URL
     await supabase
       .from('organizations')
       .update({ logo_url: publicUrl, updated_at: new Date().toISOString() })
@@ -273,7 +155,7 @@ export const organizationService = {
 }
 
 // ============================================================================
-// HELPERS
+// MAPPERS
 // ============================================================================
 
 function mapOrgFromDb(row: any): Organization {

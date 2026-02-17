@@ -10,7 +10,7 @@ import { ProductTable } from "@/components/modules/operations/product-table"
 import { useProducts, useCategories, useInventoryStats } from "@/hooks/use-inventory"
 import { formatCurrency } from "@/lib/utils"
 import { ProductStatus } from "@/types/operations"
-import { isSupabaseConfigured } from "@/lib/supabase/client"
+
 import { motion } from "framer-motion"
 
 export default function InventoryPage() {
@@ -87,7 +87,7 @@ export default function InventoryPage() {
   return (
     <div className="flex-1 space-y-6 p-6">
       {/* Demo Mode Banner */}
-      {!isSupabaseConfigured() && (
+      { false && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}

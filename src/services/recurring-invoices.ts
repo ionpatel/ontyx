@@ -1,164 +1,50 @@
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
+import type { InvoiceLineItem } from './invoices'
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
 export type RecurringFrequency = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly'
+export type RecurringStatus = 'active' | 'paused' | 'completed' | 'cancelled'
 
 export interface RecurringInvoice {
   id: string
   organizationId: string
-  
-  // Customer
   customerId: string
   customerName: string
   customerEmail?: string
-  
-  // Template
-  items: RecurringInvoiceItem[]
-  subtotal: number
-  taxProvince: string  // For Canadian tax calculation
-  notes?: string
-  terms?: string
-  
-  // Schedule
   frequency: RecurringFrequency
-  startDate: string
   nextDate: string
   endDate?: string
-  daysUntilDue: number  // e.g., 30 = due 30 days after invoice date
-  
-  // Status
-  isActive: boolean
+  items: InvoiceLineItem[]
+  subtotal: number
+  taxTotal: number
+  total: number
+  currency: string
+  paymentTerms: string
+  notes?: string
+  status: RecurringStatus
   lastGeneratedAt?: string
   invoicesGenerated: number
-  
   createdAt: string
   updatedAt: string
 }
 
-export interface RecurringInvoiceItem {
-  description: string
-  quantity: number
-  unitPrice: number
-  amount: number
-}
-
 export interface CreateRecurringInput {
   customerId: string
-  customerName: string
-  customerEmail?: string
-  items: RecurringInvoiceItem[]
-  subtotal: number
-  taxProvince: string
-  notes?: string
-  terms?: string
   frequency: RecurringFrequency
   startDate: string
-  daysUntilDue: number
   endDate?: string
-}
-
-export interface UpdateRecurringInput {
-  customerId?: string
-  customerName?: string
-  customerEmail?: string
-  items?: RecurringInvoiceItem[]
-  subtotal?: number
-  taxProvince?: string
+  items: {
+    description: string
+    quantity: number
+    unitPrice: number
+    taxRate?: number
+    discount?: number
+  }[]
+  paymentTerms?: string
   notes?: string
-  terms?: string
-  frequency?: RecurringFrequency
-  startDate?: string
-  daysUntilDue?: number
-  endDate?: string
-  isActive?: boolean
-}
-
-// ============================================================================
-// DEMO DATA
-// ============================================================================
-
-const demoRecurringInvoices: RecurringInvoice[] = [
-  {
-    id: 'rec-001',
-    organizationId: 'demo',
-    customerId: 'cust-001',
-    customerName: 'Maple Leaf Consulting',
-    customerEmail: 'billing@mapleleaf.ca',
-    items: [
-      { description: 'Monthly Retainer - Business Consulting', quantity: 1, unitPrice: 2500.00, amount: 2500.00 },
-    ],
-    subtotal: 2500.00,
-    taxProvince: 'ON',
-    notes: 'Thank you for your continued partnership.',
-    frequency: 'monthly',
-    startDate: '2026-01-01',
-    nextDate: '2026-03-01',
-    daysUntilDue: 30,
-    isActive: true,
-    lastGeneratedAt: '2026-02-01',
-    invoicesGenerated: 2,
-    createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-02-01T00:00:00Z',
-  },
-  {
-    id: 'rec-002',
-    organizationId: 'demo',
-    customerId: 'cust-002',
-    customerName: 'Northern Tech Solutions',
-    customerEmail: 'accounts@northerntech.ca',
-    items: [
-      { description: 'IT Support Package', quantity: 1, unitPrice: 500.00, amount: 500.00 },
-      { description: 'Software Licenses (5 seats)', quantity: 5, unitPrice: 25.00, amount: 125.00 },
-    ],
-    subtotal: 625.00,
-    taxProvince: 'ON',
-    frequency: 'monthly',
-    startDate: '2026-01-15',
-    nextDate: '2026-02-15',
-    daysUntilDue: 15,
-    isActive: true,
-    invoicesGenerated: 1,
-    createdAt: '2026-01-15T00:00:00Z',
-    updatedAt: '2026-01-15T00:00:00Z',
-  },
-]
-
-// Mutable demo store
-let demoRecurringStore = [...demoRecurringInvoices]
-
-// ============================================================================
-// HELPERS
-// ============================================================================
-
-function calculateNextDate(currentDate: string, frequency: RecurringFrequency): string {
-  const date = new Date(currentDate)
-  
-  switch (frequency) {
-    case 'weekly':
-      date.setDate(date.getDate() + 7)
-      break
-    case 'biweekly':
-      date.setDate(date.getDate() + 14)
-      break
-    case 'monthly':
-      date.setMonth(date.getMonth() + 1)
-      break
-    case 'quarterly':
-      date.setMonth(date.getMonth() + 3)
-      break
-    case 'yearly':
-      date.setFullYear(date.getFullYear() + 1)
-      break
-  }
-  
-  return date.toISOString().split('T')[0]
-}
-
-function generateId(): string {
-  return `rec-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
 }
 
 // ============================================================================
@@ -166,19 +52,16 @@ function generateId(): string {
 // ============================================================================
 
 export const recurringInvoicesService = {
-  /**
-   * List all recurring invoices for an organization
-   */
-  async listRecurring(organizationId: string): Promise<RecurringInvoice[]> {
+  async getRecurringInvoices(organizationId: string): Promise<RecurringInvoice[]> {
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured() ) {
-      return demoRecurringStore.filter(r => r.organizationId === 'demo')
-    }
 
     const { data, error } = await supabase
       .from('recurring_invoices')
-      .select('*')
+      .select(`
+        *,
+        customer:contacts!recurring_invoices_customer_id_fkey(display_name, email),
+        items:recurring_invoice_items(*)
+      `)
       .eq('organization_id', organizationId)
       .order('next_date', { ascending: true })
 
@@ -187,22 +70,19 @@ export const recurringInvoicesService = {
       return []
     }
 
-    return data.map(mapFromDb)
+    return (data || []).map(mapRecurringFromDb)
   },
 
-  /**
-   * Get a single recurring invoice
-   */
-  async getRecurring(id: string, organizationId: string): Promise<RecurringInvoice | null> {
+  async getRecurringInvoice(id: string, organizationId: string): Promise<RecurringInvoice | null> {
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured() ) {
-      return demoRecurringStore.find(r => r.id === id) || null
-    }
 
     const { data, error } = await supabase
       .from('recurring_invoices')
-      .select('*')
+      .select(`
+        *,
+        customer:contacts!recurring_invoices_customer_id_fkey(display_name, email),
+        items:recurring_invoice_items(*)
+      `)
       .eq('id', id)
       .eq('organization_id', organizationId)
       .single()
@@ -212,64 +92,45 @@ export const recurringInvoicesService = {
       return null
     }
 
-    return mapFromDb(data)
+    return mapRecurringFromDb(data)
   },
 
-  /**
-   * Create a new recurring invoice
-   */
-  async createRecurring(
-    input: CreateRecurringInput,
-    organizationId: string
-  ): Promise<RecurringInvoice | null> {
+  async createRecurringInvoice(input: CreateRecurringInput, organizationId: string): Promise<RecurringInvoice | null> {
     const supabase = createClient()
-    
-    const nextDate = input.startDate
-    
-    if (!supabase || !isSupabaseConfigured() ) {
-      const newRecurring: RecurringInvoice = {
-        id: generateId(),
-        organizationId: 'demo',
-        customerId: input.customerId,
-        customerName: input.customerName,
-        customerEmail: input.customerEmail,
-        items: input.items,
-        subtotal: input.subtotal,
-        taxProvince: input.taxProvince,
-        notes: input.notes,
-        terms: input.terms,
-        frequency: input.frequency,
-        startDate: input.startDate,
-        nextDate,
-        endDate: input.endDate,
-        daysUntilDue: input.daysUntilDue,
-        isActive: true,
-        invoicesGenerated: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-      demoRecurringStore.push(newRecurring)
-      return newRecurring
-    }
+
+    // Calculate totals
+    let subtotal = 0
+    let taxTotal = 0
+
+    const items = input.items.map(item => {
+      const itemSubtotal = item.quantity * item.unitPrice
+      const itemDiscount = item.discount || 0
+      const itemAfterDiscount = itemSubtotal - itemDiscount
+      const itemTax = itemAfterDiscount * ((item.taxRate || 0) / 100)
+      
+      subtotal += itemAfterDiscount
+      taxTotal += itemTax
+      
+      return { ...item, taxRate: item.taxRate || 0, discount: itemDiscount, amount: itemAfterDiscount + itemTax }
+    })
+
+    const total = subtotal + taxTotal
 
     const { data, error } = await supabase
       .from('recurring_invoices')
       .insert({
         organization_id: organizationId,
         customer_id: input.customerId,
-        customer_name: input.customerName,
-        customer_email: input.customerEmail,
-        items: input.items,
-        subtotal: input.subtotal,
-        tax_province: input.taxProvince,
-        notes: input.notes,
-        terms: input.terms,
         frequency: input.frequency,
-        start_date: input.startDate,
-        next_date: nextDate,
+        next_date: input.startDate,
         end_date: input.endDate,
-        days_until_due: input.daysUntilDue,
-        is_active: true,
+        subtotal,
+        tax_total: taxTotal,
+        total,
+        currency: 'CAD',
+        payment_terms: input.paymentTerms || 'Net 30',
+        notes: input.notes,
+        status: 'active',
         invoices_generated: 0,
       })
       .select()
@@ -280,77 +141,45 @@ export const recurringInvoicesService = {
       return null
     }
 
-    return mapFromDb(data)
+    // Insert items
+    const itemRecords = items.map((item, idx) => ({
+      recurring_invoice_id: data.id,
+      line_number: idx + 1,
+      description: item.description,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+      tax_rate: item.taxRate,
+      discount_amount: item.discount,
+      line_total: item.amount,
+    }))
+
+    const { error: itemsError } = await supabase.from('recurring_invoice_items').insert(itemRecords)
+    if (itemsError) console.error('Error inserting recurring invoice items:', itemsError)
+
+    return this.getRecurringInvoice(data.id, organizationId)
   },
 
-  /**
-   * Update a recurring invoice
-   */
-  async updateRecurring(
-    id: string,
-    updates: UpdateRecurringInput,
-    organizationId: string
-  ): Promise<RecurringInvoice | null> {
+  async updateStatus(id: string, status: RecurringStatus, organizationId: string): Promise<boolean> {
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured() ) {
-      const idx = demoRecurringStore.findIndex(r => r.id === id)
-      if (idx === -1) return null
-      
-      demoRecurringStore[idx] = {
-        ...demoRecurringStore[idx],
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      }
-      return demoRecurringStore[idx]
-    }
 
-    const updateData: any = {
-      updated_at: new Date().toISOString(),
-    }
-    
-    if (updates.customerId !== undefined) updateData.customer_id = updates.customerId
-    if (updates.customerName !== undefined) updateData.customer_name = updates.customerName
-    if (updates.customerEmail !== undefined) updateData.customer_email = updates.customerEmail
-    if (updates.items !== undefined) updateData.items = updates.items
-    if (updates.subtotal !== undefined) updateData.subtotal = updates.subtotal
-    if (updates.taxProvince !== undefined) updateData.tax_province = updates.taxProvince
-    if (updates.notes !== undefined) updateData.notes = updates.notes
-    if (updates.terms !== undefined) updateData.terms = updates.terms
-    if (updates.frequency !== undefined) updateData.frequency = updates.frequency
-    if (updates.startDate !== undefined) updateData.start_date = updates.startDate
-    if (updates.daysUntilDue !== undefined) updateData.days_until_due = updates.daysUntilDue
-    if (updates.endDate !== undefined) updateData.end_date = updates.endDate
-    if (updates.isActive !== undefined) updateData.is_active = updates.isActive
-
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('recurring_invoices')
-      .update(updateData)
+      .update({ status, updated_at: new Date().toISOString() })
       .eq('id', id)
       .eq('organization_id', organizationId)
-      .select()
-      .single()
 
     if (error) {
-      console.error('Error updating recurring invoice:', error)
-      return null
+      console.error('Error updating recurring invoice status:', error)
+      return false
     }
-
-    return mapFromDb(data)
+    return true
   },
 
-  /**
-   * Delete a recurring invoice
-   */
-  async deleteRecurring(id: string, organizationId: string): Promise<boolean> {
+  async deleteRecurringInvoice(id: string, organizationId: string): Promise<boolean> {
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured() ) {
-      const idx = demoRecurringStore.findIndex(r => r.id === id)
-      if (idx === -1) return false
-      demoRecurringStore.splice(idx, 1)
-      return true
-    }
+
+    // Delete items first
+    await supabase.from('recurring_invoice_items').delete().eq('recurring_invoice_id', id)
 
     const { error } = await supabase
       .from('recurring_invoices')
@@ -362,73 +191,78 @@ export const recurringInvoicesService = {
       console.error('Error deleting recurring invoice:', error)
       return false
     }
-
     return true
   },
 
-  /**
-   * Toggle active status
-   */
-  async toggleActive(id: string, organizationId: string): Promise<boolean> {
-    const recurring = await this.getRecurring(id, organizationId)
-    if (!recurring) return false
-    
-    const updated = await this.updateRecurring(id, { isActive: !recurring.isActive }, organizationId)
-    return !!updated
-  },
+  async getStats(organizationId: string): Promise<{
+    active: number
+    paused: number
+    totalMonthlyValue: number
+  }> {
+    const supabase = createClient()
 
-  /**
-   * Get recurring invoices due for generation (where nextDate <= today)
-   */
-  async getDueForGeneration(organizationId: string): Promise<RecurringInvoice[]> {
-    const today = new Date().toISOString().split('T')[0]
-    const all = await this.listRecurring(organizationId)
-    
-    return all.filter(r => 
-      r.isActive && 
-      r.nextDate <= today && 
-      (!r.endDate || r.endDate >= today)
-    )
-  },
+    const { data, error } = await supabase
+      .from('recurring_invoices')
+      .select('status, total, frequency')
+      .eq('organization_id', organizationId)
 
-  /**
-   * Mark a recurring invoice as generated (updates nextDate and counter)
-   */
-  async markGenerated(id: string, organizationId: string): Promise<RecurringInvoice | null> {
-    const recurring = await this.getRecurring(id, organizationId)
-    if (!recurring) return null
+    if (error) {
+      console.error('Error fetching recurring stats:', error)
+      return { active: 0, paused: 0, totalMonthlyValue: 0 }
+    }
+
+    const invoices = data || []
+    const active = invoices.filter(i => i.status === 'active')
     
-    const nextDate = calculateNextDate(recurring.nextDate, recurring.frequency)
-    
-    return this.updateRecurring(id, {
-      ...recurring,
-      // These need to be in the update:
-    }, organizationId)
+    // Calculate monthly value based on frequency
+    const monthlyValue = active.reduce((sum, inv) => {
+      const multiplier = 
+        inv.frequency === 'weekly' ? 4 :
+        inv.frequency === 'biweekly' ? 2 :
+        inv.frequency === 'monthly' ? 1 :
+        inv.frequency === 'quarterly' ? 1/3 :
+        1/12
+      return sum + (inv.total * multiplier)
+    }, 0)
+
+    return {
+      active: active.length,
+      paused: invoices.filter(i => i.status === 'paused').length,
+      totalMonthlyValue: monthlyValue,
+    }
   },
 }
 
 // ============================================================================
-// DB MAPPING
+// MAPPER
 // ============================================================================
 
-function mapFromDb(row: any): RecurringInvoice {
+function mapRecurringFromDb(row: any): RecurringInvoice {
   return {
     id: row.id,
     organizationId: row.organization_id,
     customerId: row.customer_id,
-    customerName: row.customer_name,
-    customerEmail: row.customer_email,
-    items: row.items || [],
-    subtotal: row.subtotal || 0,
-    taxProvince: row.tax_province || 'ON',
-    notes: row.notes,
-    terms: row.terms,
-    frequency: row.frequency || 'monthly',
-    startDate: row.start_date,
+    customerName: row.customer?.display_name || 'Unknown',
+    customerEmail: row.customer?.email,
+    frequency: row.frequency,
     nextDate: row.next_date,
     endDate: row.end_date,
-    daysUntilDue: row.days_until_due || 30,
-    isActive: row.is_active !== false,
+    items: (row.items || []).map((item: any) => ({
+      id: item.id,
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unit_price,
+      taxRate: item.tax_rate || 0,
+      discount: item.discount_amount || 0,
+      amount: item.line_total,
+    })),
+    subtotal: row.subtotal,
+    taxTotal: row.tax_total || 0,
+    total: row.total,
+    currency: row.currency || 'CAD',
+    paymentTerms: row.payment_terms || 'Net 30',
+    notes: row.notes,
+    status: row.status,
     lastGeneratedAt: row.last_generated_at,
     invoicesGenerated: row.invoices_generated || 0,
     createdAt: row.created_at,

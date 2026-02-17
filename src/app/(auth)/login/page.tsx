@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Mail, Lock, ArrowRight, Loader2, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react"
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/client"
 
 function LoginForm() {
   const router = useRouter()

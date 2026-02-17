@@ -1,101 +1,47 @@
-/**
- * T4 Tax Slip Service
- * 
- * Generates T4 Statement of Remuneration Paid for Canadian employees
- * Aggregates payroll data for the tax year
- */
-
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
-import { payRunsService, type PayRun, type PayRunEmployee } from './pay-runs'
+import { createClient } from '@/lib/supabase/client'
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-export interface T4Data {
+export interface T4Slip {
   id: string
+  organizationId: string
   taxYear: number
   employeeId: string
-  
-  // Employee Info (Boxes 12-13)
   employeeName: string
-  employeeSin: string  // Social Insurance Number (masked for display)
+  employeeSin: string
   employeeAddress: string
-  employeeCity: string
-  employeeProvince: string
-  employeePostalCode: string
   
-  // Employer Info
-  employerName: string
-  employerBn: string  // Business Number
-  employerAddress: string
+  // Box amounts
+  box14Employment: number      // Employment income
+  box16Cpp: number            // CPP contributions
+  box17Cpp2: number           // CPP2 contributions  
+  box18Ei: number             // EI premiums
+  box22IncomeTax: number      // Income tax deducted
+  box24EiInsurable: number    // EI insurable earnings
+  box26CppPensionable: number // CPP pensionable earnings
   
-  // Income & Deductions
-  employmentIncome: number      // Box 14 - Total employment income
-  incomeTaxDeducted: number     // Box 22 - Total income tax deducted
-  cppContributions: number      // Box 16 - Employee CPP contributions
-  cpp2Contributions: number     // Box 16A - CPP2 contributions (if applicable)
-  eiPremiums: number            // Box 18 - Employee EI premiums
-  rppContributions: number      // Box 20 - RPP contributions (pension)
-  pensionAdjustment: number     // Box 52 - Pension adjustment
-  
-  // Other boxes (optional)
-  unionDues: number             // Box 44
-  charitableDonations: number   // Box 46
-  
-  // Employment details
-  employmentCode?: string       // Box 29 - Employment code
-  exemptCpp: boolean            // Box 28 - Exempt from CPP
-  exemptEi: boolean             // Box 28 - Exempt from EI
-  exemptPpip: boolean           // Box 28 - Exempt from PPIP (Quebec)
+  // Additional boxes
+  box40RppContributions?: number  // RPP contributions
+  box42RppPastService?: number
+  box44UnionDues?: number
+  box46CharitableDonations?: number
+  box52PensionAdjustment?: number
   
   // Province of employment
-  provinceOfEmployment: string  // Box 10
+  provinceCode: string
   
   // Status
   status: 'draft' | 'reviewed' | 'filed'
-  generatedAt: string
-  filedAt?: string
-}
-
-export interface T4Summary {
-  taxYear: number
-  totalSlips: number
-  totalEmploymentIncome: number
-  totalIncomeTax: number
-  totalCpp: number
-  totalEi: number
-  status: 'pending' | 'generated' | 'filed'
-}
-
-// ============================================================================
-// DEMO DATA
-// ============================================================================
-
-const DEMO_T4_STORAGE_KEY = 'ontyx_demo_t4s'
-
-function getDemoT4Store(): T4Data[] {
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = localStorage.getItem(DEMO_T4_STORAGE_KEY)
-      if (stored) {
-        return JSON.parse(stored)
-      }
-    } catch (e) {
-      console.error('Error reading demo T4s from localStorage:', e)
-    }
-  }
-  return []
-}
-
-function saveDemoT4Store(t4s: T4Data[]): void {
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(DEMO_T4_STORAGE_KEY, JSON.stringify(t4s))
-    } catch (e) {
-      console.error('Error saving demo T4s to localStorage:', e)
-    }
-  }
+  
+  // Flags
+  exemptCpp: boolean
+  exemptEi: boolean
+  exemptPpip: boolean
+  
+  createdAt: string
+  updatedAt: string
 }
 
 // ============================================================================
@@ -103,254 +49,210 @@ function saveDemoT4Store(t4s: T4Data[]): void {
 // ============================================================================
 
 export const t4Service = {
-  /**
-   * Get all T4s for a tax year
-   */
-  async getT4s(organizationId: string, taxYear: number): Promise<T4Data[]> {
+  async getT4s(organizationId: string, taxYear?: number): Promise<T4Slip[]> {
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured() ) {
-      return getDemoT4Store().filter(t => t.taxYear === taxYear)
-    }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('t4_slips')
       .select('*')
       .eq('organization_id', organizationId)
-      .eq('tax_year', taxYear)
       .order('employee_name', { ascending: true })
+
+    if (taxYear) {
+      query = query.eq('tax_year', taxYear)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.error('Error fetching T4s:', error)
       return []
     }
 
-    return data.map(mapT4FromDb)
+    return (data || []).map(mapT4FromDb)
   },
 
-  /**
-   * Get T4 summary for a tax year
-   */
-  async getT4Summary(organizationId: string, taxYear: number): Promise<T4Summary> {
-    const t4s = await this.getT4s(organizationId, taxYear)
-    
-    return {
-      taxYear,
-      totalSlips: t4s.length,
-      totalEmploymentIncome: t4s.reduce((sum, t) => sum + t.employmentIncome, 0),
-      totalIncomeTax: t4s.reduce((sum, t) => sum + t.incomeTaxDeducted, 0),
-      totalCpp: t4s.reduce((sum, t) => sum + t.cppContributions + t.cpp2Contributions, 0),
-      totalEi: t4s.reduce((sum, t) => sum + t.eiPremiums, 0),
-      status: t4s.length === 0 ? 'pending' : t4s.every(t => t.status === 'filed') ? 'filed' : 'generated',
-    }
-  },
-
-  /**
-   * Generate T4s from pay run data for a tax year
-   * Aggregates all completed pay runs and creates T4 for each employee
-   */
-  async generateT4s(
-    organizationId: string, 
-    taxYear: number,
-    employerInfo: {
-      name: string
-      bn: string
-      address: string
-    }
-  ): Promise<T4Data[]> {
+  async generateT4sFromPayRuns(organizationId: string, taxYear: number): Promise<T4Slip[]> {
     const supabase = createClient()
-    
+
     // Get all completed pay runs for the year
-    const payRuns = await payRunsService.getPayRuns(organizationId)
-    const yearPayRuns = payRuns.filter(pr => {
-      const payDate = new Date(pr.payDate)
-      return payDate.getFullYear() === taxYear && pr.status === 'completed'
-    })
+    const { data: payRuns, error: payRunError } = await supabase
+      .from('pay_runs')
+      .select(`
+        *,
+        employees:pay_run_employees(*)
+      `)
+      .eq('organization_id', organizationId)
+      .eq('status', 'completed')
+      .gte('pay_date', `${taxYear}-01-01`)
+      .lte('pay_date', `${taxYear}-12-31`)
+
+    if (payRunError) {
+      console.error('Error fetching pay runs for T4:', payRunError)
+      return []
+    }
 
     // Aggregate by employee
-    const employeeAggregates: Record<string, {
+    const employeeMap = new Map<string, {
       employeeId: string
       employeeName: string
-      employeeEmail?: string
       totalGross: number
       totalCpp: number
-      totalCpp2: number
       totalEi: number
-      totalFederalTax: number
-      totalProvincialTax: number
-    }> = {}
+      totalTax: number
+    }>()
 
-    // For demo mode, we need to get employee data from pay runs
-    for (const payRun of yearPayRuns) {
-      const { employees } = await payRunsService.getPayRun(payRun.id, organizationId) || { employees: [] }
-      
-      for (const emp of employees) {
-        if (!employeeAggregates[emp.employeeId]) {
-          employeeAggregates[emp.employeeId] = {
-            employeeId: emp.employeeId,
-            employeeName: emp.employeeName,
-            employeeEmail: emp.employeeEmail,
-            totalGross: 0,
-            totalCpp: 0,
-            totalCpp2: 0,
-            totalEi: 0,
-            totalFederalTax: 0,
-            totalProvincialTax: 0,
-          }
+    for (const payRun of payRuns || []) {
+      for (const emp of payRun.employees || []) {
+        const existing = employeeMap.get(emp.employee_id) || {
+          employeeId: emp.employee_id,
+          employeeName: emp.employee_name,
+          totalGross: 0,
+          totalCpp: 0,
+          totalEi: 0,
+          totalTax: 0,
         }
         
-        const agg = employeeAggregates[emp.employeeId]
-        agg.totalGross += emp.grossPay
-        agg.totalCpp += emp.cpp
-        agg.totalCpp2 += emp.cpp2
-        agg.totalEi += emp.ei
-        agg.totalFederalTax += emp.federalTax
-        agg.totalProvincialTax += emp.provincialTax
+        existing.totalGross += emp.gross_pay || 0
+        existing.totalCpp += emp.cpp || 0
+        existing.totalEi += emp.ei || 0
+        existing.totalTax += (emp.federal_tax || 0) + (emp.provincial_tax || 0)
+        
+        employeeMap.set(emp.employee_id, existing)
       }
     }
 
-    // Create T4 for each employee
-    const t4s: T4Data[] = Object.values(employeeAggregates).map(agg => ({
-      id: `t4-${taxYear}-${agg.employeeId}`,
-      taxYear,
-      employeeId: agg.employeeId,
-      
-      // Employee info (would come from employee record in real system)
-      employeeName: agg.employeeName,
-      employeeSin: '***-***-***',  // Masked for demo
-      employeeAddress: '',
-      employeeCity: 'Toronto',
-      employeeProvince: 'ON',
-      employeePostalCode: '',
-      
-      // Employer info
-      employerName: employerInfo.name,
-      employerBn: employerInfo.bn,
-      employerAddress: employerInfo.address,
-      
-      // Income & deductions
-      employmentIncome: Math.round(agg.totalGross * 100) / 100,
-      incomeTaxDeducted: Math.round((agg.totalFederalTax + agg.totalProvincialTax) * 100) / 100,
-      cppContributions: Math.round(agg.totalCpp * 100) / 100,
-      cpp2Contributions: Math.round(agg.totalCpp2 * 100) / 100,
-      eiPremiums: Math.round(agg.totalEi * 100) / 100,
-      rppContributions: 0,
-      pensionAdjustment: 0,
-      unionDues: 0,
-      charitableDonations: 0,
-      
-      exemptCpp: false,
-      exemptEi: false,
-      exemptPpip: false,
-      provinceOfEmployment: 'ON',
-      
-      status: 'draft' as const,
-      generatedAt: new Date().toISOString(),
-    }))
+    // Create T4 slips
+    const t4Slips: T4Slip[] = []
 
-    // Save T4s
-    if (!supabase || !isSupabaseConfigured() ) {
-      // Remove existing T4s for this year and save new ones
-      const store = getDemoT4Store().filter(t => t.taxYear !== taxYear)
-      store.push(...t4s)
-      saveDemoT4Store(store)
-      return t4s
+    for (const [employeeId, data] of employeeMap) {
+      const t4: T4Slip = {
+        id: `t4-${taxYear}-${employeeId}`,
+        organizationId,
+        taxYear,
+        employeeId: data.employeeId,
+        employeeName: data.employeeName,
+        employeeSin: '***-***-***',
+        employeeAddress: '',
+        box14Employment: data.totalGross,
+        box16Cpp: data.totalCpp,
+        box17Cpp2: 0,
+        box18Ei: data.totalEi,
+        box22IncomeTax: data.totalTax,
+        box24EiInsurable: data.totalGross,
+        box26CppPensionable: data.totalGross,
+        provinceCode: 'ON',
+        status: 'draft',
+        exemptCpp: false,
+        exemptEi: false,
+        exemptPpip: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      t4Slips.push(t4)
     }
 
-    // Database insert would go here
-    return t4s
+    return t4Slips
   },
 
-  /**
-   * Update T4 status
-   */
-  async updateT4Status(
-    id: string, 
-    status: 'draft' | 'reviewed' | 'filed',
-    organizationId: string
-  ): Promise<boolean> {
+  async updateT4Status(id: string, status: T4Slip['status'], organizationId: string): Promise<boolean> {
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured() ) {
-      const store = getDemoT4Store()
-      const idx = store.findIndex(t => t.id === id)
-      if (idx === -1) return false
-      store[idx].status = status
-      if (status === 'filed') {
-        store[idx].filedAt = new Date().toISOString()
-      }
-      saveDemoT4Store(store)
-      return true
-    }
 
     const { error } = await supabase
       .from('t4_slips')
-      .update({ 
-        status, 
-        filed_at: status === 'filed' ? new Date().toISOString() : null 
-      })
+      .update({ status, updated_at: new Date().toISOString() })
       .eq('id', id)
+      .eq('organization_id', organizationId)
 
-    return !error
+    if (error) {
+      console.error('Error updating T4 status:', error)
+      return false
+    }
+    return true
   },
 
-  /**
-   * Delete all T4s for a tax year (regenerate)
-   */
-  async deleteT4s(organizationId: string, taxYear: number): Promise<boolean> {
+  async deleteT4(id: string, organizationId: string): Promise<boolean> {
     const supabase = createClient()
-    
-    if (!supabase || !isSupabaseConfigured() ) {
-      const store = getDemoT4Store().filter(t => t.taxYear !== taxYear)
-      saveDemoT4Store(store)
-      return true
-    }
 
     const { error } = await supabase
       .from('t4_slips')
       .delete()
+      .eq('id', id)
+      .eq('organization_id', organizationId)
+      .eq('status', 'draft')
+
+    if (error) {
+      console.error('Error deleting T4:', error)
+      return false
+    }
+    return true
+  },
+
+  async getT4Stats(organizationId: string, taxYear: number): Promise<{
+    total: number
+    draft: number
+    reviewed: number
+    filed: number
+    totalEmploymentIncome: number
+    totalTaxDeducted: number
+  }> {
+    const supabase = createClient()
+
+    const { data, error } = await supabase
+      .from('t4_slips')
+      .select('status, box14_employment, box22_income_tax')
       .eq('organization_id', organizationId)
       .eq('tax_year', taxYear)
 
-    return !error
+    if (error) {
+      console.error('Error fetching T4 stats:', error)
+      return { total: 0, draft: 0, reviewed: 0, filed: 0, totalEmploymentIncome: 0, totalTaxDeducted: 0 }
+    }
+
+    const slips = data || []
+    return {
+      total: slips.length,
+      draft: slips.filter(s => s.status === 'draft').length,
+      reviewed: slips.filter(s => s.status === 'reviewed').length,
+      filed: slips.filter(s => s.status === 'filed').length,
+      totalEmploymentIncome: slips.reduce((sum, s) => sum + (s.box14_employment || 0), 0),
+      totalTaxDeducted: slips.reduce((sum, s) => sum + (s.box22_income_tax || 0), 0),
+    }
   },
 }
 
 // ============================================================================
-// DB MAPPING
+// MAPPER
 // ============================================================================
 
-function mapT4FromDb(row: any): T4Data {
+function mapT4FromDb(row: any): T4Slip {
   return {
     id: row.id,
+    organizationId: row.organization_id,
     taxYear: row.tax_year,
     employeeId: row.employee_id,
     employeeName: row.employee_name,
     employeeSin: row.employee_sin,
     employeeAddress: row.employee_address,
-    employeeCity: row.employee_city,
-    employeeProvince: row.employee_province,
-    employeePostalCode: row.employee_postal_code,
-    employerName: row.employer_name,
-    employerBn: row.employer_bn,
-    employerAddress: row.employer_address,
-    employmentIncome: row.employment_income,
-    incomeTaxDeducted: row.income_tax_deducted,
-    cppContributions: row.cpp_contributions,
-    cpp2Contributions: row.cpp2_contributions || 0,
-    eiPremiums: row.ei_premiums,
-    rppContributions: row.rpp_contributions || 0,
-    pensionAdjustment: row.pension_adjustment || 0,
-    unionDues: row.union_dues || 0,
-    charitableDonations: row.charitable_donations || 0,
-    employmentCode: row.employment_code,
+    box14Employment: row.box14_employment,
+    box16Cpp: row.box16_cpp,
+    box17Cpp2: row.box17_cpp2 || 0,
+    box18Ei: row.box18_ei,
+    box22IncomeTax: row.box22_income_tax,
+    box24EiInsurable: row.box24_ei_insurable,
+    box26CppPensionable: row.box26_cpp_pensionable,
+    box40RppContributions: row.box40_rpp,
+    box42RppPastService: row.box42_rpp_past,
+    box44UnionDues: row.box44_union,
+    box46CharitableDonations: row.box46_charity,
+    box52PensionAdjustment: row.box52_pa,
+    provinceCode: row.province_code,
+    status: row.status,
     exemptCpp: row.exempt_cpp || false,
     exemptEi: row.exempt_ei || false,
     exemptPpip: row.exempt_ppip || false,
-    provinceOfEmployment: row.province_of_employment,
-    status: row.status,
-    generatedAt: row.generated_at,
-    filedAt: row.filed_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   }
 }
 

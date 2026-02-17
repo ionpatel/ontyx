@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/client"
 
 const provinces = [
   { value: "ON", label: "Ontario" },
