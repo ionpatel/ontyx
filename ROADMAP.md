@@ -36,10 +36,13 @@
 - [ ] **Invoice templates** - customizable branding
 
 ### Week 3: Banking & Payments
-- [ ] **Plaid integration** - connect Canadian banks
-- [ ] **Bank transactions** - import & categorize
-- [ ] **Payment methods** - track how customers pay
-- [ ] **Bank reconciliation** - match transactions
+- [x] **Bank accounts CRUD** ✅ - add, edit, delete accounts
+- [x] **Manual transactions** ✅ - record deposits & payments
+- [x] **Transaction categorization** ✅ - assign categories
+- [x] **Reconciliation** ✅ - mark transactions reconciled
+- [x] **Banking summary** ✅ - totals, inflow/outflow
+- [ ] **Plaid integration** - connect Canadian banks (auto-import)
+- [ ] **Bank reconciliation v2** - auto-match with invoices/bills
 
 ### Week 4: Canadian Payroll
 - [ ] **Employee profiles** - SIN, tax info, pay rate
@@ -68,7 +71,7 @@
 ---
 
 ## Current Focus
-**Banking Integration** - connect Canadian banks via Plaid
+**Complete Payroll** - Employee profiles, ROE export
 
 ## Quick Wins Queue
 1. ~~Org settings page~~ ✅
@@ -76,13 +79,27 @@
 3. ~~Payment recording~~ ✅
 4. ~~User profile page~~ ✅
 5. ~~Recurring invoices~~ ✅
-6. Invoice templates (branding)
-7. Banking/Plaid integration
-8. Canadian Payroll (CPP/EI)
+6. ~~Invoice templates~~ ✅
+7. ~~Banking module~~ ✅ (manual transactions, categorization, reconciliation)
+8. ~~Canadian Payroll~~ ✅ (CPP/EI, pay runs, T4)
+9. ROE export
+10. Plaid integration (auto-import from banks)
 
 ---
 
 ## Progress Log
+
+### Feb 17, 2026
+- ✅ Banking module COMPLETE (service, hooks, UI)
+  - Bank accounts CRUD
+  - Manual transactions (deposits/payments)
+  - Transaction categorization
+  - Reconciliation workflow
+  - Summary stats (inflow/outflow)
+- ✅ Email domain verified (ontyx.ca via Resend)
+- ✅ PDF invoice layout fixed (logo alignment)
+- ✅ Invoice edit fixed (column name mismatches)
+- ✅ Domain live at ontyx.ca
 
 ### Feb 16, 2026
 - ✅ Fixed demo mode (organizationId='demo' check)
@@ -95,4 +112,7 @@
 - ✅ Recurring invoices with full CRUD UI
 - ✅ Toast notifications (replaced primitive alerts)
 - ✅ Database migration for recurring_invoices table
-- 🔄 Building banking/Plaid integration
+- ✅ Removed demo mode entirely (3,465 lines)
+- ✅ Schema audit - aligned all services with actual DB columns
+- ✅ Auth loading flash fixed (event-driven auth)
+- ✅ Pay runs, pay stubs, T4 generation
