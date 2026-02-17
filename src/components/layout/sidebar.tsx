@@ -41,6 +41,9 @@ import {
   CheckSquare,
   BookOpen,
   ClipboardList,
+  Megaphone,
+  MapPin,
+  UtensilsCrossed,
 } from "lucide-react"
 
 interface NavItem {
@@ -79,6 +82,7 @@ const navigation: NavGroup[] = [
       { title: "POS", href: "/pos", icon: Monitor },
       { title: "Sales Orders", href: "/sales", icon: ShoppingCart },
       { title: "CRM", href: "/crm", icon: Target },
+      { title: "Marketing", href: "/marketing", icon: Megaphone },
     ],
   },
   {
@@ -98,6 +102,7 @@ const navigation: NavGroup[] = [
       { title: "Projects", href: "/projects", icon: FolderKanban },
       { title: "Helpdesk", href: "/helpdesk", icon: Headphones },
       { title: "Appointments", href: "/appointments", icon: CalendarClock },
+      { title: "Field Service", href: "/field-service", icon: MapPin },
     ],
   },
   {

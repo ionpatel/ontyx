@@ -1,268 +1,514 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import Link from "next/link"
-import { 
-  Factory, ClipboardList, Layers, CheckCircle2, Settings2,
-  ArrowUpRight, ArrowDownRight, Plus, AlertCircle, Clock
-} from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { useAuth } from '@/components/providers/auth-provider';
+import { useToast } from '@/components/ui/toast';
+import { createClient } from '@/lib/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { ProductSelector } from '@/components/selectors';
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
-} from "@/components/ui/table"
-import { cn, formatDate } from "@/lib/utils"
-import { 
-  mockWorkOrders, mockWorkCenters, mockQualityChecks, mockBOMs,
-  getManufacturingSummary 
-} from "@/lib/mock-data"
+  Factory, Package, Plus, Clock, CheckCircle, AlertCircle,
+  Play, Pause, RotateCcw, FileText, Layers, Settings,
+  ChevronRight, Trash2, Edit, Copy, TrendingUp
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+
+interface BOMComponent {
+  id: string;
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit: string;
+}
+
+interface BillOfMaterials {
+  id: string;
+  product_id: string;
+  product_name: string;
+  code: string;
+  quantity: number;
+  components: BOMComponent[];
+  operations: BOMOperation[];
+  is_active: boolean;
+  created_at: string;
+}
+
+interface BOMOperation {
+  id: string;
+  name: string;
+  workcenter_id: string;
+  workcenter_name: string;
+  duration_minutes: number;
+  sequence: number;
+}
+
+interface ManufacturingOrder {
+  id: string;
+  mo_number: string;
+  product_id: string;
+  product_name: string;
+  bom_id: string;
+  quantity: number;
+  quantity_produced: number;
+  status: 'draft' | 'confirmed' | 'in_progress' | 'done' | 'cancelled';
+  scheduled_date: string;
+  deadline: string;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  created_at: string;
+}
+
+interface Workcenter {
+  id: string;
+  name: string;
+  code: string;
+  capacity: number;
+  status: 'operational' | 'maintenance' | 'offline';
+}
+
+const statusColors: Record<string, string> = {
+  draft: 'bg-gray-100 text-gray-700',
+  confirmed: 'bg-blue-100 text-blue-700',
+  in_progress: 'bg-yellow-100 text-yellow-700',
+  done: 'bg-green-100 text-green-700',
+  cancelled: 'bg-red-100 text-red-700',
+};
+
+const priorityColors: Record<string, string> = {
+  low: 'bg-gray-100 text-gray-700',
+  normal: 'bg-blue-100 text-blue-700',
+  high: 'bg-orange-100 text-orange-700',
+  urgent: 'bg-red-100 text-red-700',
+};
+
+// Demo data
+const demoBOMs: BillOfMaterials[] = [
+  {
+    id: 'bom1',
+    product_id: 'p1',
+    product_name: 'Assembled Widget A',
+    code: 'BOM-001',
+    quantity: 1,
+    is_active: true,
+    created_at: '2026-01-15',
+    components: [
+      { id: 'c1', product_id: 'p2', product_name: 'Base Plate', quantity: 1, unit: 'pcs' },
+      { id: 'c2', product_id: 'p3', product_name: 'Screws M6', quantity: 4, unit: 'pcs' },
+      { id: 'c3', product_id: 'p4', product_name: 'Cover Panel', quantity: 1, unit: 'pcs' },
+      { id: 'c4', product_id: 'p5', product_name: 'Wiring Harness', quantity: 1, unit: 'pcs' },
+    ],
+    operations: [
+      { id: 'op1', name: 'Assembly', workcenter_id: 'wc1', workcenter_name: 'Assembly Line 1', duration_minutes: 30, sequence: 1 },
+      { id: 'op2', name: 'Quality Check', workcenter_id: 'wc2', workcenter_name: 'QC Station', duration_minutes: 10, sequence: 2 },
+      { id: 'op3', name: 'Packaging', workcenter_id: 'wc3', workcenter_name: 'Packing Area', duration_minutes: 5, sequence: 3 },
+    ],
+  },
+];
+
+const demoOrders: ManufacturingOrder[] = [
+  {
+    id: 'mo1',
+    mo_number: 'MO-2026-001',
+    product_id: 'p1',
+    product_name: 'Assembled Widget A',
+    bom_id: 'bom1',
+    quantity: 100,
+    quantity_produced: 45,
+    status: 'in_progress',
+    scheduled_date: '2026-02-15',
+    deadline: '2026-02-20',
+    priority: 'high',
+    created_at: '2026-02-10',
+  },
+  {
+    id: 'mo2',
+    mo_number: 'MO-2026-002',
+    product_id: 'p1',
+    product_name: 'Assembled Widget A',
+    bom_id: 'bom1',
+    quantity: 50,
+    quantity_produced: 0,
+    status: 'confirmed',
+    scheduled_date: '2026-02-20',
+    deadline: '2026-02-25',
+    priority: 'normal',
+    created_at: '2026-02-12',
+  },
+];
+
+const demoWorkcenters: Workcenter[] = [
+  { id: 'wc1', name: 'Assembly Line 1', code: 'ASM-1', capacity: 100, status: 'operational' },
+  { id: 'wc2', name: 'Assembly Line 2', code: 'ASM-2', capacity: 100, status: 'operational' },
+  { id: 'wc3', name: 'QC Station', code: 'QC-1', capacity: 200, status: 'operational' },
+  { id: 'wc4', name: 'Packing Area', code: 'PACK-1', capacity: 150, status: 'operational' },
+  { id: 'wc5', name: 'CNC Machine', code: 'CNC-1', capacity: 50, status: 'maintenance' },
+];
 
 export default function ManufacturingPage() {
-  const summary = getManufacturingSummary()
-  const recentWorkOrders = mockWorkOrders.slice(0, 5)
-  const pendingQC = mockQualityChecks.filter(qc => qc.status === "needs_review" || qc.status === "pending")
+  const { organizationId } = useAuth();
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('orders');
+  const [orders, setOrders] = useState<ManufacturingOrder[]>(demoOrders);
+  const [boms, setBoms] = useState<BillOfMaterials[]>(demoBOMs);
+  const [workcenters, setWorkcenters] = useState<Workcenter[]>(demoWorkcenters);
+  const [showNewOrder, setShowNewOrder] = useState(false);
+  const [showNewBOM, setShowNewBOM] = useState(false);
+  const [selectedBOM, setSelectedBOM] = useState<BillOfMaterials | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<ManufacturingOrder | null>(null);
 
-  const stats = [
-    {
-      title: "Active Work Orders",
-      value: summary.activeWorkOrders.toString(),
-      subtitle: `${summary.plannedWorkOrders} planned`,
-      icon: Factory,
-      href: "/manufacturing/work-orders",
-    },
-    {
-      title: "Units in Production",
-      value: summary.totalUnitsPlanned.toString(),
-      subtitle: `${summary.totalUnitsCompleted} completed`,
-      icon: Layers,
-      href: "/manufacturing/work-orders",
-    },
-    {
-      title: "QC Pending",
-      value: summary.pendingQC.toString(),
-      subtitle: `${summary.passedQC} passed today`,
-      icon: CheckCircle2,
-      href: "/manufacturing/quality",
-      alert: summary.pendingQC > 0,
-    },
-    {
-      title: "Avg. Utilization",
-      value: `${summary.avgUtilization}%`,
-      subtitle: `${summary.activeWorkCenters} work centers`,
-      icon: Settings2,
-      href: "/manufacturing/work-centers",
-    },
-  ]
+  // Stats
+  const stats = {
+    totalOrders: orders.length,
+    inProgress: orders.filter(o => o.status === 'in_progress').length,
+    completed: orders.filter(o => o.status === 'done').length,
+    totalBOMs: boms.length,
+    operationalWorkcenters: workcenters.filter(w => w.status === 'operational').length,
+  };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      in_progress: "default",
-      planned: "secondary",
-      completed: "outline",
-      on_hold: "destructive",
-      draft: "secondary",
-    }
-    return (
-      <Badge variant={variants[status] || "secondary"} className="capitalize">
-        {status.replace("_", " ")}
-      </Badge>
-    )
-  }
+  const startOrder = (order: ManufacturingOrder) => {
+    setOrders(orders.map(o => 
+      o.id === order.id ? { ...o, status: 'in_progress' } : o
+    ));
+    toast({ title: 'Manufacturing started', description: order.mo_number });
+  };
 
-  const getPriorityBadge = (priority: string) => {
-    const colors: Record<string, string> = {
-      urgent: "bg-red-500/10 text-red-500 border-red-500/20",
-      high: "bg-orange-500/10 text-orange-500 border-orange-500/20",
-      medium: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-      low: "bg-green-500/10 text-green-500 border-green-500/20",
-    }
-    return (
-      <Badge variant="outline" className={cn("capitalize", colors[priority])}>
-        {priority}
-      </Badge>
-    )
-  }
+  const completeOrder = (order: ManufacturingOrder) => {
+    setOrders(orders.map(o => 
+      o.id === order.id ? { ...o, status: 'done', quantity_produced: o.quantity } : o
+    ));
+    toast({ title: 'Manufacturing completed', description: order.mo_number });
+  };
+
+  const updateProgress = (order: ManufacturingOrder, produced: number) => {
+    setOrders(orders.map(o => 
+      o.id === order.id ? { ...o, quantity_produced: produced } : o
+    ));
+  };
 
   return (
-    <div className="flex-1 space-y-6 p-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Manufacturing</h1>
-          <p className="text-muted-foreground">
-            Manage production, work orders, and quality control
-          </p>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Factory className="h-6 w-6" />
+            Manufacturing
+          </h1>
+          <p className="text-muted-foreground">Manage production orders and bills of materials</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/manufacturing/bom">
-              <Layers className="mr-2 h-4 w-4" /> BOMs
-            </Link>
+          <Button variant="outline" onClick={() => setShowNewBOM(true)}>
+            <Layers className="h-4 w-4 mr-2" /> New BOM
           </Button>
-          <Button asChild>
-            <Link href="/manufacturing/work-orders/new">
-              <Plus className="mr-2 h-4 w-4" /> New Work Order
-            </Link>
+          <Button onClick={() => setShowNewOrder(true)}>
+            <Plus className="h-4 w-4 mr-2" /> New MO
           </Button>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Link key={stat.title} href={stat.href}>
-            <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                <stat.icon className={cn("h-4 w-4", stat.alert ? "text-destructive" : "text-muted-foreground")} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <p className="text-xs text-muted-foreground">{stat.subtitle}</p>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-100">
+                <FileText className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Total Orders</div>
+                <div className="text-2xl font-bold">{stats.totalOrders}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-yellow-100">
+                <Play className="h-5 w-5 text-yellow-600" />
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">In Progress</div>
+                <div className="text-2xl font-bold text-yellow-600">{stats.inProgress}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-100">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Completed</div>
+                <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-purple-100">
+                <Layers className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">BOMs</div>
+                <div className="text-2xl font-bold">{stats.totalBOMs}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-100">
+                <Factory className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Workcenters</div>
+                <div className="text-2xl font-bold">{stats.operationalWorkcenters}/{workcenters.length}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Work Orders */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Active Work Orders</CardTitle>
-              <CardDescription>Current production orders and their progress</CardDescription>
-            </div>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/manufacturing/work-orders">View All</Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="orders">Manufacturing Orders</TabsTrigger>
+          <TabsTrigger value="boms">Bills of Materials</TabsTrigger>
+          <TabsTrigger value="workcenters">Work Centers</TabsTrigger>
+        </TabsList>
+
+        {/* Manufacturing Orders */}
+        <TabsContent value="orders">
+          <Card>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Order</TableHead>
+                  <TableHead>MO Number</TableHead>
                   <TableHead>Product</TableHead>
+                  <TableHead>Quantity</TableHead>
                   <TableHead>Progress</TableHead>
                   <TableHead>Priority</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Deadline</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentWorkOrders.map((wo) => (
-                  <TableRow key={wo.id}>
-                    <TableCell>
-                      <Link href={`/manufacturing/work-orders/${wo.id}`} className="font-medium text-primary hover:underline">
-                        {wo.orderNumber}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="max-w-[150px] truncate">{wo.productName}</TableCell>
+                {orders.map(order => (
+                  <TableRow key={order.id}>
+                    <TableCell className="font-mono font-medium">{order.mo_number}</TableCell>
+                    <TableCell>{order.product_name}</TableCell>
+                    <TableCell>{order.quantity} units</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Progress 
-                          value={(wo.quantityCompleted / wo.quantity) * 100} 
-                          className="w-16 h-2"
-                        />
-                        <span className="text-xs text-muted-foreground">
-                          {wo.quantityCompleted}/{wo.quantity}
+                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden w-24">
+                          <div 
+                            className="h-full bg-primary transition-all"
+                            style={{ width: `${(order.quantity_produced / order.quantity) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-sm text-muted-foreground">
+                          {order.quantity_produced}/{order.quantity}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell>{getPriorityBadge(wo.priority)}</TableCell>
-                    <TableCell>{getStatusBadge(wo.status)}</TableCell>
+                    <TableCell>
+                      <Badge className={priorityColors[order.priority]}>{order.priority}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={statusColors[order.status]}>{order.status.replace('_', ' ')}</Badge>
+                    </TableCell>
+                    <TableCell>{format(new Date(order.deadline), 'MMM d, yyyy')}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        {order.status === 'confirmed' && (
+                          <Button size="sm" variant="outline" onClick={() => startOrder(order)}>
+                            <Play className="h-4 w-4 mr-1" /> Start
+                          </Button>
+                        )}
+                        {order.status === 'in_progress' && (
+                          <Button size="sm" onClick={() => completeOrder(order)}>
+                            <CheckCircle className="h-4 w-4 mr-1" /> Complete
+                          </Button>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={() => setSelectedOrder(order)}>
+                          View
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
+          </Card>
+        </TabsContent>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* QC Alerts */}
-          {pendingQC.length > 0 && (
-            <Card className="border-yellow-500/50 bg-yellow-500/5">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-yellow-500" />
-                  <CardTitle className="text-base">QC Reviews Needed</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {pendingQC.slice(0, 3).map((qc) => (
-                  <div key={qc.id} className="flex items-center justify-between">
+        {/* Bills of Materials */}
+        <TabsContent value="boms">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {boms.map(bom => (
+              <Card key={bom.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedBOM(bom)}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-sm">{qc.checkNumber}</p>
-                      <p className="text-xs text-muted-foreground">{qc.productName}</p>
+                      <CardTitle className="text-lg">{bom.product_name}</CardTitle>
+                      <CardDescription>{bom.code}</CardDescription>
                     </div>
-                    <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500">
-                      {qc.status.replace("_", " ")}
+                    <Badge variant={bom.is_active ? 'default' : 'secondary'}>
+                      {bom.is_active ? 'Active' : 'Inactive'}
                     </Badge>
                   </div>
-                ))}
-                <Button variant="outline" size="sm" className="w-full" asChild>
-                  <Link href="/manufacturing/quality">Review All</Link>
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Work Center Utilization */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Work Center Utilization</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {mockWorkCenters.slice(0, 4).map((wc) => (
-                <div key={wc.id} className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{wc.name}</span>
-                    <span className="text-sm text-muted-foreground">{wc.currentUtilization}%</span>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Components:</span>
+                      <span className="ml-2 font-medium">{bom.components.length}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Operations:</span>
+                      <span className="ml-2 font-medium">{bom.operations.length}</span>
+                    </div>
                   </div>
-                  <Progress 
-                    value={wc.currentUtilization} 
-                    className={cn("h-2", wc.currentUtilization > 85 ? "[&>div]:bg-destructive" : "")}
-                  />
-                </div>
-              ))}
-              <Button variant="outline" size="sm" className="w-full" asChild>
-                <Link href="/manufacturing/work-centers">View All</Link>
-              </Button>
-            </CardContent>
-          </Card>
+                  <div className="mt-4 flex flex-wrap gap-1">
+                    {bom.components.slice(0, 3).map(c => (
+                      <Badge key={c.id} variant="outline" className="text-xs">
+                        {c.product_name} ×{c.quantity}
+                      </Badge>
+                    ))}
+                    {bom.components.length > 3 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{bom.components.length - 3} more
+                      </Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
 
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/manufacturing/work-orders/new">
-                  <Plus className="mr-1 h-3 w-3" /> Work Order
-                </Link>
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/manufacturing/bom/new">
-                  <Plus className="mr-1 h-3 w-3" /> BOM
-                </Link>
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/manufacturing/quality/new">
-                  <Plus className="mr-1 h-3 w-3" /> QC Check
-                </Link>
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/manufacturing/work-centers">
-                  <Settings2 className="mr-1 h-3 w-3" /> Centers
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+        {/* Work Centers */}
+        <TabsContent value="workcenters">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {workcenters.map(wc => (
+              <Card key={wc.id}>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        'p-2 rounded-lg',
+                        wc.status === 'operational' ? 'bg-green-100' : 
+                        wc.status === 'maintenance' ? 'bg-yellow-100' : 'bg-red-100'
+                      )}>
+                        <Factory className={cn(
+                          'h-5 w-5',
+                          wc.status === 'operational' ? 'text-green-600' : 
+                          wc.status === 'maintenance' ? 'text-yellow-600' : 'text-red-600'
+                        )} />
+                      </div>
+                      <div>
+                        <div className="font-medium">{wc.name}</div>
+                        <div className="text-sm text-muted-foreground">{wc.code}</div>
+                      </div>
+                    </div>
+                    <Badge variant={wc.status === 'operational' ? 'default' : 'secondary'}>
+                      {wc.status}
+                    </Badge>
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Capacity:</span>
+                    <span className="ml-2 font-medium">{wc.capacity} units/day</span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* BOM Detail Dialog */}
+      <Dialog open={!!selectedBOM} onOpenChange={() => setSelectedBOM(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedBOM?.product_name}</DialogTitle>
+          </DialogHeader>
+          {selectedBOM && (
+            <div className="space-y-6">
+              <div>
+                <h4 className="font-medium mb-2 flex items-center gap-2">
+                  <Package className="h-4 w-4" /> Components
+                </h4>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Component</TableHead>
+                      <TableHead className="text-right">Quantity</TableHead>
+                      <TableHead>Unit</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedBOM.components.map(c => (
+                      <TableRow key={c.id}>
+                        <TableCell>{c.product_name}</TableCell>
+                        <TableCell className="text-right font-mono">{c.quantity}</TableCell>
+                        <TableCell>{c.unit}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2 flex items-center gap-2">
+                  <Settings className="h-4 w-4" /> Operations
+                </h4>
+                <div className="space-y-2">
+                  {selectedBOM.operations.map((op, i) => (
+                    <div key={op.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                      <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
+                        {i + 1}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium">{op.name}</div>
+                        <div className="text-sm text-muted-foreground">{op.workcenter_name}</div>
+                      </div>
+                      <Badge variant="outline">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {op.duration_minutes} min
+                      </Badge>
+                      {i < selectedBOM.operations.length - 1 && (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedBOM(null)}>Close</Button>
+            <Button>
+              <Play className="h-4 w-4 mr-2" /> Create MO
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
-  )
+  );
 }

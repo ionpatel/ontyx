@@ -1,222 +1,306 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useToast } from '@/components/ui/toast';
-import * as maintenanceService from '@/services/maintenance';
-import type { Equipment, MaintenanceRequest } from '@/types/maintenance';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Wrench, AlertTriangle, CheckCircle, Clock, Settings, Search } from 'lucide-react';
-import { format } from 'date-fns';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { CalendarView } from '@/components/calendar-view';
+import {
+  Wrench, AlertTriangle, Clock, CheckCircle, Plus, Calendar,
+  Activity, Package, Settings, History, Play, Pause, Timer,
+  RotateCcw, ArrowRight, Gauge
+} from 'lucide-react';
+import { format, addDays, differenceInDays } from 'date-fns';
+import { cn } from '@/lib/utils';
+
+interface Equipment {
+  id: string;
+  name: string;
+  code: string;
+  category: string;
+  location: string;
+  status: 'operational' | 'maintenance' | 'broken' | 'decommissioned';
+  last_maintenance: string;
+  next_maintenance: string;
+  mtbf_hours?: number; // Mean Time Between Failures
+  total_runtime_hours: number;
+}
+
+interface MaintenanceRequest {
+  id: string;
+  request_number: string;
+  equipment_id: string;
+  equipment_name: string;
+  type: 'preventive' | 'corrective' | 'emergency';
+  priority: 'low' | 'normal' | 'high' | 'critical';
+  status: 'draft' | 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  description: string;
+  assigned_to?: string;
+  scheduled_date: string;
+  completed_date?: string;
+  downtime_hours?: number;
+  parts_used?: { name: string; quantity: number; cost: number }[];
+  labor_hours?: number;
+  total_cost?: number;
+  created_at: string;
+}
+
+interface MaintenanceSchedule {
+  id: string;
+  name: string;
+  equipment_id: string;
+  equipment_name: string;
+  frequency: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+  last_run: string;
+  next_run: string;
+  tasks: string[];
+  is_active: boolean;
+}
 
 const statusColors: Record<string, string> = {
   operational: 'bg-green-100 text-green-700',
   maintenance: 'bg-yellow-100 text-yellow-700',
-  repair: 'bg-red-100 text-red-700',
-  retired: 'bg-gray-100 text-gray-700',
-};
-
-const requestStatusColors: Record<string, string> = {
+  broken: 'bg-red-100 text-red-700',
+  decommissioned: 'bg-gray-100 text-gray-700',
+  draft: 'bg-gray-100 text-gray-700',
   pending: 'bg-blue-100 text-blue-700',
-  scheduled: 'bg-purple-100 text-purple-700',
   in_progress: 'bg-yellow-100 text-yellow-700',
   completed: 'bg-green-100 text-green-700',
-  cancelled: 'bg-gray-100 text-gray-700',
+  cancelled: 'bg-red-100 text-red-700',
 };
 
 const priorityColors: Record<string, string> = {
   low: 'bg-gray-100 text-gray-700',
-  medium: 'bg-blue-100 text-blue-700',
+  normal: 'bg-blue-100 text-blue-700',
   high: 'bg-orange-100 text-orange-700',
-  critical: 'bg-red-100 text-red-700',
+  critical: 'bg-red-100 text-red-700 animate-pulse',
 };
+
+const typeColors: Record<string, string> = {
+  preventive: 'bg-green-100 text-green-700',
+  corrective: 'bg-yellow-100 text-yellow-700',
+  emergency: 'bg-red-100 text-red-700',
+};
+
+// Demo data
+const demoEquipment: Equipment[] = [
+  { id: 'e1', name: 'CNC Machine A1', code: 'CNC-001', category: 'Machining', location: 'Floor 1', status: 'operational', last_maintenance: '2026-01-15', next_maintenance: '2026-02-15', mtbf_hours: 2000, total_runtime_hours: 15420 },
+  { id: 'e2', name: 'Conveyor Belt B1', code: 'CONV-001', category: 'Material Handling', location: 'Floor 1', status: 'operational', last_maintenance: '2026-02-01', next_maintenance: '2026-03-01', total_runtime_hours: 8760 },
+  { id: 'e3', name: 'HVAC Unit C1', code: 'HVAC-001', category: 'Climate Control', location: 'Building A', status: 'maintenance', last_maintenance: '2025-12-01', next_maintenance: '2026-02-17', total_runtime_hours: 43800 },
+  { id: 'e4', name: 'Compressor D1', code: 'COMP-001', category: 'Utilities', location: 'Utility Room', status: 'operational', last_maintenance: '2026-01-20', next_maintenance: '2026-04-20', mtbf_hours: 5000, total_runtime_hours: 21900 },
+  { id: 'e5', name: 'Forklift F1', code: 'FORK-001', category: 'Material Handling', location: 'Warehouse', status: 'broken', last_maintenance: '2026-01-01', next_maintenance: '2026-02-01', total_runtime_hours: 3500 },
+];
+
+const demoRequests: MaintenanceRequest[] = [
+  {
+    id: 'r1',
+    request_number: 'MR-2026-001',
+    equipment_id: 'e3',
+    equipment_name: 'HVAC Unit C1',
+    type: 'preventive',
+    priority: 'normal',
+    status: 'in_progress',
+    description: 'Quarterly filter replacement and system check',
+    assigned_to: 'John Tech',
+    scheduled_date: '2026-02-17',
+    created_at: '2026-02-10',
+  },
+  {
+    id: 'r2',
+    request_number: 'MR-2026-002',
+    equipment_id: 'e5',
+    equipment_name: 'Forklift F1',
+    type: 'corrective',
+    priority: 'high',
+    status: 'pending',
+    description: 'Hydraulic system failure - leaking fluid',
+    scheduled_date: '2026-02-17',
+    created_at: '2026-02-16',
+  },
+  {
+    id: 'r3',
+    request_number: 'MR-2026-003',
+    equipment_id: 'e1',
+    equipment_name: 'CNC Machine A1',
+    type: 'preventive',
+    priority: 'normal',
+    status: 'completed',
+    description: 'Monthly calibration and lubrication',
+    assigned_to: 'Sarah Tech',
+    scheduled_date: '2026-02-15',
+    completed_date: '2026-02-15',
+    downtime_hours: 2,
+    labor_hours: 2,
+    total_cost: 250,
+    created_at: '2026-02-01',
+  },
+];
+
+const demoSchedules: MaintenanceSchedule[] = [
+  { id: 's1', name: 'CNC Daily Check', equipment_id: 'e1', equipment_name: 'CNC Machine A1', frequency: 'daily', last_run: '2026-02-16', next_run: '2026-02-17', tasks: ['Check oil levels', 'Clean work area', 'Inspect belts'], is_active: true },
+  { id: 's2', name: 'HVAC Quarterly Service', equipment_id: 'e3', equipment_name: 'HVAC Unit C1', frequency: 'quarterly', last_run: '2025-11-17', next_run: '2026-02-17', tasks: ['Replace filters', 'Check refrigerant', 'Clean coils', 'Test controls'], is_active: true },
+  { id: 's3', name: 'Conveyor Weekly Inspection', equipment_id: 'e2', equipment_name: 'Conveyor Belt B1', frequency: 'weekly', last_run: '2026-02-10', next_run: '2026-02-17', tasks: ['Check belt tension', 'Inspect rollers', 'Lubricate bearings'], is_active: true },
+];
+
+const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(amount);
 
 export default function MaintenancePage() {
   const { organizationId } = useAuth();
   const { toast } = useToast();
-  const [equipment, setEquipment] = useState<Equipment[]>([]);
-  const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
-  const [dueSoon, setDueSoon] = useState<Equipment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('equipment');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showNewEquipment, setShowNewEquipment] = useState(false);
+  const [activeTab, setActiveTab] = useState('requests');
+  const [equipment, setEquipment] = useState<Equipment[]>(demoEquipment);
+  const [requests, setRequests] = useState<MaintenanceRequest[]>(demoRequests);
+  const [schedules, setSchedules] = useState<MaintenanceSchedule[]>(demoSchedules);
   const [showNewRequest, setShowNewRequest] = useState(false);
+  const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
 
-  // Equipment form
-  const [equipName, setEquipName] = useState('');
-  const [equipCode, setEquipCode] = useState('');
-  const [equipCategory, setEquipCategory] = useState('');
-  const [equipManufacturer, setEquipManufacturer] = useState('');
-
-  // Request form
-  const [reqEquipmentId, setReqEquipmentId] = useState('');
-  const [reqType, setReqType] = useState<'preventive' | 'corrective' | 'emergency'>('corrective');
-  const [reqDescription, setReqDescription] = useState('');
-  const [reqPriority, setReqPriority] = useState('medium');
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const fetchData = useCallback(async () => {
-    if (!organizationId) return;
-    setIsLoading(true);
-    try {
-      const [equipData, reqData, dueData] = await Promise.all([
-        maintenanceService.getEquipment(organizationId, { search: searchQuery }),
-        maintenanceService.getMaintenanceRequests(organizationId),
-        maintenanceService.getEquipmentDueForMaintenance(organizationId),
-      ]);
-      setEquipment(equipData);
-      setRequests(reqData);
-      setDueSoon(dueData);
-    } catch (err) {
-      toast({ title: 'Error', description: 'Failed to load data', variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [organizationId, searchQuery, toast]);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  const handleCreateEquipment = async () => {
-    if (!organizationId || !equipName) return;
-    setIsSubmitting(true);
-    try {
-      await maintenanceService.createEquipment(organizationId, {
-        name: equipName,
-        code: equipCode || undefined,
-        category: equipCategory || undefined,
-        manufacturer: equipManufacturer || undefined,
-      });
-      toast({ title: 'Equipment Added' });
-      setShowNewEquipment(false);
-      setEquipName(''); setEquipCode(''); setEquipCategory(''); setEquipManufacturer('');
-      fetchData();
-    } catch (err) {
-      toast({ title: 'Error', variant: 'destructive' });
-    } finally {
-      setIsSubmitting(false);
-    }
+  const stats = {
+    totalEquipment: equipment.length,
+    operational: equipment.filter(e => e.status === 'operational').length,
+    needsMaintenance: equipment.filter(e => differenceInDays(new Date(e.next_maintenance), new Date()) <= 7).length,
+    openRequests: requests.filter(r => ['pending', 'in_progress'].includes(r.status)).length,
+    criticalRequests: requests.filter(r => r.priority === 'critical' && r.status !== 'completed').length,
   };
 
-  const handleCreateRequest = async () => {
-    if (!organizationId || !reqEquipmentId || !reqDescription) return;
-    setIsSubmitting(true);
-    try {
-      await maintenanceService.createMaintenanceRequest(organizationId, {
-        equipment_id: reqEquipmentId,
-        maintenance_type: reqType,
-        description: reqDescription,
-        priority: reqPriority as any,
-      });
-      toast({ title: 'Request Created' });
-      setShowNewRequest(false);
-      setReqEquipmentId(''); setReqDescription(''); setReqType('corrective'); setReqPriority('medium');
-      fetchData();
-    } catch (err) {
-      toast({ title: 'Error', variant: 'destructive' });
-    } finally {
-      setIsSubmitting(false);
-    }
+  const startRequest = (id: string) => {
+    setRequests(requests.map(r =>
+      r.id === id ? { ...r, status: 'in_progress' } : r
+    ));
+    toast({ title: 'Maintenance started' });
   };
 
-  const handleComplete = async (requestId: string) => {
-    try {
-      await maintenanceService.completeMaintenanceRequest(requestId);
-      toast({ title: 'Marked Complete' });
-      fetchData();
-    } catch (err) {
-      toast({ title: 'Error', variant: 'destructive' });
-    }
+  const completeRequest = (id: string) => {
+    setRequests(requests.map(r =>
+      r.id === id ? { ...r, status: 'completed', completed_date: new Date().toISOString() } : r
+    ));
+    toast({ title: 'Maintenance completed' });
   };
+
+  const calendarEvents = [
+    ...requests.filter(r => r.status !== 'completed').map(r => ({
+      id: r.id,
+      title: `${r.request_number} - ${r.equipment_name}`,
+      start: new Date(r.scheduled_date),
+      color: r.priority === 'critical' ? 'bg-red-500' : 
+             r.priority === 'high' ? 'bg-orange-500' : 'bg-blue-500',
+    })),
+    ...schedules.filter(s => s.is_active).map(s => ({
+      id: s.id,
+      title: `📅 ${s.name}`,
+      start: new Date(s.next_run),
+      color: 'bg-green-500',
+    })),
+  ];
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Maintenance</h1>
-          <p className="text-muted-foreground">Equipment and maintenance management</p>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Wrench className="h-6 w-6" />
+            Maintenance
+          </h1>
+          <p className="text-muted-foreground">Equipment management and maintenance scheduling</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowNewEquipment(true)}>
-            <Plus className="h-4 w-4 mr-2" /> Add Equipment
-          </Button>
-          <Button onClick={() => setShowNewRequest(true)}>
-            <Wrench className="h-4 w-4 mr-2" /> New Request
-          </Button>
-        </div>
+        <Button onClick={() => setShowNewRequest(true)}>
+          <Plus className="h-4 w-4 mr-2" /> New Request
+        </Button>
       </div>
 
-      {/* Alerts */}
-      {dueSoon.length > 0 && (
-        <Card className="border-orange-200 bg-orange-50">
-          <CardContent className="py-4">
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <Card>
+          <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-orange-600" />
+              <div className="p-2 rounded-lg bg-blue-100">
+                <Package className="h-5 w-5 text-blue-600" />
+              </div>
               <div>
-                <div className="font-medium text-orange-800">Maintenance Due Soon</div>
-                <div className="text-sm text-orange-700">{dueSoon.length} equipment items due for maintenance this week</div>
+                <div className="text-sm text-muted-foreground">Equipment</div>
+                <div className="text-2xl font-bold">{stats.totalEquipment}</div>
               </div>
             </div>
           </CardContent>
         </Card>
-      )}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-100">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Operational</div>
+                <div className="text-2xl font-bold text-green-600">{stats.operational}/{stats.totalEquipment}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className={stats.needsMaintenance > 0 ? 'border-yellow-200' : ''}>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-yellow-100">
+                <Clock className="h-5 w-5 text-yellow-600" />
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Due Soon</div>
+                <div className={cn('text-2xl font-bold', stats.needsMaintenance > 0 && 'text-yellow-600')}>
+                  {stats.needsMaintenance}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-100">
+                <Activity className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Open Requests</div>
+                <div className="text-2xl font-bold">{stats.openRequests}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className={stats.criticalRequests > 0 ? 'border-red-200' : ''}>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-red-100">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Critical</div>
+                <div className={cn('text-2xl font-bold', stats.criticalRequests > 0 && 'text-red-600')}>
+                  {stats.criticalRequests}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
+      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="equipment">Equipment ({equipment.length})</TabsTrigger>
-          <TabsTrigger value="requests">Requests ({requests.length})</TabsTrigger>
+          <TabsTrigger value="requests">Maintenance Requests</TabsTrigger>
+          <TabsTrigger value="equipment">Equipment</TabsTrigger>
+          <TabsTrigger value="schedules">Preventive Schedules</TabsTrigger>
+          <TabsTrigger value="calendar">Calendar</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="equipment">
-          <div className="mb-4">
-            <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search equipment..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
-            </div>
-          </div>
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Last Maintenance</TableHead>
-                  <TableHead>Next Due</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto" /></TableCell></TableRow>
-                ) : equipment.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground"><Settings className="h-8 w-8 mx-auto mb-2 opacity-50" />No equipment</TableCell></TableRow>
-                ) : (
-                  equipment.map(item => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell className="font-mono text-sm">{item.code || '-'}</TableCell>
-                      <TableCell>{item.category || '-'}</TableCell>
-                      <TableCell><Badge className={statusColors[item.status]}>{item.status}</Badge></TableCell>
-                      <TableCell>{item.last_maintenance_date ? format(new Date(item.last_maintenance_date), 'MMM d, yyyy') : '-'}</TableCell>
-                      <TableCell>{item.next_maintenance_date ? format(new Date(item.next_maintenance_date), 'MMM d, yyyy') : '-'}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
-
+        {/* Requests */}
         <TabsContent value="requests">
           <Card>
             <Table>
@@ -228,73 +312,212 @@ export default function MaintenancePage() {
                   <TableHead>Priority</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Scheduled</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {requests.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No maintenance requests</TableCell></TableRow>
-                ) : (
-                  requests.map(req => (
-                    <TableRow key={req.id}>
-                      <TableCell className="font-mono text-sm">{req.request_number}</TableCell>
-                      <TableCell>{req.equipment?.name}</TableCell>
-                      <TableCell className="capitalize">{req.maintenance_type}</TableCell>
-                      <TableCell><Badge className={priorityColors[req.priority]}>{req.priority}</Badge></TableCell>
-                      <TableCell><Badge className={requestStatusColors[req.status]}>{req.status}</Badge></TableCell>
-                      <TableCell>{req.scheduled_date ? format(new Date(req.scheduled_date), 'MMM d') : '-'}</TableCell>
-                      <TableCell>
-                        {req.status !== 'completed' && req.status !== 'cancelled' && (
-                          <Button size="sm" variant="outline" onClick={() => handleComplete(req.id)}>
+                {requests.map(req => (
+                  <TableRow key={req.id}>
+                    <TableCell className="font-mono">{req.request_number}</TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{req.equipment_name}</div>
+                        <div className="text-sm text-muted-foreground">{req.description.slice(0, 50)}...</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={typeColors[req.type]}>{req.type}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={priorityColors[req.priority]}>{req.priority}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={statusColors[req.status]}>{req.status.replace('_', ' ')}</Badge>
+                    </TableCell>
+                    <TableCell>{format(new Date(req.scheduled_date), 'MMM d, yyyy')}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        {req.status === 'pending' && (
+                          <Button size="sm" variant="outline" onClick={() => startRequest(req.id)}>
+                            <Play className="h-4 w-4 mr-1" /> Start
+                          </Button>
+                        )}
+                        {req.status === 'in_progress' && (
+                          <Button size="sm" onClick={() => completeRequest(req.id)}>
                             <CheckCircle className="h-4 w-4 mr-1" /> Complete
                           </Button>
                         )}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </Card>
         </TabsContent>
-      </Tabs>
 
-      {/* New Equipment Dialog */}
-      <Dialog open={showNewEquipment} onOpenChange={setShowNewEquipment}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Add Equipment</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div><label className="text-sm font-medium">Name *</label><Input value={equipName} onChange={(e) => setEquipName(e.target.value)} /></div>
-            <div><label className="text-sm font-medium">Code</label><Input value={equipCode} onChange={(e) => setEquipCode(e.target.value)} placeholder="Asset code" /></div>
-            <div><label className="text-sm font-medium">Category</label><Input value={equipCategory} onChange={(e) => setEquipCategory(e.target.value)} /></div>
-            <div><label className="text-sm font-medium">Manufacturer</label><Input value={equipManufacturer} onChange={(e) => setEquipManufacturer(e.target.value)} /></div>
+        {/* Equipment */}
+        <TabsContent value="equipment">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {equipment.map(eq => {
+              const daysUntilMaint = differenceInDays(new Date(eq.next_maintenance), new Date());
+              const maintUrgent = daysUntilMaint <= 7 && daysUntilMaint >= 0;
+              const maintOverdue = daysUntilMaint < 0;
+              
+              return (
+                <Card key={eq.id} className={cn(
+                  'hover:shadow-md transition-shadow cursor-pointer',
+                  maintOverdue && 'border-red-300',
+                  maintUrgent && !maintOverdue && 'border-yellow-300'
+                )} onClick={() => setSelectedEquipment(eq)}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          'p-2 rounded-lg',
+                          eq.status === 'operational' ? 'bg-green-100' :
+                          eq.status === 'maintenance' ? 'bg-yellow-100' :
+                          eq.status === 'broken' ? 'bg-red-100' : 'bg-gray-100'
+                        )}>
+                          <Settings className={cn(
+                            'h-5 w-5',
+                            eq.status === 'operational' ? 'text-green-600' :
+                            eq.status === 'maintenance' ? 'text-yellow-600' :
+                            eq.status === 'broken' ? 'text-red-600' : 'text-gray-600'
+                          )} />
+                        </div>
+                        <div>
+                          <div className="font-medium">{eq.name}</div>
+                          <div className="text-sm text-muted-foreground">{eq.code}</div>
+                        </div>
+                      </div>
+                      <Badge className={statusColors[eq.status]}>{eq.status}</Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Category:</span>
+                        <div className="font-medium">{eq.category}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Location:</span>
+                        <div className="font-medium">{eq.location}</div>
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Next Maintenance:</span>
+                        <span className={cn(
+                          'font-medium',
+                          maintOverdue && 'text-red-600',
+                          maintUrgent && !maintOverdue && 'text-yellow-600'
+                        )}>
+                          {maintOverdue ? `${Math.abs(daysUntilMaint)} days overdue` :
+                           maintUrgent ? `${daysUntilMaint} days` :
+                           format(new Date(eq.next_maintenance), 'MMM d')}
+                        </span>
+                      </div>
+                      {eq.total_runtime_hours && (
+                        <div className="flex items-center justify-between text-sm mt-1">
+                          <span className="text-muted-foreground flex items-center gap-1">
+                            <Gauge className="h-3 w-3" /> Runtime:
+                          </span>
+                          <span className="font-medium">{eq.total_runtime_hours.toLocaleString()} hrs</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewEquipment(false)}>Cancel</Button>
-            <Button onClick={handleCreateEquipment} disabled={isSubmitting}>{isSubmitting ? 'Adding...' : 'Add Equipment'}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </TabsContent>
+
+        {/* Preventive Schedules */}
+        <TabsContent value="schedules">
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Schedule Name</TableHead>
+                  <TableHead>Equipment</TableHead>
+                  <TableHead>Frequency</TableHead>
+                  <TableHead>Last Run</TableHead>
+                  <TableHead>Next Run</TableHead>
+                  <TableHead>Tasks</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {schedules.map(sched => (
+                  <TableRow key={sched.id}>
+                    <TableCell className="font-medium">{sched.name}</TableCell>
+                    <TableCell>{sched.equipment_name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="capitalize">{sched.frequency}</Badge>
+                    </TableCell>
+                    <TableCell>{format(new Date(sched.last_run), 'MMM d, yyyy')}</TableCell>
+                    <TableCell>
+                      <span className={cn(
+                        differenceInDays(new Date(sched.next_run), new Date()) <= 1 && 'text-yellow-600 font-medium'
+                      )}>
+                        {format(new Date(sched.next_run), 'MMM d, yyyy')}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {sched.tasks.slice(0, 2).map((task, i) => (
+                          <Badge key={i} variant="outline" className="text-xs">{task}</Badge>
+                        ))}
+                        {sched.tasks.length > 2 && (
+                          <Badge variant="outline" className="text-xs">+{sched.tasks.length - 2}</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={sched.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
+                        {sched.is_active ? 'Active' : 'Paused'}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        </TabsContent>
+
+        {/* Calendar */}
+        <TabsContent value="calendar">
+          <CalendarView events={calendarEvents} />
+        </TabsContent>
+      </Tabs>
 
       {/* New Request Dialog */}
       <Dialog open={showNewRequest} onOpenChange={setShowNewRequest}>
         <DialogContent>
-          <DialogHeader><DialogTitle>New Maintenance Request</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>New Maintenance Request</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Equipment *</label>
-              <Select value={reqEquipmentId} onValueChange={setReqEquipmentId}>
-                <SelectTrigger><SelectValue placeholder="Select equipment" /></SelectTrigger>
+            <div className="space-y-2">
+              <Label>Equipment</Label>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select equipment..." />
+                </SelectTrigger>
                 <SelectContent>
-                  {equipment.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                  {equipment.map(eq => (
+                    <SelectItem key={eq.id} value={eq.id}>{eq.name} ({eq.code})</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium">Type</label>
-                <Select value={reqType} onValueChange={(v: any) => setReqType(v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+              <div className="space-y-2">
+                <Label>Type</Label>
+                <Select defaultValue="corrective">
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="preventive">Preventive</SelectItem>
                     <SelectItem value="corrective">Corrective</SelectItem>
@@ -302,24 +525,33 @@ export default function MaintenancePage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <label className="text-sm font-medium">Priority</label>
-                <Select value={reqPriority} onValueChange={setReqPriority}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+              <div className="space-y-2">
+                <Label>Priority</Label>
+                <Select defaultValue="normal">
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="normal">Normal</SelectItem>
                     <SelectItem value="high">High</SelectItem>
                     <SelectItem value="critical">Critical</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            <div><label className="text-sm font-medium">Description *</label><Textarea value={reqDescription} onChange={(e) => setReqDescription(e.target.value)} /></div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea placeholder="Describe the maintenance issue or task..." />
+            </div>
+            <div className="space-y-2">
+              <Label>Scheduled Date</Label>
+              <Input type="date" />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewRequest(false)}>Cancel</Button>
-            <Button onClick={handleCreateRequest} disabled={isSubmitting}>{isSubmitting ? 'Creating...' : 'Create Request'}</Button>
+            <Button>Create Request</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
