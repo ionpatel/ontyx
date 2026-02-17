@@ -625,17 +625,21 @@ DECLARE
     'marketing_campaigns', 'marketing_lists'
   ];
   t TEXT;
+  policy_name TEXT;
 BEGIN
   FOREACH t IN ARRAY tables LOOP
+    policy_name := t || '_org_policy';
+    -- Drop if exists, then create
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I', policy_name, t);
     EXECUTE format('
-      CREATE POLICY IF NOT EXISTS %I_org_policy ON %I
+      CREATE POLICY %I ON %I
         FOR ALL
         USING (organization_id IN (
-          SELECT organization_id FROM user_organizations WHERE user_id = auth.uid()
+          SELECT organization_id FROM organization_members WHERE user_id = auth.uid() AND is_active = true
         ))
         WITH CHECK (organization_id IN (
-          SELECT organization_id FROM user_organizations WHERE user_id = auth.uid()
+          SELECT organization_id FROM organization_members WHERE user_id = auth.uid() AND is_active = true
         ))
-    ', t, t);
+    ', policy_name, t);
   END LOOP;
 END $$;
