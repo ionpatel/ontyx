@@ -79,10 +79,9 @@ export default function EditInvoicePage() {
 
   // Convert invoice to form format
   const invoiceFormData = {
-    contactId: invoice.contactId,
+    customerId: invoice.customerId,
     invoiceDate: invoice.invoiceDate,
     dueDate: invoice.dueDate,
-    currency: invoice.currency,
     notes: invoice.notes || '',
     terms: invoice.terms || '',
     lineItems: invoice.items.map(item => ({

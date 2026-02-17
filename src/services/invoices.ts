@@ -230,10 +230,9 @@ export const invoicesService = {
     
     if (input.invoiceDate) updates.issue_date = input.invoiceDate
     if (input.dueDate) updates.due_date = input.dueDate
-    if (input.currency) updates.currency = input.currency
     if (input.notes !== undefined) updates.notes = input.notes
     if (input.terms !== undefined) updates.terms = input.terms
-    if (input.contactId) updates.contact_id = input.contactId
+    if (input.customerId) updates.contact_id = input.customerId
 
     // Calculate totals from items if provided
     if (input.items && input.items.length > 0) {
@@ -243,20 +242,9 @@ export const invoicesService = {
       const total = subtotal + taxTotal
 
       updates.subtotal = subtotal
-      updates.tax_total = taxTotal
+      updates.tax_amount = taxTotal
       updates.total = total
       updates.amount_due = total - (updates.amount_paid || 0)
-
-      // Set specific tax amounts based on tax type
-      if (taxRate === 13) {
-        updates.hst_amount = taxTotal
-        updates.gst_amount = 0
-        updates.pst_amount = 0
-      } else if (taxRate === 5) {
-        updates.gst_amount = taxTotal
-        updates.hst_amount = 0
-        updates.pst_amount = 0
-      }
     }
 
     const { error } = await supabase
@@ -281,13 +269,14 @@ export const invoicesService = {
       // Insert new items
       const itemsToInsert = input.items.map((item, index) => ({
         invoice_id: id,
+        line_number: index + 1,
         product_id: item.productId || null,
         description: item.description,
         quantity: item.quantity,
         unit_price: item.unitPrice,
         tax_rate: item.taxRate || 0,
-        amount: item.quantity * item.unitPrice,
-        sort_order: index,
+        discount_amount: item.discount || 0,
+        line_total: item.quantity * item.unitPrice * (1 + (item.taxRate || 0) / 100),
       }))
 
       await supabase.from('invoice_items').insert(itemsToInsert)
