@@ -29,6 +29,18 @@ import {
   ChevronRight,
   Building2,
   Monitor,
+  FolderOpen,
+  Calendar,
+  Headphones,
+  CalendarClock,
+  RefreshCw,
+  Wrench,
+  ClipboardCheck,
+  Briefcase,
+  Star,
+  CheckSquare,
+  BookOpen,
+  ClipboardList,
 } from "lucide-react"
 
 interface NavItem {
@@ -58,40 +70,60 @@ const navigation: NavGroup[] = [
       { title: "Bills", href: "/bills", icon: Receipt },
       { title: "Banking", href: "/banking", icon: Landmark },
       { title: "Accounting", href: "/accounting", icon: Calculator },
+      { title: "Subscriptions", href: "/subscriptions", icon: RefreshCw },
+    ],
+  },
+  {
+    title: "Sales",
+    items: [
+      { title: "POS", href: "/pos", icon: Monitor },
+      { title: "Sales Orders", href: "/sales", icon: ShoppingCart },
+      { title: "CRM", href: "/crm", icon: Target },
     ],
   },
   {
     title: "Operations",
     items: [
-      { title: "POS", href: "/pos", icon: Monitor },
       { title: "Inventory", href: "/inventory", icon: Package },
       { title: "Warehouses", href: "/warehouses", icon: Warehouse },
-      { title: "Sales", href: "/sales", icon: ShoppingCart },
       { title: "Purchase Orders", href: "/purchase-orders", icon: Truck },
       { title: "Manufacturing", href: "/manufacturing", icon: Factory },
+      { title: "Maintenance", href: "/maintenance", icon: Wrench },
+      { title: "Quality", href: "/quality", icon: ClipboardCheck },
     ],
   },
   {
-    title: "Relations",
+    title: "Services",
     items: [
-      { title: "Contacts", href: "/contacts", icon: Users },
-      { title: "CRM", href: "/crm", icon: Target },
       { title: "Projects", href: "/projects", icon: FolderKanban },
+      { title: "Helpdesk", href: "/helpdesk", icon: Headphones },
+      { title: "Appointments", href: "/appointments", icon: CalendarClock },
     ],
   },
   {
-    title: "People",
+    title: "Human Resources",
     items: [
       { title: "Employees", href: "/employees", icon: UserCircle },
       { title: "Payroll", href: "/payroll", icon: Wallet },
-      { title: "T4 Tax Slips", href: "/payroll/t4", icon: FileText },
-      { title: "ROE Export", href: "/payroll/roe", icon: FileText },
+      { title: "Time Off", href: "/time-off", icon: Calendar },
+      { title: "Recruitment", href: "/recruitment", icon: Briefcase },
+      { title: "Appraisals", href: "/appraisals", icon: Star },
+    ],
+  },
+  {
+    title: "Productivity",
+    items: [
+      { title: "Documents", href: "/documents", icon: FolderOpen },
+      { title: "Knowledge", href: "/knowledge", icon: BookOpen },
+      { title: "Approvals", href: "/approvals", icon: CheckSquare },
+      { title: "Surveys", href: "/surveys", icon: ClipboardList },
     ],
   },
   {
     title: "Insights",
     items: [
       { title: "Reports", href: "/reports", icon: BarChart3 },
+      { title: "Contacts", href: "/contacts", icon: Users },
     ],
   },
 ]
