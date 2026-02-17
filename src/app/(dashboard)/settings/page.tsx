@@ -512,6 +512,22 @@ export default function SettingsPage() {
               </Button>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Departments</CardTitle>
+              <CardDescription>
+                Organize employees into departments
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" asChild>
+                <Link href="/settings/departments">
+                  Manage Departments →
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Billing Tab */}
