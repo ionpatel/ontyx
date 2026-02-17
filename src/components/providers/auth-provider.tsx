@@ -73,13 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function fetchOrgId(userId: string): Promise<string | null> {
       // Check cache first
       const cached = getCachedOrgId()
-      if (cached) {
-        console.log('[Auth] Using cached orgId:', cached)
-        return cached
-      }
+      if (cached) return cached
 
       // Fetch from DB
-      console.log('[Auth] Fetching orgId from DB...')
       try {
         const { data, error } = await supabase
           .from('organization_members')
@@ -88,19 +84,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .eq('is_active', true)
           .single()
 
-        if (error) {
-          console.error('[Auth] Org query error:', error.message)
-          return null
-        }
+        if (error) return null
 
         const orgId = data?.organization_id || null
-        if (orgId) {
-          setCachedOrgId(orgId)
-        }
-        console.log('[Auth] Fetched orgId:', orgId)
+        if (orgId) setCachedOrgId(orgId)
         return orgId
-      } catch (err) {
-        console.error('[Auth] Org fetch exception:', err)
+      } catch {
         return null
       }
     }
@@ -109,7 +98,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function setAuthenticatedState(user: User) {
       const orgId = await fetchOrgId(user.id)
       if (mounted) {
-        console.log('[Auth] Setting authenticated state, orgId:', orgId)
         setState({
           user,
           organizationId: orgId,
@@ -122,8 +110,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth state changes - this is the PRIMARY handler
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('[Auth] Event:', event, '| User:', session?.user?.email || 'none')
-
         if (event === 'SIGNED_OUT' || !session?.user) {
           clearAuthCache()
           if (mounted) {
