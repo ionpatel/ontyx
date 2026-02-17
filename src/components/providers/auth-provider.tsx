@@ -5,8 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 
 // ============================================================================
-// SESSION-LINKED AUTH PROVIDER
-// Uses Supabase's encrypted session token for instant auth recovery
+// INSTANT HYDRATION AUTH PROVIDER
+// Loads cached user data IMMEDIATELY, verifies in background
+// No loading flash - shows real data instantly on refresh
 // ============================================================================
 
 interface AuthState {
@@ -32,13 +33,25 @@ export function useAuth() {
   return useContext(AuthContext)
 }
 
-// Org cache - cleared on logout
+// Cache keys
 const ORG_CACHE_KEY = 'ontyx_org_id'
+const USER_CACHE_KEY = 'ontyx_user_cache'
 
 function getCachedOrgId(): string | null {
   if (typeof window === 'undefined') return null
   try {
     return localStorage.getItem(ORG_CACHE_KEY)
+  } catch {
+    return null
+  }
+}
+
+function getCachedUser(): User | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const cached = localStorage.getItem(USER_CACHE_KEY)
+    if (!cached) return null
+    return JSON.parse(cached) as User
   } catch {
     return null
   }
@@ -51,22 +64,50 @@ function setCachedOrgId(orgId: string) {
   } catch {}
 }
 
+function setCachedUser(user: User) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(USER_CACHE_KEY, JSON.stringify(user))
+  } catch {}
+}
+
 function clearAuthCache() {
   if (typeof window === 'undefined') return
   try {
     localStorage.removeItem(ORG_CACHE_KEY)
+    localStorage.removeItem(USER_CACHE_KEY)
     localStorage.removeItem('ontyx_profile_cache')
     localStorage.removeItem('ontyx_auth_cache')
   } catch {}
 }
 
+// ============================================================================
+// INSTANT HYDRATION: Load from cache SYNCHRONOUSLY on mount
+// ============================================================================
+function getInitialState(): AuthState {
+  if (typeof window === 'undefined') {
+    return { user: null, organizationId: null, loading: true, initialized: false }
+  }
+  
+  const cachedUser = getCachedUser()
+  const cachedOrgId = getCachedOrgId()
+  
+  if (cachedUser && cachedOrgId) {
+    // Have cached data! Show it immediately, verify in background
+    return {
+      user: cachedUser,
+      organizationId: cachedOrgId,
+      loading: false,  // NOT loading - we have data!
+      initialized: true,
+    }
+  }
+  
+  // No cache - need to load
+  return { user: null, organizationId: null, loading: true, initialized: false }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    organizationId: null,
-    loading: true,
-    initialized: false,
-  })
+  const [state, setState] = useState<AuthState>(getInitialState)
 
   useEffect(() => {
     let mounted = true
@@ -93,11 +134,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // Session exists! User is authenticated
+        // Cache the user for instant hydration on next load
+        setCachedUser(session.user)
+        
         // Check if we have cached org ID for instant load
         const cachedOrgId = getCachedOrgId()
         
         if (cachedOrgId) {
-          // Instant load with cached org
+          // Instant load with cached org (may already be set from getInitialState)
           if (mounted) {
             setState({
               user: session.user,
@@ -179,7 +223,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (event === 'SIGNED_IN' && session?.user) {
-          // New login - fetch fresh org data
+          // New login - cache user and fetch fresh org data
+          setCachedUser(session.user)
+          
           const { data } = await supabase
             .from('organization_members')
             .select('organization_id')
@@ -203,7 +249,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (event === 'TOKEN_REFRESHED' && session?.user) {
-          // Token refreshed - keep existing state, just update user
+          // Token refreshed - update cache and state
+          setCachedUser(session.user)
           if (mounted) {
             setState(prev => ({ ...prev, user: session.user }))
           }
