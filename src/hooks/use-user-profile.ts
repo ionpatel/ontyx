@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { userProfileService, type UserProfile, type UpdateProfileInput } from '@/services/user-profile'
 import { useAuth } from '@/components/providers/auth-provider'
 
-// Cache profile in localStorage for instant hydration
+// Cache profile in localStorage for faster subsequent loads
 const PROFILE_CACHE_KEY = 'ontyx_profile_cache'
 
 function getCachedProfile(): UserProfile | null {
@@ -35,26 +35,30 @@ function clearCachedProfile() {
 export function useUserProfile() {
   const { user, loading: authLoading } = useAuth()
   
-  // Hydrate from cache INSTANTLY
-  const [profile, setProfile] = useState<UserProfile | null>(() => {
-    if (typeof window !== 'undefined') {
-      return getCachedProfile()
-    }
-    return null
-  })
+  // Initialize as null to avoid hydration mismatch
+  // Cache is loaded in useEffect (client-only)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
   
-  // Track if we've fetched to avoid double-fetch
   const hasFetched = useRef(false)
-
   const userId = user?.id
+
+  // Hydrate from cache on mount (client-only, after hydration)
+  useEffect(() => {
+    const cached = getCachedProfile()
+    if (cached) {
+      setProfile(cached)
+    }
+    setHydrated(true)
+  }, [])
 
   // Fetch profile when auth is ready
   useEffect(() => {
-    // Wait for auth to finish loading
-    if (authLoading) return
+    // Wait for hydration and auth
+    if (!hydrated || authLoading) return
     
     // No user = no profile
     if (!userId) {
@@ -72,16 +76,11 @@ export function useUserProfile() {
       setError(null)
       
       try {
-        console.log('[useUserProfile] Fetching profile for:', userId)
-        const data = await userProfileService.getProfile(userId)
-        console.log('[useUserProfile] Got profile:', data)
+        const data = await userProfileService.getProfile(userId!)
         
         if (data) {
           setCachedProfile(data)
           setProfile(data)
-        } else {
-          // Profile fetch returned null - might be RLS issue
-          console.warn('[useUserProfile] Profile returned null')
         }
       } catch (err) {
         setError('Failed to fetch profile')
@@ -92,7 +91,7 @@ export function useUserProfile() {
     }
     
     fetchProfile()
-  }, [userId, authLoading])
+  }, [userId, authLoading, hydrated])
 
   // Reset hasFetched when user changes
   useEffect(() => {
@@ -171,8 +170,8 @@ export function useUserProfile() {
     }
   }
 
-  // Show cached profile immediately, loading only if no cache AND auth/fetch in progress
-  const isLoading = !profile && (authLoading || loading)
+  // Loading if not hydrated, or no profile and still fetching
+  const isLoading = !hydrated || (!profile && (authLoading || loading))
 
   return {
     profile,
