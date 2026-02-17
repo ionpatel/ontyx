@@ -59,7 +59,7 @@ export const recurringInvoicesService = {
       .from('recurring_invoices')
       .select(`
         *,
-        customer:contacts!recurring_invoices_customer_id_fkey(display_name, email),
+        customer:contacts(display_name, email),
         items:recurring_invoice_items(*)
       `)
       .eq('organization_id', organizationId)
@@ -80,7 +80,7 @@ export const recurringInvoicesService = {
       .from('recurring_invoices')
       .select(`
         *,
-        customer:contacts!recurring_invoices_customer_id_fkey(display_name, email),
+        customer:contacts(display_name, email),
         items:recurring_invoice_items(*)
       `)
       .eq('id', id)

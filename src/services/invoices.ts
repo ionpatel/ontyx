@@ -103,7 +103,7 @@ export const invoicesService = {
       .from('invoices')
       .select(`
         *,
-        customer:contacts!invoices_contact_id_fkey(id, display_name, email, phone),
+        customer:contacts(id, display_name, email, phone),
         items:invoice_items(*)
       `)
       .eq('organization_id', organizationId)
@@ -131,7 +131,7 @@ export const invoicesService = {
       .from('invoices')
       .select(`
         *,
-        customer:contacts!invoices_contact_id_fkey(id, display_name, email, phone, billing_address_line1, billing_city, billing_state, billing_postal_code, billing_country),
+        customer:contacts(id, display_name, email, phone, billing_address_line1, billing_city, billing_state, billing_postal_code, billing_country),
         items:invoice_items(*)
       `)
       .eq('id', id)
@@ -339,7 +339,7 @@ export const invoicesService = {
 
     const { data, error } = await supabase
       .from('invoices')
-      .select(`*, customer:contacts!invoices_contact_id_fkey(id, display_name, email), items:invoice_items(*)`)
+      .select(`*, customer:contacts(id, display_name, email), items:invoice_items(*)`)
       .eq('organization_id', organizationId)
       .or(`invoice_number.ilike.%${query}%`)
       .order('created_at', { ascending: false })

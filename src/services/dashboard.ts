@@ -108,7 +108,7 @@ export const dashboardService = {
     try {
       const { data, error } = await supabase
         .from('invoices')
-        .select('id, invoice_number, contact_id, total, amount_due, status, due_date, contacts!invoices_contact_id_fkey(display_name)')
+        .select('id, invoice_number, contact_id, total, amount_due, status, due_date, contact:contacts(display_name)')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
         .limit(limit)
@@ -118,7 +118,7 @@ export const dashboardService = {
       return (data || []).map(row => ({
         id: row.id,
         invoiceNumber: row.invoice_number,
-        customerName: (row.contacts as any)?.display_name || 'Unknown',
+        customerName: (row.contact as any)?.display_name || 'Unknown',
         total: row.total,
         amountDue: row.amount_due || 0,
         status: row.status,
@@ -136,7 +136,7 @@ export const dashboardService = {
     try {
       const { data, error } = await supabase
         .from('sales_orders')
-        .select('id, order_number, contact_id, total, status, order_date, contacts!sales_orders_contact_id_fkey(display_name)')
+        .select('id, order_number, contact_id, total, status, order_date, contact:contacts(display_name)')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
         .limit(limit)
@@ -146,7 +146,7 @@ export const dashboardService = {
       return (data || []).map(row => ({
         id: row.id,
         orderNumber: row.order_number,
-        customerName: (row.contacts as any)?.display_name || 'Unknown',
+        customerName: (row.contact as any)?.display_name || 'Unknown',
         total: row.total,
         status: row.status,
         orderDate: row.order_date,

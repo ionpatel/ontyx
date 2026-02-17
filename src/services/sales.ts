@@ -128,7 +128,7 @@ export const salesService = {
       .from('sales_orders')
       .select(`
         *,
-        customer:contacts!sales_orders_contact_id_fkey(id, display_name, email, phone),
+        customer:contacts(id, display_name, email, phone),
         items:sales_order_items(*)
       `)
       .eq('organization_id', organizationId)
@@ -156,7 +156,7 @@ export const salesService = {
       .from('sales_orders')
       .select(`
         *,
-        customer:contacts!sales_orders_contact_id_fkey(id, display_name, email, phone),
+        customer:contacts(id, display_name, email, phone),
         items:sales_order_items(*, product:products(id, name, sku))
       `)
       .eq('id', id)
@@ -309,7 +309,7 @@ export const salesService = {
 
     const { data, error } = await supabase
       .from('sales_orders')
-      .select(`*, customer:contacts!sales_orders_contact_id_fkey(id, display_name, email)`)
+      .select(`*, customer:contacts(id, display_name, email)`)
       .eq('organization_id', organizationId)
       .or(`order_number.ilike.%${query}%`)
       .order('created_at', { ascending: false })
