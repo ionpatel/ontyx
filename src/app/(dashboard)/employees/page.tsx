@@ -572,14 +572,14 @@ export default function EmployeesPage() {
                 <div className="space-y-2">
                   <Label>Department</Label>
                   <Select
-                    value={form.departmentId || ''}
-                    onValueChange={(v) => setForm(f => ({ ...f, departmentId: v || undefined }))}
+                    value={form.departmentId || 'none'}
+                    onValueChange={(v) => setForm(f => ({ ...f, departmentId: v === 'none' ? undefined : v }))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No Department</SelectItem>
+                      <SelectItem value="none">No Department</SelectItem>
                       {departments.map(d => (
                         <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                       ))}
