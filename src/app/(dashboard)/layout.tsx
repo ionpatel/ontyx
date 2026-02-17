@@ -109,11 +109,11 @@ export default function DashboardLayout({
   const [collapsed, setCollapsed] = useState(false)
 
   // Get user display info
-  const userName = profile ? `${profile.firstName} ${profile.lastName}`.trim() : 'Demo User'
-  const userRole = profile?.jobTitle || 'Admin'
+  const userName = profile ? `${profile.firstName} ${profile.lastName}`.trim() || profile.email : 'Loading...'
+  const userRole = profile?.jobTitle || 'Member'
   const userInitials = profile 
-    ? `${profile.firstName?.[0] || ''}${profile.lastName?.[0] || ''}`.toUpperCase() || 'DU'
-    : 'DU'
+    ? `${profile.firstName?.[0] || ''}${profile.lastName?.[0] || ''}`.toUpperCase() || profile.email?.[0]?.toUpperCase() || 'U'
+    : '...'
 
   const handleLogout = async () => {
     try {

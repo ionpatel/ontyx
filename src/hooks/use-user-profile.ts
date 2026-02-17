@@ -15,6 +15,11 @@ export function useUserProfile() {
   const userId = user?.id 
 
   const fetchProfile = useCallback(async () => {
+    if (!userId) {
+      setLoading(false)
+      return
+    }
+    
     setLoading(true)
     setError(null)
     
@@ -34,6 +39,8 @@ export function useUserProfile() {
   }, [fetchProfile])
 
   const updateProfile = async (updates: UpdateProfileInput): Promise<boolean> => {
+    if (!userId) return false
+    
     setSaving(true)
     setError(null)
     
@@ -54,6 +61,8 @@ export function useUserProfile() {
   }
 
   const uploadAvatar = async (file: File): Promise<string | null> => {
+    if (!userId) return null
+    
     setSaving(true)
     
     try {
@@ -70,11 +79,11 @@ export function useUserProfile() {
     }
   }
 
-  const changePassword = async (newPassword: string): Promise<{ success: boolean; error?: string }> => {
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
     setSaving(true)
     
     try {
-      return await userProfileService.changePassword(newPassword)
+      return await userProfileService.changePassword(currentPassword, newPassword)
     } finally {
       setSaving(false)
     }
