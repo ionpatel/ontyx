@@ -53,6 +53,7 @@ const navigation: NavGroup[] = [
     title: "Finance",
     items: [
       { title: "Invoices", href: "/invoices", icon: FileText },
+      { title: "Expenses", href: "/expenses", icon: Wallet },
       { title: "Bills", href: "/bills", icon: Receipt },
       { title: "Banking", href: "/banking", icon: Landmark },
       { title: "Accounting", href: "/accounting", icon: Calculator },
