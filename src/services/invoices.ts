@@ -186,7 +186,7 @@ export const invoicesService = {
         tax_amount: taxTotal,
         total,
         amount_paid: 0,
-        balance_due: total,
+        amount_due: total,
         currency: 'CAD',
         payment_terms: 30,
         notes: input.notes,
@@ -268,7 +268,7 @@ export const invoicesService = {
       .from('invoices')
       .update({
         amount_paid: newAmountPaid,
-        balance_due: balanceDue,
+        amount_due: balanceDue,
         status,
         paid_date: status === 'paid' ? new Date().toISOString() : null,
         updated_at: new Date().toISOString(),
@@ -313,7 +313,7 @@ export const invoicesService = {
 
     const { data, error } = await supabase
       .from('invoices')
-      .select('status, total, amount_paid, balance_due')
+      .select('status, total, amount_paid, amount_due')
       .eq('organization_id', organizationId)
 
     if (error) {
@@ -326,7 +326,7 @@ export const invoicesService = {
       totalInvoices: invoices.length,
       totalAmount: invoices.reduce((sum, i) => sum + (i.total || 0), 0),
       paidAmount: invoices.reduce((sum, i) => sum + (i.amount_paid || 0), 0),
-      overdueAmount: invoices.filter(i => i.status === 'overdue').reduce((sum, i) => sum + (i.balance_due || 0), 0),
+      overdueAmount: invoices.filter(i => i.status === 'overdue').reduce((sum, i) => sum + (i.amount_due || 0), 0),
       draftCount: invoices.filter(i => i.status === 'draft').length,
       sentCount: invoices.filter(i => i.status === 'sent').length,
       paidCount: invoices.filter(i => i.status === 'paid').length,
@@ -393,7 +393,7 @@ function mapInvoiceFromDb(row: any): Invoice {
     taxTotal: row.tax_amount || 0,
     total: row.total,
     amountPaid: row.amount_paid || 0,
-    amountDue: row.balance_due || row.total,
+    amountDue: row.amount_due || row.total,
     gstAmount: row.gst_amount,
     hstAmount: row.hst_amount,
     pstAmount: row.pst_amount,

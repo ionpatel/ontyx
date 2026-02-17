@@ -128,14 +128,14 @@ export const salesService = {
       .from('sales_orders')
       .select(`
         *,
-        customer:contacts!sales_orders_customer_id_fkey(id, display_name, email, phone),
+        customer:contacts!sales_orders_contact_id_fkey(id, display_name, email, phone),
         items:sales_order_items(*)
       `)
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false })
 
     if (filters?.status) query = query.eq('status', filters.status)
-    if (filters?.customerId) query = query.eq('customer_id', filters.customerId)
+    if (filters?.customerId) query = query.eq('contact_id', filters.customerId)
     if (filters?.fromDate) query = query.gte('order_date', filters.fromDate)
     if (filters?.toDate) query = query.lte('order_date', filters.toDate)
 
@@ -156,7 +156,7 @@ export const salesService = {
       .from('sales_orders')
       .select(`
         *,
-        customer:contacts!sales_orders_customer_id_fkey(id, display_name, email, phone),
+        customer:contacts!sales_orders_contact_id_fkey(id, display_name, email, phone),
         items:sales_order_items(*, product:products(id, name, sku))
       `)
       .eq('id', id)
@@ -200,7 +200,7 @@ export const salesService = {
       .insert({
         organization_id: organizationId,
         order_number: generateOrderNumber(),
-        customer_id: input.customerId,
+        contact_id: input.customerId,
         shipping_street: input.shippingAddress.street,
         shipping_city: input.shippingAddress.city,
         shipping_state: input.shippingAddress.state,
@@ -219,7 +219,7 @@ export const salesService = {
         discount_amount: discount,
         total,
         amount_paid: 0,
-        balance_due: total,
+        amount_due: total,
         currency: 'CAD',
         shipping_method: input.shippingMethod,
         notes: input.notes,
@@ -309,7 +309,7 @@ export const salesService = {
 
     const { data, error } = await supabase
       .from('sales_orders')
-      .select(`*, customer:contacts!sales_orders_customer_id_fkey(id, display_name, email)`)
+      .select(`*, customer:contacts!sales_orders_contact_id_fkey(id, display_name, email)`)
       .eq('organization_id', organizationId)
       .or(`order_number.ilike.%${query}%`)
       .order('created_at', { ascending: false })
@@ -332,7 +332,7 @@ function mapOrderFromDb(row: any): SalesOrder {
   return {
     id: row.id,
     orderNumber: row.order_number,
-    customerId: row.customer_id,
+    customerId: row.contact_id,
     customerName: row.customer?.display_name || 'Unknown',
     customerEmail: row.customer?.email || '',
     shippingAddress: {
@@ -370,7 +370,7 @@ function mapOrderFromDb(row: any): SalesOrder {
     discount: row.discount_amount || 0,
     total: row.total,
     amountPaid: row.amount_paid || 0,
-    amountDue: row.balance_due || row.total,
+    amountDue: row.amount_due || row.total,
     currency: row.currency || 'CAD',
     shippingMethod: row.shipping_method,
     trackingNumber: row.tracking_number,

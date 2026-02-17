@@ -59,7 +59,7 @@ export const dashboardService = {
 
     try {
       const [invoices, orders, products, contacts] = await Promise.all([
-        supabase.from('invoices').select('total, amount_paid, balance_due, status').eq('organization_id', organizationId),
+        supabase.from('invoices').select('total, amount_paid, amount_due, status').eq('organization_id', organizationId),
         supabase.from('sales_orders').select('total, status').eq('organization_id', organizationId),
         supabase.from('products').select('id, stock_quantity, reorder_level').eq('organization_id', organizationId).eq('is_active', true),
         supabase.from('contacts').select('id, is_customer, is_vendor').eq('organization_id', organizationId).eq('is_active', true),
@@ -72,7 +72,7 @@ export const dashboardService = {
 
       const paidInvoices = invoiceData.filter(i => i.status === 'paid')
       const totalRevenue = paidInvoices.reduce((sum, i) => sum + (i.total || 0), 0)
-      const outstanding = invoiceData.filter(i => (i.balance_due || 0) > 0)
+      const outstanding = invoiceData.filter(i => (i.amount_due || 0) > 0)
       const overdue = invoiceData.filter(i => i.status === 'overdue')
       const pendingOrders = orderData.filter(o => ['draft', 'confirmed', 'processing'].includes(o.status))
       const lowStock = productData.filter(p => (p.stock_quantity || 0) <= (p.reorder_level || 0))
@@ -81,9 +81,9 @@ export const dashboardService = {
         totalRevenue,
         revenueChange: 0,
         outstandingInvoices: outstanding.length,
-        outstandingAmount: outstanding.reduce((sum, i) => sum + (i.balance_due || 0), 0),
+        outstandingAmount: outstanding.reduce((sum, i) => sum + (i.amount_due || 0), 0),
         overdueCount: overdue.length,
-        overdueAmount: overdue.reduce((sum, i) => sum + (i.balance_due || 0), 0),
+        overdueAmount: overdue.reduce((sum, i) => sum + (i.amount_due || 0), 0),
         totalOrders: orderData.length,
         pendingOrders: pendingOrders.length,
         totalProducts: productData.length,
@@ -108,7 +108,7 @@ export const dashboardService = {
     try {
       const { data, error } = await supabase
         .from('invoices')
-        .select('id, invoice_number, contact_id, total, balance_due, status, due_date, contacts!invoices_contact_id_fkey(display_name)')
+        .select('id, invoice_number, contact_id, total, amount_due, status, due_date, contacts!invoices_contact_id_fkey(display_name)')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
         .limit(limit)
@@ -120,7 +120,7 @@ export const dashboardService = {
         invoiceNumber: row.invoice_number,
         customerName: (row.contacts as any)?.display_name || 'Unknown',
         total: row.total,
-        amountDue: row.balance_due || 0,
+        amountDue: row.amount_due || 0,
         status: row.status,
         dueDate: row.due_date,
       }))
@@ -136,7 +136,7 @@ export const dashboardService = {
     try {
       const { data, error } = await supabase
         .from('sales_orders')
-        .select('id, order_number, customer_id, total, status, order_date, contacts!sales_orders_customer_id_fkey(display_name)')
+        .select('id, order_number, contact_id, total, status, order_date, contacts!sales_orders_contact_id_fkey(display_name)')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
         .limit(limit)
