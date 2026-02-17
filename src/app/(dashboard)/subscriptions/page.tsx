@@ -33,6 +33,9 @@ export default function SubscriptionsPage() {
   const [metrics, setMetrics] = useState({ mrr: 0, arr: 0, active_count: 0, trialing_count: 0, churn_rate: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState('');
+  const [selectedContactId, setSelectedContactId] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!organizationId) return;
@@ -56,12 +59,38 @@ export default function SubscriptionsPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleCancel = async (subscriptionId: string) => {
+    if (!confirm('Cancel this subscription?')) return;
     try {
       await subscriptionsService.cancelSubscription(subscriptionId);
       toast({ title: 'Subscription Cancelled' });
       fetchData();
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to cancel', variant: 'destructive' });
+    }
+  };
+
+  const handleCreateSubscription = async () => {
+    if (!organizationId || !selectedPlanId || !selectedContactId) {
+      toast({ title: 'Error', description: 'Please select a plan and customer', variant: 'destructive' });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await subscriptionsService.createSubscription(organizationId, {
+        plan_id: selectedPlanId,
+        contact_id: selectedContactId,
+        status: 'active',
+        start_date: new Date().toISOString(),
+      });
+      toast({ title: 'Subscription Created' });
+      setShowNewDialog(false);
+      setSelectedPlanId('');
+      setSelectedContactId('');
+      fetchData();
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to create subscription', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -203,6 +232,45 @@ export default function SubscriptionsPage() {
           </TableBody>
         </Table>
       </Card>
+
+      {/* New Subscription Dialog */}
+      <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New Subscription</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Plan</label>
+              <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
+                <SelectTrigger><SelectValue placeholder="Choose a plan..." /></SelectTrigger>
+                <SelectContent>
+                  {plans.map(plan => (
+                    <SelectItem key={plan.id} value={plan.id}>
+                      {plan.name} - {formatCurrency(plan.price)}/{plan.billing_interval}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Customer ID</label>
+              <Input 
+                placeholder="Enter contact ID" 
+                value={selectedContactId}
+                onChange={(e) => setSelectedContactId(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Enter the customer's contact ID from the Contacts module</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewDialog(false)}>Cancel</Button>
+            <Button onClick={handleCreateSubscription} disabled={isSubmitting}>
+              {isSubmitting ? 'Creating...' : 'Create Subscription'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

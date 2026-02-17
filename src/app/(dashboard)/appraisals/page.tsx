@@ -6,6 +6,8 @@ import { useToast } from '@/components/ui/toast';
 import * as appraisalsService from '@/services/appraisals';
 import type { Appraisal } from '@/types/appraisals';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -29,6 +31,11 @@ export default function AppraisalsPage() {
   const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0, avg_rating: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
+  const [showDialog, setShowDialog] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [employeeId, setEmployeeId] = useState('');
+  const [periodStart, setPeriodStart] = useState('');
+  const [periodEnd, setPeriodEnd] = useState('');
 
   const fetchData = useCallback(async () => {
     if (!organizationId) return;
@@ -49,6 +56,33 @@ export default function AppraisalsPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const handleCreate = async () => {
+    if (!organizationId || !employeeId || !periodStart || !periodEnd) {
+      toast({ title: 'Error', description: 'All fields required', variant: 'destructive' });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await appraisalsService.createAppraisal(organizationId, {
+        employee_id: employeeId,
+        reviewer_id: user?.id,
+        review_period_start: periodStart,
+        review_period_end: periodEnd,
+        status: 'draft',
+      });
+      toast({ title: 'Appraisal Created' });
+      setShowDialog(false);
+      setEmployeeId('');
+      setPeriodStart('');
+      setPeriodEnd('');
+      fetchData();
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to create appraisal', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const myAppraisals = appraisals.filter(a => a.employee_id === user?.id);
   const toReview = appraisals.filter(a => a.reviewer_id === user?.id && a.status === 'manager_review');
   const pendingAck = appraisals.filter(a => a.employee_id === user?.id && a.status === 'completed');
@@ -60,7 +94,7 @@ export default function AppraisalsPage() {
           <h1 className="text-2xl font-bold">Performance Appraisals</h1>
           <p className="text-muted-foreground">Manage performance reviews</p>
         </div>
-        <Button>
+        <Button onClick={() => setShowDialog(true)}>
           <Plus className="h-4 w-4 mr-2" /> New Appraisal
         </Button>
       </div>
@@ -226,6 +260,37 @@ export default function AppraisalsPage() {
           <Card><CardContent className="py-8 text-center text-muted-foreground">Team view coming soon</CardContent></Card>
         </TabsContent>
       </Tabs>
+
+      {/* Create Appraisal Dialog */}
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New Performance Appraisal</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Employee ID</Label>
+              <Input placeholder="Employee UUID" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Period Start</Label>
+                <Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Period End</Label>
+                <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={isSubmitting}>
+              {isSubmitting ? 'Creating...' : 'Create Appraisal'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

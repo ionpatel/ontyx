@@ -6,10 +6,15 @@ import { useToast } from '@/components/ui/toast';
 import * as qualityService from '@/services/quality';
 import type { QualityCheck } from '@/types/quality';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, CheckCircle, XCircle, AlertCircle, ClipboardCheck, TrendingUp } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Plus, CheckCircle, XCircle, AlertCircle, ClipboardCheck, TrendingUp, Trash2, Edit } from 'lucide-react';
 import { format } from 'date-fns';
 
 const statusColors: Record<string, string> = {
@@ -27,11 +32,30 @@ const typeColors: Record<string, string> = {
 };
 
 export default function QualityPage() {
-  const { organizationId } = useAuth();
+  const { organizationId, user } = useAuth();
   const { toast } = useToast();
   const [checks, setChecks] = useState<QualityCheck[]>([]);
   const [stats, setStats] = useState({ total: 0, passed: 0, failed: 0, pending: 0, pass_rate: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [showDialog, setShowDialog] = useState(false);
+  const [editingCheck, setEditingCheck] = useState<QualityCheck | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Form state
+  const [checkType, setCheckType] = useState<string>('incoming');
+  const [status, setStatus] = useState<string>('pending');
+  const [itemName, setItemName] = useState('');
+  const [batchNumber, setBatchNumber] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const resetForm = () => {
+    setCheckType('incoming');
+    setStatus('pending');
+    setItemName('');
+    setBatchNumber('');
+    setNotes('');
+    setEditingCheck(null);
+  };
 
   const fetchData = useCallback(async () => {
     if (!organizationId) return;
@@ -52,6 +76,54 @@ export default function QualityPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const handleSubmit = async () => {
+    if (!organizationId) return;
+    setIsSubmitting(true);
+    try {
+      const data = {
+        check_type: checkType as any,
+        status: status as any,
+        notes,
+        inspection_date: new Date().toISOString(),
+        inspector_id: user?.id,
+      };
+      
+      if (editingCheck) {
+        await qualityService.updateQualityCheck(editingCheck.id, data);
+        toast({ title: 'Updated', description: 'Quality check updated' });
+      } else {
+        await qualityService.createQualityCheck(organizationId, data);
+        toast({ title: 'Created', description: 'Quality check created' });
+      }
+      setShowDialog(false);
+      resetForm();
+      fetchData();
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to save', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEdit = (check: QualityCheck) => {
+    setEditingCheck(check);
+    setCheckType(check.check_type);
+    setStatus(check.status);
+    setNotes(check.notes || '');
+    setShowDialog(true);
+  };
+
+  const handleDelete = async (check: QualityCheck) => {
+    if (!confirm('Delete this quality check?')) return;
+    try {
+      await qualityService.deleteQualityCheck(check.id);
+      toast({ title: 'Deleted' });
+      fetchData();
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to delete', variant: 'destructive' });
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -59,7 +131,7 @@ export default function QualityPage() {
           <h1 className="text-2xl font-bold">Quality Control</h1>
           <p className="text-muted-foreground">Manage quality checks and inspections</p>
         </div>
-        <Button>
+        <Button onClick={() => { resetForm(); setShowDialog(true); }}>
           <Plus className="h-4 w-4 mr-2" /> New QC Check
         </Button>
       </div>
@@ -137,6 +209,7 @@ export default function QualityPage() {
               <TableHead>Inspector</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -159,12 +232,65 @@ export default function QualityPage() {
                   <TableCell>{check.inspector ? `${check.inspector.first_name} ${check.inspector.last_name}` : '-'}</TableCell>
                   <TableCell>{check.inspection_date ? format(new Date(check.inspection_date), 'MMM d, yyyy') : '-'}</TableCell>
                   <TableCell><Badge className={statusColors[check.status]}>{check.status}</Badge></TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(check)}><Edit className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(check)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
       </Card>
+
+      {/* Create/Edit Dialog */}
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingCheck ? 'Edit Quality Check' : 'New Quality Check'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Check Type</Label>
+                <Select value={checkType} onValueChange={setCheckType}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="incoming">Incoming</SelectItem>
+                    <SelectItem value="in_process">In Process</SelectItem>
+                    <SelectItem value="final">Final</SelectItem>
+                    <SelectItem value="random">Random</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="passed">Passed</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="conditional">Conditional</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Inspection notes..." rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : editingCheck ? 'Update' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

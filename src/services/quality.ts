@@ -92,6 +92,31 @@ export async function recordQualityResults(
   return data;
 }
 
+export async function updateQualityCheck(
+  checkId: string,
+  updates: Partial<CreateQualityCheckInput> & { status?: string; notes?: string }
+): Promise<QualityCheck> {
+  const { data, error } = await supabase
+    .from('quality_checks')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', checkId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteQualityCheck(checkId: string): Promise<void> {
+  const { error } = await supabase
+    .from('quality_checks')
+    .delete()
+    .eq('id', checkId);
+  if (error) throw error;
+}
+
 export async function getQualityStats(organizationId: string): Promise<{
   total: number;
   passed: number;
