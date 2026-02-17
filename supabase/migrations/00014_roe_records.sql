@@ -164,8 +164,18 @@ CREATE TABLE IF NOT EXISTS employees (
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_employees_org ON employees(organization_id);
-CREATE INDEX IF NOT EXISTS idx_employees_status ON employees(status);
+-- Note: status column may not exist in older schema, skip this index
+-- CREATE INDEX IF NOT EXISTS idx_employees_status ON employees(status);
 CREATE INDEX IF NOT EXISTS idx_employees_name ON employees(last_name, first_name);
+
+-- Add status column to employees if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'employees' AND column_name = 'status') THEN
+    ALTER TABLE employees ADD COLUMN status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'on_leave', 'terminated'));
+  END IF;
+END
+$$;
 
 -- RLS
 ALTER TABLE employees ENABLE ROW LEVEL SECURITY;

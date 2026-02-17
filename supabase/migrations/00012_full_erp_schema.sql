@@ -9,6 +9,16 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- DOCUMENTS MODULE
 -- ============================================================
 
+-- Document folders MUST be created before documents (FK dependency)
+CREATE TABLE IF NOT EXISTS document_folders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  parent_id UUID REFERENCES document_folders(id) ON DELETE CASCADE,
+  color TEXT DEFAULT '#6B7280',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS documents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -42,15 +52,6 @@ CREATE TABLE IF NOT EXISTS documents (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ -- Soft delete
-);
-
-CREATE TABLE IF NOT EXISTS document_folders (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  parent_id UUID REFERENCES document_folders(id) ON DELETE CASCADE,
-  color TEXT DEFAULT '#6B7280',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS document_shares (
@@ -726,69 +727,69 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 -- ============================================================
 
 -- Documents
-CREATE INDEX idx_documents_org ON documents(organization_id);
-CREATE INDEX idx_documents_folder ON documents(folder_id);
-CREATE INDEX idx_documents_owner ON documents(owner_id);
+CREATE INDEX IF NOT EXISTS idx_documents_org ON documents(organization_id);
+CREATE INDEX IF NOT EXISTS idx_documents_folder ON documents(folder_id);
+CREATE INDEX IF NOT EXISTS idx_documents_owner ON documents(owner_id);
 
 -- Time Off
-CREATE INDEX idx_leave_requests_org ON leave_requests(organization_id);
-CREATE INDEX idx_leave_requests_employee ON leave_requests(employee_id);
-CREATE INDEX idx_leave_requests_status ON leave_requests(status);
-CREATE INDEX idx_leave_balances_employee ON leave_balances(employee_id);
+CREATE INDEX IF NOT EXISTS idx_leave_requests_org ON leave_requests(organization_id);
+CREATE INDEX IF NOT EXISTS idx_leave_requests_employee ON leave_requests(employee_id);
+CREATE INDEX IF NOT EXISTS idx_leave_requests_status ON leave_requests(status);
+CREATE INDEX IF NOT EXISTS idx_leave_balances_employee ON leave_balances(employee_id);
 
 -- Helpdesk
-CREATE INDEX idx_tickets_org ON tickets(organization_id);
-CREATE INDEX idx_tickets_status ON tickets(status);
-CREATE INDEX idx_tickets_assigned ON tickets(assigned_to);
-CREATE INDEX idx_ticket_messages_ticket ON ticket_messages(ticket_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_org ON tickets(organization_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
+CREATE INDEX IF NOT EXISTS idx_tickets_assigned ON tickets(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_ticket_messages_ticket ON ticket_messages(ticket_id);
 
 -- Appointments
-CREATE INDEX idx_appointments_org ON appointments(organization_id);
-CREATE INDEX idx_appointments_staff ON appointments(staff_id);
-CREATE INDEX idx_appointments_time ON appointments(start_time);
-CREATE INDEX idx_appointments_status ON appointments(status);
+CREATE INDEX IF NOT EXISTS idx_appointments_org ON appointments(organization_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_staff ON appointments(staff_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_time ON appointments(start_time);
+CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status);
 
 -- Subscriptions
-CREATE INDEX idx_subscriptions_org ON subscriptions(organization_id);
-CREATE INDEX idx_subscriptions_contact ON subscriptions(contact_id);
-CREATE INDEX idx_subscriptions_status ON subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_org ON subscriptions(organization_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_contact ON subscriptions(contact_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
 
 -- Maintenance
-CREATE INDEX idx_equipment_org ON equipment(organization_id);
-CREATE INDEX idx_maintenance_equipment ON maintenance_requests(equipment_id);
+CREATE INDEX IF NOT EXISTS idx_equipment_org ON equipment(organization_id);
+CREATE INDEX IF NOT EXISTS idx_maintenance_equipment ON maintenance_requests(equipment_id);
 
 -- Quality
-CREATE INDEX idx_quality_checks_org ON quality_checks(organization_id);
-CREATE INDEX idx_quality_checks_product ON quality_checks(product_id);
+CREATE INDEX IF NOT EXISTS idx_quality_checks_org ON quality_checks(organization_id);
+CREATE INDEX IF NOT EXISTS idx_quality_checks_product ON quality_checks(product_id);
 
 -- Recruitment
-CREATE INDEX idx_job_postings_org ON job_postings(organization_id);
-CREATE INDEX idx_job_applications_posting ON job_applications(job_posting_id);
-CREATE INDEX idx_job_applications_stage ON job_applications(stage);
+CREATE INDEX IF NOT EXISTS idx_job_postings_org ON job_postings(organization_id);
+CREATE INDEX IF NOT EXISTS idx_job_applications_posting ON job_applications(job_posting_id);
+CREATE INDEX IF NOT EXISTS idx_job_applications_stage ON job_applications(stage);
 
 -- Appraisals
-CREATE INDEX idx_appraisals_employee ON appraisals(employee_id);
-CREATE INDEX idx_appraisals_status ON appraisals(status);
+CREATE INDEX IF NOT EXISTS idx_appraisals_employee ON appraisals(employee_id);
+CREATE INDEX IF NOT EXISTS idx_appraisals_status ON appraisals(status);
 
 -- Approvals
-CREATE INDEX idx_approval_requests_org ON approval_requests(organization_id);
-CREATE INDEX idx_approval_requests_entity ON approval_requests(entity_type, entity_id);
-CREATE INDEX idx_approval_actions_request ON approval_actions(request_id);
+CREATE INDEX IF NOT EXISTS idx_approval_requests_org ON approval_requests(organization_id);
+CREATE INDEX IF NOT EXISTS idx_approval_requests_entity ON approval_requests(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_approval_actions_request ON approval_actions(request_id);
 
 -- Knowledge
-CREATE INDEX idx_knowledge_articles_org ON knowledge_articles(organization_id);
-CREATE INDEX idx_knowledge_articles_category ON knowledge_articles(category_id);
-CREATE INDEX idx_knowledge_articles_slug ON knowledge_articles(slug);
+CREATE INDEX IF NOT EXISTS idx_knowledge_articles_org ON knowledge_articles(organization_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_articles_category ON knowledge_articles(category_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_articles_slug ON knowledge_articles(slug);
 
 -- Surveys
-CREATE INDEX idx_surveys_org ON surveys(organization_id);
-CREATE INDEX idx_survey_responses_survey ON survey_responses(survey_id);
+CREATE INDEX IF NOT EXISTS idx_surveys_org ON surveys(organization_id);
+CREATE INDEX IF NOT EXISTS idx_survey_responses_survey ON survey_responses(survey_id);
 
 -- Audit
-CREATE INDEX idx_audit_logs_org ON audit_logs(organization_id);
-CREATE INDEX idx_audit_logs_user ON audit_logs(user_id);
-CREATE INDEX idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
-CREATE INDEX idx_audit_logs_created ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_org ON audit_logs(organization_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);
 
 -- ============================================================
 -- ROW LEVEL SECURITY
@@ -826,7 +827,7 @@ ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- Universal org-based RLS policy function
 CREATE OR REPLACE FUNCTION user_org_ids() RETURNS SETOF UUID AS $$
-  SELECT organization_id FROM user_roles WHERE user_id = auth.uid()
+  SELECT organization_id FROM organization_members WHERE user_id = auth.uid()
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
 -- Apply standard RLS policies to all org-based tables

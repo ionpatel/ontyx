@@ -145,38 +145,38 @@ ALTER TABLE pos_cash_movements ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view their org's POS sessions"
   ON pos_sessions FOR SELECT
   USING (organization_id IN (
-    SELECT organization_id FROM user_roles WHERE user_id = auth.uid()
+    SELECT organization_id FROM organization_members WHERE user_id = auth.uid()
   ));
 
 CREATE POLICY "Users can create POS sessions for their org"
   ON pos_sessions FOR INSERT
   WITH CHECK (organization_id IN (
-    SELECT organization_id FROM user_roles WHERE user_id = auth.uid()
+    SELECT organization_id FROM organization_members WHERE user_id = auth.uid()
   ));
 
 CREATE POLICY "Users can update their org's POS sessions"
   ON pos_sessions FOR UPDATE
   USING (organization_id IN (
-    SELECT organization_id FROM user_roles WHERE user_id = auth.uid()
+    SELECT organization_id FROM organization_members WHERE user_id = auth.uid()
   ));
 
 -- POS Transactions policies
 CREATE POLICY "Users can view their org's POS transactions"
   ON pos_transactions FOR SELECT
   USING (organization_id IN (
-    SELECT organization_id FROM user_roles WHERE user_id = auth.uid()
+    SELECT organization_id FROM organization_members WHERE user_id = auth.uid()
   ));
 
 CREATE POLICY "Users can create POS transactions for their org"
   ON pos_transactions FOR INSERT
   WITH CHECK (organization_id IN (
-    SELECT organization_id FROM user_roles WHERE user_id = auth.uid()
+    SELECT organization_id FROM organization_members WHERE user_id = auth.uid()
   ));
 
 CREATE POLICY "Users can update their org's POS transactions"
   ON pos_transactions FOR UPDATE
   USING (organization_id IN (
-    SELECT organization_id FROM user_roles WHERE user_id = auth.uid()
+    SELECT organization_id FROM organization_members WHERE user_id = auth.uid()
   ));
 
 -- POS Transaction Items policies
@@ -184,7 +184,7 @@ CREATE POLICY "Users can view transaction items"
   ON pos_transaction_items FOR SELECT
   USING (transaction_id IN (
     SELECT id FROM pos_transactions WHERE organization_id IN (
-      SELECT organization_id FROM user_roles WHERE user_id = auth.uid()
+      SELECT organization_id FROM organization_members WHERE user_id = auth.uid()
     )
   ));
 
@@ -192,7 +192,7 @@ CREATE POLICY "Users can create transaction items"
   ON pos_transaction_items FOR INSERT
   WITH CHECK (transaction_id IN (
     SELECT id FROM pos_transactions WHERE organization_id IN (
-      SELECT organization_id FROM user_roles WHERE user_id = auth.uid()
+      SELECT organization_id FROM organization_members WHERE user_id = auth.uid()
     )
   ));
 
@@ -201,7 +201,7 @@ CREATE POLICY "Users can view payments"
   ON pos_payments FOR SELECT
   USING (transaction_id IN (
     SELECT id FROM pos_transactions WHERE organization_id IN (
-      SELECT organization_id FROM user_roles WHERE user_id = auth.uid()
+      SELECT organization_id FROM organization_members WHERE user_id = auth.uid()
     )
   ));
 
@@ -209,7 +209,7 @@ CREATE POLICY "Users can create payments"
   ON pos_payments FOR INSERT
   WITH CHECK (transaction_id IN (
     SELECT id FROM pos_transactions WHERE organization_id IN (
-      SELECT organization_id FROM user_roles WHERE user_id = auth.uid()
+      SELECT organization_id FROM organization_members WHERE user_id = auth.uid()
     )
   ));
 
@@ -218,7 +218,7 @@ CREATE POLICY "Users can view cash movements"
   ON pos_cash_movements FOR SELECT
   USING (session_id IN (
     SELECT id FROM pos_sessions WHERE organization_id IN (
-      SELECT organization_id FROM user_roles WHERE user_id = auth.uid()
+      SELECT organization_id FROM organization_members WHERE user_id = auth.uid()
     )
   ));
 
@@ -226,7 +226,7 @@ CREATE POLICY "Users can create cash movements"
   ON pos_cash_movements FOR INSERT
   WITH CHECK (session_id IN (
     SELECT id FROM pos_sessions WHERE organization_id IN (
-      SELECT organization_id FROM user_roles WHERE user_id = auth.uid()
+      SELECT organization_id FROM organization_members WHERE user_id = auth.uid()
     )
   ));
 
