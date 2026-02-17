@@ -51,13 +51,14 @@
 - [x] **T4 generation** ✅ - year-end tax slips
 - [x] **ROE export** ✅ - Record of Employment for Service Canada
 
-## Phase 4: Reports & Analytics
-- [ ] **Profit & Loss** - income vs expenses
-- [ ] **Balance Sheet** - assets, liabilities, equity
-- [ ] **Cash Flow** - money in/out over time
-- [ ] **Tax Summary** - GST/HST collected vs paid
-- [ ] **Accounts Aging** - overdue invoices/bills
-- [ ] **Export to CSV/PDF**
+## Phase 4: Reports & Analytics ✅ COMPLETE
+- [x] **Profit & Loss** ✅ - income vs expenses by period
+- [x] **Balance Sheet** ✅ - assets, liabilities, equity
+- [x] **Tax Summary** ✅ - GST/HST collected vs paid, net owing
+- [x] **Accounts Aging** ✅ - overdue invoices by bucket (0-30-60-90+)
+- [x] **Financial Summary** ✅ - dashboard quick stats
+- [ ] **Cash Flow** - money in/out over time (future)
+- [ ] **Export to CSV/PDF** - download reports (future)
 
 ## Phase 5: Polish & Launch
 - [ ] **Multi-user** - invite team members with roles
@@ -71,7 +72,7 @@
 ---
 
 ## Current Focus
-**Phase 4: Reports** - P&L, Balance Sheet, Cash Flow, Tax Summary
+**Phase 5: Polish & Launch** - Multi-user, Stripe billing, Onboarding
 
 ## Quick Wins Queue
 1. ~~Org settings page~~ ✅
@@ -80,13 +81,17 @@
 4. ~~User profile page~~ ✅
 5. ~~Recurring invoices~~ ✅
 6. ~~Invoice templates~~ ✅
-7. ~~Banking module~~ ✅ (manual transactions, categorization, reconciliation)
-8. ~~Canadian Payroll~~ ✅ (CPP/EI, pay runs, T4)
+7. ~~Banking module~~ ✅
+8. ~~Canadian Payroll~~ ✅
 9. ~~ROE export~~ ✅
-10. P&L Report
-11. Balance Sheet
-12. Cash Flow Report
-13. Plaid integration (auto-import from banks)
+10. ~~P&L Report~~ ✅
+11. ~~Balance Sheet~~ ✅
+12. ~~Tax Summary~~ ✅
+13. ~~Accounts Aging~~ ✅
+14. Multi-user roles
+15. Stripe billing
+16. Onboarding wizard
+17. Plaid integration
 
 ---
 
@@ -105,6 +110,12 @@
   - Insurable earnings by pay period
   - Employee/employer info blocks
   - Draft → Submitted workflow
+- ✅ Reports module COMPLETE
+  - Profit & Loss statement
+  - Balance Sheet
+  - Tax Summary (GST/HST)
+  - Accounts Aging (receivables by bucket)
+  - Financial summary dashboard
 - ✅ Employees table migration (SIN, tax info, compensation)
 - ✅ Email domain verified (ontyx.ca via Resend)
 - ✅ PDF invoice layout fixed (logo alignment)
