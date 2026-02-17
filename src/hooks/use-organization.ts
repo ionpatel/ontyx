@@ -5,21 +5,24 @@ import { organizationService, type Organization, type UpdateOrganizationInput } 
 import { useAuth } from './use-auth'
 
 export function useOrganization() {
-  const { organizationId } = useAuth()
+  const { organizationId, loading: authLoading } = useAuth()
   const [organization, setOrganization] = useState<Organization | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  // Use 'demo' as fallback for demo mode
-  const effectiveOrgId = organizationId 
-
   const fetchOrganization = useCallback(async () => {
+    if (!organizationId) {
+      setOrganization(null)
+      setLoading(false)
+      return
+    }
+    
     setLoading(true)
     setError(null)
     
     try {
-      const data = await organizationService.getOrganization(effectiveOrgId)
+      const data = await organizationService.getOrganization(organizationId)
       setOrganization(data)
     } catch (err) {
       setError('Failed to fetch organization')
@@ -27,18 +30,21 @@ export function useOrganization() {
     } finally {
       setLoading(false)
     }
-  }, [effectiveOrgId])
+  }, [organizationId])
 
   useEffect(() => {
+    if (authLoading) return
     fetchOrganization()
-  }, [fetchOrganization])
+  }, [fetchOrganization, authLoading])
 
   const updateOrganization = async (updates: UpdateOrganizationInput): Promise<boolean> => {
+    if (!organizationId) return false
+    
     setSaving(true)
     setError(null)
     
     try {
-      const updated = await organizationService.updateOrganization(effectiveOrgId, updates)
+      const updated = await organizationService.updateOrganization(organizationId, updates)
       if (updated) {
         setOrganization(updated)
         return true
@@ -54,10 +60,12 @@ export function useOrganization() {
   }
 
   const uploadLogo = async (file: File): Promise<string | null> => {
+    if (!organizationId) return null
+    
     setSaving(true)
     
     try {
-      const url = await organizationService.uploadLogo(effectiveOrgId, file)
+      const url = await organizationService.uploadLogo(organizationId, file)
       if (url) {
         setOrganization(prev => prev ? { ...prev, logoUrl: url } : null)
       }
@@ -72,7 +80,7 @@ export function useOrganization() {
 
   return {
     organization,
-    loading,
+    loading: loading || authLoading,
     error,
     saving,
     refetch: fetchOrganization,

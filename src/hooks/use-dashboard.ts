@@ -5,15 +5,18 @@ import { dashboardService, type DashboardStats, type RecentInvoice, type RecentO
 import { useAuth } from './use-auth'
 
 export function useDashboardStats() {
-  const { organizationId } = useAuth()
+  const { organizationId, loading: authLoading } = useAuth()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Wait for auth to load
+    if (authLoading) return
+    
+    // No org = empty stats
     if (!organizationId) {
-      // Still show demo data when no org
-      dashboardService.getStats('demo').then(setStats)
+      setStats(null)
       setLoading(false)
       return
     }
@@ -28,61 +31,76 @@ export function useDashboardStats() {
         console.error(err)
       })
       .finally(() => setLoading(false))
-  }, [organizationId])
+  }, [organizationId, authLoading])
 
-  return { stats, loading, error }
+  return { stats, loading: loading || authLoading, error }
 }
 
 export function useRecentInvoices(limit = 5) {
-  const { organizationId } = useAuth()
+  const { organizationId, loading: authLoading } = useAuth()
   const [invoices, setInvoices] = useState<RecentInvoice[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const orgId = organizationId 
+    if (authLoading) return
+    if (!organizationId) {
+      setInvoices([])
+      setLoading(false)
+      return
+    }
     
     setLoading(true)
-    dashboardService.getRecentInvoices(orgId, limit)
+    dashboardService.getRecentInvoices(organizationId, limit)
       .then(data => setInvoices(data))
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [organizationId, limit])
+  }, [organizationId, authLoading, limit])
 
-  return { invoices, loading }
+  return { invoices, loading: loading || authLoading }
 }
 
 export function useRecentOrders(limit = 5) {
-  const { organizationId } = useAuth()
+  const { organizationId, loading: authLoading } = useAuth()
   const [orders, setOrders] = useState<RecentOrder[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const orgId = organizationId 
+    if (authLoading) return
+    if (!organizationId) {
+      setOrders([])
+      setLoading(false)
+      return
+    }
     
     setLoading(true)
-    dashboardService.getRecentOrders(orgId, limit)
+    dashboardService.getRecentOrders(organizationId, limit)
       .then(data => setOrders(data))
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [organizationId, limit])
+  }, [organizationId, authLoading, limit])
 
-  return { orders, loading }
+  return { orders, loading: loading || authLoading }
 }
 
 export function useRecentActivity(limit = 10) {
-  const { organizationId } = useAuth()
+  const { organizationId, loading: authLoading } = useAuth()
   const [activity, setActivity] = useState<RecentActivity[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const orgId = organizationId 
+    if (authLoading) return
+    if (!organizationId) {
+      setActivity([])
+      setLoading(false)
+      return
+    }
     
     setLoading(true)
-    dashboardService.getRecentActivity(orgId, limit)
+    dashboardService.getRecentActivity(organizationId, limit)
       .then(data => setActivity(data))
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [organizationId, limit])
+  }, [organizationId, authLoading, limit])
 
-  return { activity, loading }
+  return { activity, loading: loading || authLoading }
 }
