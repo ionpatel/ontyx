@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useAuth } from './use-auth'
+import { useAuth } from '@/components/providers/auth-provider'
 import {
   invoiceTemplateService,
   type InvoiceTemplate,
@@ -11,19 +11,29 @@ import {
 } from '@/services/invoice-templates'
 
 export function useInvoiceTemplates() {
-  const { organizationId } = useAuth()
+  const { organizationId, loading: authLoading } = useAuth()
   const [templates, setTemplates] = useState<InvoiceTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const effectiveOrgId = organizationId 
-
   const fetchTemplates = useCallback(async () => {
+    if (!organizationId) return
+    
     setLoading(true)
     setError(null)
     
     try {
-      const data = await invoiceTemplateService.getTemplates(effectiveOrgId)
+      // First try to get all templates
+      let data = await invoiceTemplateService.getTemplates(organizationId)
+      
+      // If no templates exist, get/create the default one
+      if (data.length === 0) {
+        const defaultTemplate = await invoiceTemplateService.getDefaultTemplate(organizationId)
+        if (defaultTemplate) {
+          data = [defaultTemplate]
+        }
+      }
+      
       setTemplates(data)
     } catch (err) {
       setError('Failed to fetch templates')
@@ -31,17 +41,23 @@ export function useInvoiceTemplates() {
     } finally {
       setLoading(false)
     }
-  }, [effectiveOrgId])
+  }, [organizationId])
 
   useEffect(() => {
+    if (authLoading) return
+    if (!organizationId) {
+      setLoading(false)
+      return
+    }
     fetchTemplates()
-  }, [fetchTemplates])
+  }, [fetchTemplates, authLoading, organizationId])
 
   const defaultTemplate = templates.find(t => t.isDefault) || templates[0]
 
   const createTemplate = async (input: CreateTemplateInput): Promise<InvoiceTemplate | null> => {
+    if (!organizationId) return null
     try {
-      const created = await invoiceTemplateService.createTemplate(input, effectiveOrgId)
+      const created = await invoiceTemplateService.createTemplate(input, organizationId)
       if (created) {
         setTemplates(prev => [...prev, created])
       }
@@ -53,8 +69,9 @@ export function useInvoiceTemplates() {
   }
 
   const updateTemplate = async (id: string, updates: UpdateTemplateInput): Promise<boolean> => {
+    if (!organizationId) return false
     try {
-      const updated = await invoiceTemplateService.updateTemplate(id, updates, effectiveOrgId)
+      const updated = await invoiceTemplateService.updateTemplate(id, updates, organizationId)
       if (updated) {
         setTemplates(prev => {
           // If this template is now default, unset others
@@ -73,8 +90,9 @@ export function useInvoiceTemplates() {
   }
 
   const deleteTemplate = async (id: string): Promise<boolean> => {
+    if (!organizationId) return false
     try {
-      const success = await invoiceTemplateService.deleteTemplate(id, effectiveOrgId)
+      const success = await invoiceTemplateService.deleteTemplate(id, organizationId)
       if (success) {
         setTemplates(prev => prev.filter(t => t.id !== id))
       }
@@ -86,8 +104,9 @@ export function useInvoiceTemplates() {
   }
 
   const applyTheme = async (templateId: string, themeName: keyof typeof TEMPLATE_THEMES): Promise<boolean> => {
+    if (!organizationId) return false
     try {
-      const updated = await invoiceTemplateService.applyTheme(templateId, themeName, effectiveOrgId)
+      const updated = await invoiceTemplateService.applyTheme(templateId, themeName, organizationId)
       if (updated) {
         setTemplates(prev => prev.map(t => t.id === templateId ? updated : t))
         return true

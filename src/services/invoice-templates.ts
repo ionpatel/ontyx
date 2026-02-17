@@ -74,11 +74,11 @@ export const DEFAULT_TEMPLATE: Omit<InvoiceTemplate, 'id' | 'organizationId' | '
 }
 
 export const TEMPLATE_THEMES = {
-  maple: { name: 'Maple Professional', primaryColor: '#DC2626', secondaryColor: '#1f2937' },
-  ocean: { name: 'Ocean Blue', primaryColor: '#0891b2', secondaryColor: '#164e63' },
-  forest: { name: 'Forest Green', primaryColor: '#059669', secondaryColor: '#064e3b' },
-  minimal: { name: 'Minimal Gray', primaryColor: '#6b7280', secondaryColor: '#374151' },
-  sunset: { name: 'Sunset Orange', primaryColor: '#ea580c', secondaryColor: '#9a3412' },
+  maple: { name: 'Maple Professional', primaryColor: '#DC2626', secondaryColor: '#1f2937', fontStyle: 'modern' as const },
+  ocean: { name: 'Ocean Blue', primaryColor: '#0891b2', secondaryColor: '#164e63', fontStyle: 'modern' as const },
+  forest: { name: 'Forest Green', primaryColor: '#059669', secondaryColor: '#064e3b', fontStyle: 'modern' as const },
+  minimal: { name: 'Minimal Gray', primaryColor: '#6b7280', secondaryColor: '#374151', fontStyle: 'minimal' as const },
+  sunset: { name: 'Sunset Orange', primaryColor: '#ea580c', secondaryColor: '#9a3412', fontStyle: 'classic' as const },
 }
 
 // ============================================================================
@@ -113,15 +113,45 @@ export const invoiceTemplatesService = {
       .eq('is_default', true)
       .single()
 
+    if (error || !data) {
+      // Create a default template if none exists
+      console.log('[Templates] No default template found, creating one...')
+      const created = await this.createDefaultTemplate(organizationId)
+      return created
+    }
+
+    return mapTemplateFromDb(data)
+  },
+
+  async createDefaultTemplate(organizationId: string): Promise<InvoiceTemplate | null> {
+    const supabase = createClient()
+
+    const { data, error } = await supabase
+      .from('invoice_templates')
+      .insert({
+        organization_id: organizationId,
+        name: 'Default',
+        is_default: true,
+        primary_color: DEFAULT_TEMPLATE.primaryColor,
+        secondary_color: DEFAULT_TEMPLATE.secondaryColor,
+        logo_position: DEFAULT_TEMPLATE.logoPosition,
+        logo_size: DEFAULT_TEMPLATE.logoSize,
+        font_style: DEFAULT_TEMPLATE.fontStyle,
+        footer_text: DEFAULT_TEMPLATE.footerText,
+        payment_instructions: DEFAULT_TEMPLATE.paymentInstructions,
+        show_logo: DEFAULT_TEMPLATE.showLogo,
+        show_company_address: DEFAULT_TEMPLATE.showCompanyAddress,
+        show_customer_address: DEFAULT_TEMPLATE.showCustomerAddress,
+        show_payment_terms: DEFAULT_TEMPLATE.showPaymentTerms,
+        show_due_date: DEFAULT_TEMPLATE.showDueDate,
+        show_invoice_number: DEFAULT_TEMPLATE.showInvoiceNumber,
+      })
+      .select()
+      .single()
+
     if (error) {
-      // Return a default if none exists
-      return {
-        id: 'default',
-        organizationId,
-        ...DEFAULT_TEMPLATE,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
+      console.error('Error creating default template:', error)
+      return null
     }
 
     return mapTemplateFromDb(data)
@@ -225,7 +255,21 @@ export const invoiceTemplatesService = {
     }
     return true
   },
+
+  async applyTheme(id: string, themeName: keyof typeof TEMPLATE_THEMES, organizationId: string): Promise<InvoiceTemplate | null> {
+    const theme = TEMPLATE_THEMES[themeName]
+    if (!theme) return null
+
+    return this.updateTemplate(id, {
+      primaryColor: theme.primaryColor,
+      secondaryColor: theme.secondaryColor,
+      fontStyle: theme.fontStyle,
+    }, organizationId)
+  },
 }
+
+// Also export as singular for backwards compatibility
+export const invoiceTemplateService = invoiceTemplatesService
 
 // ============================================================================
 // MAPPER
