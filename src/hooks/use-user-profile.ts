@@ -4,7 +4,11 @@ import { useState, useEffect, useRef } from 'react'
 import { userProfileService, type UserProfile, type UpdateProfileInput } from '@/services/user-profile'
 import { useAuth } from '@/components/providers/auth-provider'
 
-// Cache profile in localStorage for faster subsequent loads
+// ============================================================================
+// SESSION-LINKED PROFILE HOOK
+// Loads instantly from cache if session valid, clears on logout
+// ============================================================================
+
 const PROFILE_CACHE_KEY = 'ontyx_profile_cache'
 
 function getCachedProfile(): UserProfile | null {
@@ -33,47 +37,75 @@ function clearCachedProfile() {
 }
 
 export function useUserProfile() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, initialized } = useAuth()
   
-  // Initialize as null to avoid hydration mismatch
-  // Cache is loaded in useEffect (client-only)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [hydrated, setHydrated] = useState(false)
   
   const hasFetched = useRef(false)
-  const userId = user?.id
+  const previousUserId = useRef<string | null>(null)
+  const userId = user?.id || null
 
-  // Hydrate from cache on mount (client-only, after hydration)
+  // Handle user change (login/logout)
   useEffect(() => {
-    const cached = getCachedProfile()
-    if (cached) {
-      setProfile(cached)
+    // User logged out
+    if (previousUserId.current && !userId) {
+      clearCachedProfile()
+      setProfile(null)
+      setLoading(false)
+      hasFetched.current = false
     }
-    setHydrated(true)
-  }, [])
+    
+    // User changed (different account)
+    if (userId && previousUserId.current && userId !== previousUserId.current) {
+      clearCachedProfile()
+      setProfile(null)
+      hasFetched.current = false
+    }
+    
+    previousUserId.current = userId
+  }, [userId])
 
-  // Fetch profile when auth is ready
+  // Load profile when auth is ready
   useEffect(() => {
-    // Wait for hydration and auth
-    if (!hydrated || authLoading) return
+    // Wait for auth to initialize
+    if (!initialized) return
     
     // No user = no profile
     if (!userId) {
-      clearCachedProfile()
       setProfile(null)
       setLoading(false)
       return
     }
     
-    // Already fetched for this user
+    // Try to load from cache immediately
+    const cached = getCachedProfile()
+    if (cached && cached.id === userId) {
+      setProfile(cached)
+      setLoading(false)
+      
+      // Verify in background
+      if (!hasFetched.current) {
+        hasFetched.current = true
+        userProfileService.getProfile(userId).then(data => {
+          if (data) {
+            setCachedProfile(data)
+            setProfile(data)
+          }
+        }).catch(console.error)
+      }
+      return
+    }
+    
+    // No cache - fetch fresh
     if (hasFetched.current) return
     hasFetched.current = true
     
     async function fetchProfile() {
       setError(null)
+      setLoading(true)
       
       try {
         const data = await userProfileService.getProfile(userId!)
@@ -91,12 +123,7 @@ export function useUserProfile() {
     }
     
     fetchProfile()
-  }, [userId, authLoading, hydrated])
-
-  // Reset hasFetched when user changes
-  useEffect(() => {
-    hasFetched.current = false
-  }, [userId])
+  }, [userId, initialized])
 
   const updateProfile = async (updates: UpdateProfileInput): Promise<boolean> => {
     if (!userId) return false
@@ -170,12 +197,9 @@ export function useUserProfile() {
     }
   }
 
-  // Loading if not hydrated, or no profile and still fetching
-  const isLoading = !hydrated || (!profile && (authLoading || loading))
-
   return {
     profile,
-    loading: isLoading,
+    loading: !initialized || loading,
     error,
     saving,
     refetch,
