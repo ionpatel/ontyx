@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { userProfileService, type UserProfile, type UpdateProfileInput } from '@/services/user-profile'
 import { useAuth } from '@/components/providers/auth-provider'
 
@@ -36,18 +36,27 @@ export function useUserProfile() {
   const { user, loading: authLoading } = useAuth()
   
   // Hydrate from cache INSTANTLY
-  const cached = typeof window !== 'undefined' ? getCachedProfile() : null
-  
-  const [profile, setProfile] = useState<UserProfile | null>(cached)
-  const [loading, setLoading] = useState(!cached) // Only loading if no cache
+  const [profile, setProfile] = useState<UserProfile | null>(() => {
+    if (typeof window !== 'undefined') {
+      return getCachedProfile()
+    }
+    return null
+  })
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  
+  // Track if we've fetched to avoid double-fetch
+  const hasFetched = useRef(false)
 
-  const userId = user?.id 
+  const userId = user?.id
 
-  const fetchProfile = useCallback(async () => {
-    if (authLoading) return // Wait for auth to stabilize
+  // Fetch profile when auth is ready
+  useEffect(() => {
+    // Wait for auth to finish loading
+    if (authLoading) return
     
+    // No user = no profile
     if (!userId) {
       clearCachedProfile()
       setProfile(null)
@@ -55,27 +64,40 @@ export function useUserProfile() {
       return
     }
     
-    // Don't set loading if we have cached data
-    if (!profile) setLoading(true)
-    setError(null)
+    // Already fetched for this user
+    if (hasFetched.current) return
+    hasFetched.current = true
     
-    try {
-      const data = await userProfileService.getProfile(userId)
-      if (data) {
-        setCachedProfile(data)
-        setProfile(data)
+    async function fetchProfile() {
+      setError(null)
+      
+      try {
+        console.log('[useUserProfile] Fetching profile for:', userId)
+        const data = await userProfileService.getProfile(userId)
+        console.log('[useUserProfile] Got profile:', data)
+        
+        if (data) {
+          setCachedProfile(data)
+          setProfile(data)
+        } else {
+          // Profile fetch returned null - might be RLS issue
+          console.warn('[useUserProfile] Profile returned null')
+        }
+      } catch (err) {
+        setError('Failed to fetch profile')
+        console.error('[useUserProfile] Error:', err)
+      } finally {
+        setLoading(false)
       }
-    } catch (err) {
-      setError('Failed to fetch profile')
-      console.error(err)
-    } finally {
-      setLoading(false)
     }
-  }, [userId, authLoading, profile])
-
-  useEffect(() => {
+    
     fetchProfile()
-  }, [fetchProfile])
+  }, [userId, authLoading])
+
+  // Reset hasFetched when user changes
+  useEffect(() => {
+    hasFetched.current = false
+  }, [userId])
 
   const updateProfile = async (updates: UpdateProfileInput): Promise<boolean> => {
     if (!userId) return false
@@ -131,12 +153,33 @@ export function useUserProfile() {
     }
   }
 
+  const refetch = async () => {
+    if (!userId) return
+    hasFetched.current = false
+    setLoading(true)
+    
+    try {
+      const data = await userProfileService.getProfile(userId)
+      if (data) {
+        setCachedProfile(data)
+        setProfile(data)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Show cached profile immediately, loading only if no cache AND auth/fetch in progress
+  const isLoading = !profile && (authLoading || loading)
+
   return {
     profile,
-    loading: loading && authLoading, // Only loading if BOTH are loading
+    loading: isLoading,
     error,
     saving,
-    refetch: fetchProfile,
+    refetch,
     updateProfile,
     uploadAvatar,
     changePassword,

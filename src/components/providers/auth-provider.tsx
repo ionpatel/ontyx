@@ -96,14 +96,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function initAuth() {
       try {
+        console.log('[AuthProvider] Getting session...')
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError || !session?.user) {
-          // No session - clear cache and state
+          console.log('[AuthProvider] No session:', sessionError?.message || 'No user')
           clearCachedAuth()
           if (mounted) setState({ user: null, organizationId: null, loading: false, initialized: true })
           return
         }
+
+        console.log('[AuthProvider] Session found, user:', session.user.id)
 
         // Fetch org membership
         const { data: orgData, error: orgError } = await supabase
@@ -112,6 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .eq('user_id', session.user.id)
           .eq('is_active', true)
           .single()
+        
+        console.log('[AuthProvider] Org query result:', { orgData, orgError })
 
         const organizationId = orgData?.organization_id || null
 
