@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, TrendingUp, Users, DollarSign, RefreshCw, XCircle } from 'lucide-react';
+import { ContactSelector } from '@/components/selectors';
 import { format } from 'date-fns';
 
 const statusColors: Record<string, string> = {
@@ -254,13 +255,13 @@ export default function SubscriptionsPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Customer ID</label>
-              <Input 
-                placeholder="Enter contact ID" 
+              <label className="text-sm font-medium">Customer</label>
+              <ContactSelector
                 value={selectedContactId}
-                onChange={(e) => setSelectedContactId(e.target.value)}
+                onChange={setSelectedContactId}
+                type="customer"
+                placeholder="Select customer..."
               />
-              <p className="text-xs text-muted-foreground">Enter the customer's contact ID from the Contacts module</p>
             </div>
           </div>
           <DialogFooter>

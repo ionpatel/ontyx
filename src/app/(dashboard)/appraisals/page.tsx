@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Star, Clock, CheckCircle, FileText, TrendingUp, Users } from 'lucide-react';
+import { EmployeeSelector } from '@/components/selectors';
 import { format } from 'date-fns';
 
 const statusColors: Record<string, string> = {
@@ -269,8 +270,12 @@ export default function AppraisalsPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Employee ID</Label>
-              <Input placeholder="Employee UUID" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} />
+              <Label>Employee</Label>
+              <EmployeeSelector
+                value={employeeId}
+                onChange={setEmployeeId}
+                placeholder="Select employee to review..."
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
