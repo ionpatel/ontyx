@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { dashboardService, type DashboardStats, type RecentInvoice, type RecentOrder, type RecentActivity } from '@/services/dashboard'
-import { useAuth } from './use-auth'
+import { useAuth } from '@/components/providers/auth-provider'
 
 export function useDashboardStats() {
   const { organizationId, loading: authLoading } = useAuth()

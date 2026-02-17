@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { organizationService, type Organization, type UpdateOrganizationInput } from '@/services/organization'
-import { useAuth } from './use-auth'
+import { useAuth } from '@/components/providers/auth-provider'
 
 export function useOrganization() {
   const { organizationId, loading: authLoading } = useAuth()

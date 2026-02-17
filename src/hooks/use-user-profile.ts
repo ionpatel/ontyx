@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { userProfileService, type UserProfile, type UpdateProfileInput } from '@/services/user-profile'
-import { useAuth } from './use-auth'
+import { useAuth } from '@/components/providers/auth-provider'
 
 export function useUserProfile() {
   const { user, loading: authLoading } = useAuth()

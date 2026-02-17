@@ -5,7 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { useUserProfile } from "@/hooks/use-user-profile"
-import { useAuth } from "@/hooks/use-auth"
+import { AuthProvider, useAuth } from "@/components/providers/auth-provider"
 import { 
   LayoutDashboard, FileText, Receipt, Building2, BookOpen,
   BarChart3, Package, ShoppingCart, Users, Briefcase,
@@ -126,6 +126,7 @@ export default function DashboardLayout({
   }
 
   return (
+    <AuthProvider>
     <ToastProvider>
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Mobile sidebar backdrop */}
@@ -304,5 +305,6 @@ export default function DashboardLayout({
       </div>
     </div>
     </ToastProvider>
+    </AuthProvider>
   )
 }
