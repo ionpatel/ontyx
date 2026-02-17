@@ -222,6 +222,80 @@ export const invoicesService = {
     return this.getInvoice(invoiceData.id, organizationId)
   },
 
+  async updateInvoice(id: string, input: Partial<CreateInvoiceInput>, organizationId: string): Promise<Invoice | null> {
+    const supabase = createClient()
+
+    // Update main invoice record
+    const updates: Record<string, any> = { updated_at: new Date().toISOString() }
+    
+    if (input.invoiceDate) updates.issue_date = input.invoiceDate
+    if (input.dueDate) updates.due_date = input.dueDate
+    if (input.currency) updates.currency = input.currency
+    if (input.notes !== undefined) updates.notes = input.notes
+    if (input.terms !== undefined) updates.terms = input.terms
+    if (input.contactId) updates.contact_id = input.contactId
+
+    // Calculate totals from items if provided
+    if (input.items && input.items.length > 0) {
+      const subtotal = input.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0)
+      const taxRate = input.items[0]?.taxRate || 0
+      const taxTotal = subtotal * (taxRate / 100)
+      const total = subtotal + taxTotal
+
+      updates.subtotal = subtotal
+      updates.tax_total = taxTotal
+      updates.total = total
+      updates.amount_due = total - (updates.amount_paid || 0)
+
+      // Set specific tax amounts based on tax type
+      if (taxRate === 13) {
+        updates.hst_amount = taxTotal
+        updates.gst_amount = 0
+        updates.pst_amount = 0
+      } else if (taxRate === 5) {
+        updates.gst_amount = taxTotal
+        updates.hst_amount = 0
+        updates.pst_amount = 0
+      }
+    }
+
+    const { error } = await supabase
+      .from('invoices')
+      .update(updates)
+      .eq('id', id)
+      .eq('organization_id', organizationId)
+
+    if (error) {
+      console.error('Error updating invoice:', error)
+      return null
+    }
+
+    // Update line items if provided
+    if (input.items && input.items.length > 0) {
+      // Delete existing items
+      await supabase
+        .from('invoice_items')
+        .delete()
+        .eq('invoice_id', id)
+
+      // Insert new items
+      const itemsToInsert = input.items.map((item, index) => ({
+        invoice_id: id,
+        product_id: item.productId || null,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        tax_rate: item.taxRate || 0,
+        amount: item.quantity * item.unitPrice,
+        sort_order: index,
+      }))
+
+      await supabase.from('invoice_items').insert(itemsToInsert)
+    }
+
+    return this.getInvoice(id, organizationId)
+  },
+
   async updateInvoiceStatus(id: string, status: InvoiceStatus, organizationId: string): Promise<boolean> {
     const supabase = createClient()
 

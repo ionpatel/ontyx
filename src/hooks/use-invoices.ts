@@ -50,6 +50,19 @@ export function useInvoices(filters?: {
     }
   }
 
+  const updateInvoice = async (id: string, input: Partial<CreateInvoiceInput>): Promise<Invoice | null> => {
+    try {
+      const updated = await invoicesService.updateInvoice(id, input, effectiveOrgId)
+      if (updated) {
+        setInvoices(prev => prev.map(inv => inv.id === id ? updated : inv))
+      }
+      return updated
+    } catch (err) {
+      console.error('Failed to update invoice:', err)
+      return null
+    }
+  }
+
   const updateInvoiceStatus = async (id: string, status: InvoiceStatus, paidDate?: string): Promise<boolean> => {
     try {
       const success = await invoicesService.updateInvoiceStatus(id, status, effectiveOrgId, paidDate)
@@ -90,6 +103,7 @@ export function useInvoices(filters?: {
     error,
     refetch: fetchInvoices,
     createInvoice,
+    updateInvoice,
     updateInvoiceStatus,
     recordPayment,
   }
