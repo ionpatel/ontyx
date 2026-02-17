@@ -262,7 +262,7 @@ export default function DashboardLayout({
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-2 px-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={profile?.avatarUrl || "/avatars/user.png"} alt={userName} />
+                    {profile?.avatarUrl && <AvatarImage src={profile.avatarUrl} alt={userName} />}
                     <AvatarFallback>{userInitials}</AvatarFallback>
                   </Avatar>
                   <div className="hidden md:block text-left">
