@@ -60,12 +60,13 @@
 - [ ] **Cash Flow** - money in/out over time (future)
 - [ ] **Export to CSV/PDF** - download reports (future)
 
-## Phase 5: Polish & Launch
+## Phase 5: Polish & Launch (IN PROGRESS)
+- [x] **Onboarding wizard** ✅ - 4-step setup flow for new users
+- [x] **Employees module** ✅ - CRUD, SIN, tax info, compensation
 - [ ] **Multi-user** - invite team members with roles
 - [ ] **Audit log** - track all changes
 - [ ] **Data backup** - export everything
 - [ ] **Stripe billing** - subscription management
-- [ ] **Onboarding wizard** - setup flow for new users
 - [ ] **Help docs** - in-app guidance
 - [ ] **Mobile responsive** - works on phone/tablet
 
@@ -98,25 +99,11 @@
 ## Progress Log
 
 ### Feb 17, 2026
-- ✅ Banking module COMPLETE (service, hooks, UI)
-  - Bank accounts CRUD
-  - Manual transactions (deposits/payments)
-  - Transaction categorization
-  - Reconciliation workflow
-  - Summary stats (inflow/outflow)
+- ✅ Banking module COMPLETE
 - ✅ ROE (Record of Employment) COMPLETE
-  - Generate ROE from payroll data
-  - All CRA reason codes supported
-  - Insurable earnings by pay period
-  - Employee/employer info blocks
-  - Draft → Submitted workflow
-- ✅ Reports module COMPLETE
-  - Profit & Loss statement
-  - Balance Sheet
-  - Tax Summary (GST/HST)
-  - Accounts Aging (receivables by bucket)
-  - Financial summary dashboard
-- ✅ Employees table migration (SIN, tax info, compensation)
+- ✅ Reports module COMPLETE (P&L, Balance Sheet, Tax, Aging)
+- ✅ Employees module COMPLETE (CRUD, SIN, tax info, compensation)
+- ✅ Onboarding wizard (4-step setup for new users)
 - ✅ Email domain verified (ontyx.ca via Resend)
 - ✅ PDF invoice layout fixed (logo alignment)
 - ✅ Invoice edit fixed (column name mismatches)
