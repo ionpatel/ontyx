@@ -40,35 +40,65 @@ const navigation = [
   {
     name: "Finance",
     items: [
-      { name: "Invoices", href: "/invoices", icon: FileText, badge: 2 },
+      { name: "Invoices", href: "/invoices", icon: FileText },
+      { name: "Expenses", href: "/expenses", icon: Wallet },
       { name: "Bills", href: "/bills", icon: Receipt },
       { name: "Banking", href: "/banking", icon: Building2 },
       { name: "Accounting", href: "/accounting", icon: BookOpen },
-      { name: "Reports", href: "/reports", icon: BarChart3 },
+      { name: "Subscriptions", href: "/subscriptions", icon: Clock },
+    ],
+  },
+  {
+    name: "Sales",
+    items: [
+      { name: "POS", href: "/pos", icon: Layers },
+      { name: "Sales Orders", href: "/sales", icon: ShoppingCart },
+      { name: "CRM", href: "/crm", icon: Users },
     ],
   },
   {
     name: "Operations",
     items: [
       { name: "Inventory", href: "/inventory", icon: Package },
-      { name: "Sales", href: "/sales", icon: ShoppingCart },
+      { name: "Warehouses", href: "/warehouses", icon: Package },
       { name: "Purchases", href: "/purchases", icon: Layers },
       { name: "Manufacturing", href: "/manufacturing", icon: Factory },
+      { name: "Maintenance", href: "/maintenance", icon: Settings },
+      { name: "Quality", href: "/quality", icon: CheckCircle2 },
     ],
   },
   {
-    name: "Relations",
+    name: "Services",
     items: [
-      { name: "Contacts", href: "/contacts", icon: Users },
       { name: "Projects", href: "/projects", icon: FolderKanban },
+      { name: "Helpdesk", href: "/helpdesk", icon: ClipboardList },
+      { name: "Appointments", href: "/appointments", icon: Clock },
     ],
   },
   {
-    name: "HR",
+    name: "Human Resources",
     items: [
       { name: "Employees", href: "/employees", icon: Briefcase },
       { name: "Payroll", href: "/payroll", icon: Wallet },
-      { name: "Time Tracking", href: "/time-tracking", icon: Clock },
+      { name: "Time Off", href: "/time-off", icon: Clock },
+      { name: "Recruitment", href: "/recruitment", icon: UserCircle },
+      { name: "Appraisals", href: "/appraisals", icon: BarChart3 },
+    ],
+  },
+  {
+    name: "Productivity",
+    items: [
+      { name: "Documents", href: "/documents", icon: FileText },
+      { name: "Knowledge", href: "/knowledge", icon: BookOpen },
+      { name: "Approvals", href: "/approvals", icon: CheckCircle2 },
+      { name: "Surveys", href: "/surveys", icon: ClipboardList },
+    ],
+  },
+  {
+    name: "Insights",
+    items: [
+      { name: "Reports", href: "/reports", icon: BarChart3 },
+      { name: "Contacts", href: "/contacts", icon: Users },
     ],
   },
 ]
