@@ -123,13 +123,13 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center justify-center px-4 border-b">
+        <div className="flex h-16 items-center justify-between px-4 border-b gap-4">
           <Link href="/dashboard" className="flex items-center justify-center">
             <Image
               src="/logo.png"
               alt="Ontyx"
-              width={44}
-              height={44}
+              width={40}
+              height={40}
               className="dark:invert"
             />
           </Link>
@@ -139,7 +139,14 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             className="hidden lg:flex"
             onClick={() => setCollapsed(!collapsed)}
           >
-            <Menu className="h-4 w-4" />
+            <Menu className={cn(
+              "h-5 w-5 transition-all duration-300",
+              !collapsed && "rotate-90 scale-0 opacity-0"
+            )} />
+            <X className={cn(
+              "h-5 w-5 absolute transition-all duration-300",
+              collapsed && "-rotate-90 scale-0 opacity-0"
+            )} />
           </Button>
           <Button
             variant="ghost"
@@ -147,7 +154,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             className="lg:hidden"
             onClick={() => setSidebarOpen(false)}
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </Button>
         </div>
 
