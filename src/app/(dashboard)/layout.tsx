@@ -80,16 +80,18 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const { profile } = useUserProfile()
-  const { signOut, loading: authLoading, user } = useAuth()
+  const { signOut, loading: authLoading, user, organizationId } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
 
-  // Get user display info
-  const userName = profile ? `${profile.firstName} ${profile.lastName}`.trim() || profile.email : (authLoading ? 'Loading...' : 'Guest')
+  // Get user display info - show cached data instantly, no "Loading..."
+  const userName = profile 
+    ? `${profile.firstName} ${profile.lastName}`.trim() || profile.email 
+    : (user?.email?.split('@')[0] || 'User')
   const userRole = profile?.jobTitle || 'Member'
   const userInitials = profile 
     ? `${profile.firstName?.[0] || ''}${profile.lastName?.[0] || ''}`.toUpperCase() || profile.email?.[0]?.toUpperCase() || 'U'
-    : (authLoading ? '...' : 'G')
+    : (user?.email?.[0]?.toUpperCase() || 'U')
 
   const handleLogout = async () => {
     try {

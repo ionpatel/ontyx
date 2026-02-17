@@ -4,37 +4,74 @@ import { useState, useEffect, useCallback } from 'react'
 import { userProfileService, type UserProfile, type UpdateProfileInput } from '@/services/user-profile'
 import { useAuth } from '@/components/providers/auth-provider'
 
+// Cache profile in localStorage for instant hydration
+const PROFILE_CACHE_KEY = 'ontyx_profile_cache'
+
+function getCachedProfile(): UserProfile | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const cached = localStorage.getItem(PROFILE_CACHE_KEY)
+    if (!cached) return null
+    return JSON.parse(cached) as UserProfile
+  } catch {
+    return null
+  }
+}
+
+function setCachedProfile(profile: UserProfile) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profile))
+  } catch {}
+}
+
+function clearCachedProfile() {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.removeItem(PROFILE_CACHE_KEY)
+  } catch {}
+}
+
 export function useUserProfile() {
   const { user, loading: authLoading } = useAuth()
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
+  
+  // Hydrate from cache INSTANTLY
+  const cached = typeof window !== 'undefined' ? getCachedProfile() : null
+  
+  const [profile, setProfile] = useState<UserProfile | null>(cached)
+  const [loading, setLoading] = useState(!cached) // Only loading if no cache
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   const userId = user?.id 
 
   const fetchProfile = useCallback(async () => {
-    if (authLoading) return // Wait for auth
+    if (authLoading) return // Wait for auth to stabilize
     
     if (!userId) {
+      clearCachedProfile()
       setProfile(null)
       setLoading(false)
       return
     }
     
-    setLoading(true)
+    // Don't set loading if we have cached data
+    if (!profile) setLoading(true)
     setError(null)
     
     try {
       const data = await userProfileService.getProfile(userId)
-      setProfile(data)
+      if (data) {
+        setCachedProfile(data)
+        setProfile(data)
+      }
     } catch (err) {
       setError('Failed to fetch profile')
       console.error(err)
     } finally {
       setLoading(false)
     }
-  }, [userId, authLoading])
+  }, [userId, authLoading, profile])
 
   useEffect(() => {
     fetchProfile()
@@ -49,6 +86,7 @@ export function useUserProfile() {
     try {
       const updated = await userProfileService.updateProfile(userId, updates)
       if (updated) {
+        setCachedProfile(updated)
         setProfile(updated)
         return true
       }
@@ -69,8 +107,10 @@ export function useUserProfile() {
     
     try {
       const url = await userProfileService.uploadAvatar(userId, file)
-      if (url) {
-        setProfile(prev => prev ? { ...prev, avatarUrl: url } : null)
+      if (url && profile) {
+        const updated = { ...profile, avatarUrl: url }
+        setCachedProfile(updated)
+        setProfile(updated)
       }
       return url
     } catch (err) {
@@ -93,7 +133,7 @@ export function useUserProfile() {
 
   return {
     profile,
-    loading: loading || authLoading,
+    loading: loading && authLoading, // Only loading if BOTH are loading
     error,
     saving,
     refetch: fetchProfile,
