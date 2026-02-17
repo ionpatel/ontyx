@@ -72,7 +72,7 @@ function invoiceEmailHtml(params: SendInvoiceEmailParams): string {
     <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
     
     <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-      Sent via <a href="https://ontyx.vercel.app" style="color: #DC2626;">Ontyx</a> — Business software made for Canada 🍁
+      Sent via <a href="https://ontyx.ca" style="color: #DC2626;">Ontyx</a> — Business software made for Canada 🍁
     </p>
   </div>
 </body>
@@ -99,7 +99,7 @@ If you have any questions, please reply to this email${params.companyEmail ? ` o
 
 ---
 Sent via Ontyx — Business software made for Canada 🍁
-https://ontyx.vercel.app
+https://ontyx.ca
 `
 }
 
@@ -122,7 +122,7 @@ export const emailService = {
 
     try {
       const { data, error } = await resend.emails.send({
-        from: `${params.companyName} <invoices@ontyx.email>`,
+        from: `${params.companyName} <invoices@ontyx.ca>`,
         to: params.to,
         subject: `Invoice ${params.invoiceNumber} from ${params.companyName}`,
         html: invoiceEmailHtml(params),
@@ -167,7 +167,7 @@ export const emailService = {
 
     try {
       const { data, error } = await resend.emails.send({
-        from: `${companyName} <invoices@ontyx.email>`,
+        from: `${companyName} <invoices@ontyx.ca>`,
         to,
         subject: `Test Email from ${companyName}`,
         html: `
