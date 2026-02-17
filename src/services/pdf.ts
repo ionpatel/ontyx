@@ -109,29 +109,61 @@ const FONTS = {
 // PDF GENERATION
 // ============================================================================
 
-// Helper to load image as base64
-async function loadImageAsBase64(url: string): Promise<string | null> {
+// Helper to load image as base64 with format detection
+async function loadImageAsBase64(url: string): Promise<{ data: string; format: string } | null> {
   try {
-    const response = await fetch(url)
+    console.log('[PDF] Loading logo from:', url)
+    const response = await fetch(url, { mode: 'cors' })
+    
+    if (!response.ok) {
+      console.error('[PDF] Failed to fetch logo:', response.status)
+      return null
+    }
+    
     const blob = await response.blob()
+    const mimeType = blob.type || 'image/png'
+    
+    // Determine format from mime type
+    let format = 'PNG'
+    if (mimeType.includes('jpeg') || mimeType.includes('jpg')) {
+      format = 'JPEG'
+    } else if (mimeType.includes('png')) {
+      format = 'PNG'
+    } else if (mimeType.includes('gif')) {
+      format = 'GIF'
+    } else if (mimeType.includes('webp')) {
+      format = 'WEBP'
+    }
+    
+    console.log('[PDF] Logo loaded, format:', format, 'size:', blob.size)
+    
     return new Promise((resolve) => {
       const reader = new FileReader()
-      reader.onloadend = () => resolve(reader.result as string)
-      reader.onerror = () => resolve(null)
+      reader.onloadend = () => {
+        const result = reader.result as string
+        console.log('[PDF] Logo converted to base64, length:', result?.length)
+        resolve({ data: result, format })
+      }
+      reader.onerror = () => {
+        console.error('[PDF] FileReader error')
+        resolve(null)
+      }
       reader.readAsDataURL(blob)
     })
-  } catch {
+  } catch (err) {
+    console.error('[PDF] Logo load exception:', err)
     return null
   }
 }
 
 export async function generateInvoicePDFAsync(data: InvoicePDFData): Promise<jsPDF> {
   // Pre-load logo if provided
-  let logoBase64: string | null = null
+  let logoData: { data: string; format: string } | null = null
   if (data.companyLogoUrl) {
-    logoBase64 = await loadImageAsBase64(data.companyLogoUrl)
+    console.log('[PDF] Attempting to load company logo:', data.companyLogoUrl)
+    logoData = await loadImageAsBase64(data.companyLogoUrl)
   }
-  return generateInvoicePDFWithLogo(data, logoBase64)
+  return generateInvoicePDFWithLogo(data, logoData)
 }
 
 export function generateInvoicePDF(data: InvoicePDFData): jsPDF {
@@ -139,7 +171,7 @@ export function generateInvoicePDF(data: InvoicePDFData): jsPDF {
   return generateInvoicePDFWithLogo(data, null)
 }
 
-function generateInvoicePDFWithLogo(data: InvoicePDFData, logoBase64: string | null): jsPDF {
+function generateInvoicePDFWithLogo(data: InvoicePDFData, logoData: { data: string; format: string } | null): jsPDF {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -178,16 +210,18 @@ function generateInvoicePDFWithLogo(data: InvoicePDFData, logoBase64: string | n
   let logoAdded = false
   
   // Try to add logo image if available
-  if (template.showLogo && logoBase64) {
+  if (template.showLogo && logoData) {
     try {
+      console.log('[PDF] Adding logo to PDF, format:', logoData.format)
       const logoX = template.logoPosition === 'center' 
         ? (pageWidth - logoHeight) / 2 
         : template.logoPosition === 'right' 
           ? pageWidth - margin - logoHeight 
           : margin
       
-      doc.addImage(logoBase64, 'AUTO', logoX, y - 5, logoHeight, logoHeight)
+      doc.addImage(logoData.data, logoData.format, logoX, y - 5, logoHeight, logoHeight)
       logoAdded = true
+      console.log('[PDF] Logo added successfully at x:', logoX, 'y:', y - 5)
       
       // Position INVOICE text on opposite side of logo
       doc.setFontSize(28)
