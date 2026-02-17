@@ -48,72 +48,48 @@ const navigation = [
     ],
   },
   {
-    name: "Manufacturing",
-    items: [
-      { name: "Overview", href: "/manufacturing", icon: Factory },
-      { name: "Work Orders", href: "/manufacturing/work-orders", icon: ClipboardList, badge: 2 },
-      { name: "Bill of Materials", href: "/manufacturing/bom", icon: Layers },
-      { name: "Quality Control", href: "/manufacturing/quality", icon: CheckCircle2 },
-    ],
-  },
-  {
-    name: "Projects",
-    items: [
-      { name: "Overview", href: "/projects", icon: FolderKanban },
-      { name: "All Projects", href: "/projects/list", icon: FolderKanban },
-      { name: "Tasks", href: "/projects/tasks", icon: CheckCircle2 },
-      { name: "Time Tracking", href: "/projects/time", icon: Clock },
-    ],
-  },
-  {
     name: "Operations",
     items: [
       { name: "Inventory", href: "/inventory", icon: Package },
       { name: "Sales", href: "/sales", icon: ShoppingCart },
-      { name: "Purchases", href: "/purchases", icon: ShoppingCart },
+      { name: "Purchases", href: "/purchases", icon: Layers },
+      { name: "Manufacturing", href: "/manufacturing", icon: Factory },
     ],
   },
   {
     name: "Relations",
     items: [
       { name: "Contacts", href: "/contacts", icon: Users },
-      { name: "CRM", href: "/crm", icon: Briefcase },
+      { name: "Projects", href: "/projects", icon: FolderKanban },
     ],
   },
   {
-    name: "People",
+    name: "HR",
     items: [
-      { name: "Employees", href: "/employees", icon: UserCircle },
+      { name: "Employees", href: "/employees", icon: Briefcase },
       { name: "Payroll", href: "/payroll", icon: Wallet },
-      { name: "T4 Tax Slips", href: "/payroll/t4", icon: FileText },
-    ],
-  },
-  {
-    name: "System",
-    items: [
-      { name: "Settings", href: "/settings", icon: Settings },
+      { name: "Time Tracking", href: "/time-tracking", icon: Clock },
     ],
   },
 ]
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+// ============================================================================
+// INNER LAYOUT - Uses auth context (must be INSIDE AuthProvider)
+// ============================================================================
+function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const { profile } = useUserProfile()
-  const { signOut } = useAuth()
+  const { signOut, loading: authLoading, user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
 
   // Get user display info
-  const userName = profile ? `${profile.firstName} ${profile.lastName}`.trim() || profile.email : 'Loading...'
+  const userName = profile ? `${profile.firstName} ${profile.lastName}`.trim() || profile.email : (authLoading ? 'Loading...' : 'Guest')
   const userRole = profile?.jobTitle || 'Member'
   const userInitials = profile 
     ? `${profile.firstName?.[0] || ''}${profile.lastName?.[0] || ''}`.toUpperCase() || profile.email?.[0]?.toUpperCase() || 'U'
-    : '...'
+    : (authLoading ? '...' : 'G')
 
   const handleLogout = async () => {
     try {
@@ -126,8 +102,6 @@ export default function DashboardLayout({
   }
 
   return (
-    <AuthProvider>
-    <ToastProvider>
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
@@ -147,59 +121,68 @@ export default function DashboardLayout({
       >
         {/* Logo */}
         <div className="flex h-16 items-center justify-between px-4 border-b">
-          <div className="flex-1 flex justify-center lg:justify-start">
-            <Link href="/dashboard" className="flex items-center group">
-              <Image 
-                src="/logo.png" 
-                alt="OntyX" 
-                width={48}
-                height={48}
-                quality={100}
-                priority
-                className="rounded-xl group-hover:opacity-90 transition-opacity"
-              />
-            </Link>
-          </div>
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <Image
+              src="/logo.svg"
+              alt="Ontyx"
+              width={32}
+              height={32}
+              className="dark:invert"
+            />
+            {!collapsed && (
+              <span className="text-xl font-bold tracking-tight">Ontyx</span>
+            )}
+          </Link>
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden absolute right-3 top-3 h-10 w-10 rounded-full bg-muted/50 hover:bg-muted"
+            className="hidden lg:flex"
+            onClick={() => setCollapsed(!collapsed)}
+          >
+            <Menu className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
             onClick={() => setSidebarOpen(false)}
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </Button>
         </div>
 
         {/* Navigation */}
         <ScrollArea className="flex-1 py-4">
-          <nav className="space-y-6 px-3">
-            {navigation.map((group) => (
-              <div key={group.name}>
+          <nav className="space-y-6 px-2">
+            {navigation.map((section) => (
+              <div key={section.name}>
                 {!collapsed && (
-                  <h4 className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    {group.name}
+                  <h4 className="mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    {section.name}
                   </h4>
                 )}
                 <div className="space-y-1">
-                  {group.items.map((item) => {
-                    const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
+                  {section.items.map((item) => {
+                    const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
                     return (
                       <Link
-                        key={item.name}
+                        key={item.href}
                         href={item.href}
                         className={cn(
                           "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                          isActive
-                            ? "bg-primary text-primary-foreground"
-                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                          isActive 
+                            ? "bg-primary text-primary-foreground" 
+                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                          collapsed && "justify-center px-2"
                         )}
+                        onClick={() => setSidebarOpen(false)}
                       >
-                        <item.icon className="h-5 w-5 shrink-0" />
+                        <item.icon className="h-4 w-4 shrink-0" />
                         {!collapsed && (
                           <>
                             <span className="flex-1">{item.name}</span>
                             {item.badge && (
-                              <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                              <Badge variant="secondary" className="ml-auto">
                                 {item.badge}
                               </Badge>
                             )}
@@ -214,22 +197,25 @@ export default function DashboardLayout({
           </nav>
         </ScrollArea>
 
-        {/* Collapse Button */}
-        <div className="hidden lg:block border-t p-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-center"
-            onClick={() => setCollapsed(!collapsed)}
+        {/* Settings Link */}
+        <div className="border-t p-2">
+          <Link
+            href="/settings"
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+              pathname === '/settings' && "bg-primary text-primary-foreground",
+              collapsed && "justify-center px-2"
+            )}
           >
-            <ChevronDown className={cn("h-4 w-4 transition-transform", collapsed ? "-rotate-90" : "rotate-90")} />
-          </Button>
+            <Settings className="h-4 w-4" />
+            {!collapsed && <span>Settings</span>}
+          </Link>
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Header */}
+        {/* Top bar */}
         <header className="flex h-16 items-center justify-between border-b bg-card px-4 lg:px-6">
           <div className="flex items-center gap-4">
             <Button
@@ -240,15 +226,14 @@ export default function DashboardLayout({
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <div className="hidden md:block relative">
+            <div className="relative hidden md:block">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                type="search"
                 placeholder="Search..."
                 className="w-[300px] pl-9"
               />
-              <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-                <span className="text-xs">⌘</span>K
+              <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 hidden lg:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+                ⌘K
               </kbd>
             </div>
           </div>
@@ -276,35 +261,49 @@ export default function DashboardLayout({
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/settings?tab=account">
-                    <User className="mr-2 h-4 w-4" /> Profile
+                  <Link href="/settings/profile">
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/settings">
-                    <Settings className="mr-2 h-4 w-4" /> Settings
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <div 
-                  className="relative flex cursor-pointer select-none items-center rounded-md px-2 py-1.5 text-sm outline-none transition-colors text-destructive hover:bg-destructive/10"
-                  onClick={handleLogout}
-                  role="menuitem"
-                >
-                  <LogOut className="mr-2 h-4 w-4" /> Log out
-                </div>
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Log out
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 overflow-auto">
+        {/* Page content */}
+        <main className="flex-1 overflow-auto p-4 lg:p-6">
           {children}
         </main>
       </div>
     </div>
-    </ToastProvider>
+  )
+}
+
+// ============================================================================
+// MAIN LAYOUT - Wraps with providers FIRST, then renders inner layout
+// ============================================================================
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <AuthProvider>
+      <ToastProvider>
+        <DashboardLayoutInner>{children}</DashboardLayoutInner>
+      </ToastProvider>
     </AuthProvider>
   )
 }
