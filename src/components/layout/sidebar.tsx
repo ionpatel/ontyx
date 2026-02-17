@@ -28,6 +28,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
+  Monitor,
 } from "lucide-react"
 
 interface NavItem {
@@ -62,6 +63,7 @@ const navigation: NavGroup[] = [
   {
     title: "Operations",
     items: [
+      { title: "POS", href: "/pos", icon: Monitor },
       { title: "Inventory", href: "/inventory", icon: Package },
       { title: "Warehouses", href: "/warehouses", icon: Warehouse },
       { title: "Sales", href: "/sales", icon: ShoppingCart },
