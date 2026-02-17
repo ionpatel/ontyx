@@ -5,8 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 
 // ============================================================================
-// AUTH PROVIDER
-// Fast session recovery from Supabase cookies + org ID caching
+// AUTH PROVIDER - Event-driven (onAuthStateChange is primary)
 // ============================================================================
 
 interface AuthState {
@@ -32,7 +31,6 @@ export function useAuth() {
   return useContext(AuthContext)
 }
 
-// Cache org ID for faster subsequent loads (avoids DB query)
 const ORG_CACHE_KEY = 'ontyx_org_id'
 
 function getCachedOrgId(): string | null {
@@ -71,152 +69,82 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true
     const supabase = createClient()
 
-    async function initAuth() {
+    // Helper to fetch org ID
+    async function fetchOrgId(userId: string): Promise<string | null> {
+      // Check cache first
+      const cached = getCachedOrgId()
+      if (cached) {
+        console.log('[Auth] Using cached orgId:', cached)
+        return cached
+      }
+
+      // Fetch from DB
+      console.log('[Auth] Fetching orgId from DB...')
       try {
-        console.log('[Auth] initAuth starting...')
-        // Supabase recovers session from cookies (set by middleware)
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        
-        console.log('[Auth] getSession result:', { hasSession: !!session, hasUser: !!session?.user, error: sessionError?.message })
-        
-        if (sessionError || !session?.user) {
-          // No valid session
-          console.log('[Auth] No valid session, clearing cache')
-          clearAuthCache()
-          if (mounted) {
-            setState({ 
-              user: null, 
-              organizationId: null, 
-              loading: false, 
-              initialized: true 
-            })
-          }
-          return
+        const { data, error } = await supabase
+          .from('organization_members')
+          .select('organization_id')
+          .eq('user_id', userId)
+          .eq('is_active', true)
+          .single()
+
+        if (error) {
+          console.error('[Auth] Org query error:', error.message)
+          return null
         }
 
-        // Session exists! Check for cached org ID first (faster)
-        const cachedOrgId = getCachedOrgId()
-        console.log('[Auth] Session valid, cachedOrgId:', cachedOrgId)
-        
-        if (cachedOrgId) {
-          // Use cached org immediately
-          console.log('[Auth] Using cached org, setting state...')
-          if (mounted) {
-            setState({
-              user: session.user,
-              organizationId: cachedOrgId,
-              loading: false,
-              initialized: true,
-            })
-          }
-          
-          // Verify org membership in background
-          supabase
-            .from('organization_members')
-            .select('organization_id')
-            .eq('user_id', session.user.id)
-            .eq('is_active', true)
-            .single()
-            .then(({ data }) => {
-              if (mounted && data?.organization_id && data.organization_id !== cachedOrgId) {
-                setCachedOrgId(data.organization_id)
-                setState(prev => ({ ...prev, organizationId: data.organization_id }))
-              }
-            })
-        } else {
-          // No cache - fetch org membership
-          console.log('[Auth] No cached org, fetching from DB...')
-          const { data: orgData, error: orgError } = await supabase
-            .from('organization_members')
-            .select('organization_id')
-            .eq('user_id', session.user.id)
-            .eq('is_active', true)
-            .single()
-
-          console.log('[Auth] Org query result:', { orgData, error: orgError?.message })
-          
-          const orgId = orgData?.organization_id || null
-          
-          if (orgId) {
-            setCachedOrgId(orgId)
-          }
-
-          console.log('[Auth] Setting final state, orgId:', orgId)
-          if (mounted) {
-            setState({
-              user: session.user,
-              organizationId: orgId,
-              loading: false,
-              initialized: true,
-            })
-          }
+        const orgId = data?.organization_id || null
+        if (orgId) {
+          setCachedOrgId(orgId)
         }
+        console.log('[Auth] Fetched orgId:', orgId)
+        return orgId
       } catch (err) {
-        console.error('Auth init error:', err)
-        clearAuthCache()
-        if (mounted) {
-          setState({ 
-            user: null, 
-            organizationId: null, 
-            loading: false, 
-            initialized: true 
-          })
-        }
+        console.error('[Auth] Org fetch exception:', err)
+        return null
       }
     }
 
-    initAuth()
+    // Helper to update state with user
+    async function setAuthenticatedState(user: User) {
+      const orgId = await fetchOrgId(user.id)
+      if (mounted) {
+        console.log('[Auth] Setting authenticated state, orgId:', orgId)
+        setState({
+          user,
+          organizationId: orgId,
+          loading: false,
+          initialized: true,
+        })
+      }
+    }
 
-    // Listen for auth state changes (login/logout)
+    // Listen for auth state changes - this is the PRIMARY handler
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('[Auth] State change:', event)
-        
-        if (event === 'SIGNED_OUT') {
+        console.log('[Auth] Event:', event, '| User:', session?.user?.email || 'none')
+
+        if (event === 'SIGNED_OUT' || !session?.user) {
           clearAuthCache()
           if (mounted) {
-            setState({ 
-              user: null, 
-              organizationId: null, 
-              loading: false, 
-              initialized: true 
+            setState({
+              user: null,
+              organizationId: null,
+              loading: false,
+              initialized: true,
             })
           }
           return
         }
 
-        if (event === 'SIGNED_IN' && session?.user) {
-          // New login - fetch fresh org data
-          const { data } = await supabase
-            .from('organization_members')
-            .select('organization_id')
-            .eq('user_id', session.user.id)
-            .eq('is_active', true)
-            .single()
-          
-          const orgId = data?.organization_id || null
-          if (orgId) {
-            setCachedOrgId(orgId)
-          }
-          
-          if (mounted) {
-            setState({
-              user: session.user,
-              organizationId: orgId,
-              loading: false,
-              initialized: true,
-            })
-          }
-        }
-
-        if (event === 'TOKEN_REFRESHED' && session?.user) {
-          if (mounted) {
-            setState(prev => ({ ...prev, user: session.user }))
-          }
+        // User is authenticated (SIGNED_IN, INITIAL_SESSION, TOKEN_REFRESHED)
+        if (session.user) {
+          await setAuthenticatedState(session.user)
         }
       }
     )
 
+    // Cleanup
     return () => {
       mounted = false
       subscription.unsubscribe()
@@ -227,11 +155,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const supabase = createClient()
     clearAuthCache()
     await supabase.auth.signOut()
-    setState({ 
-      user: null, 
-      organizationId: null, 
-      loading: false, 
-      initialized: true 
+    setState({
+      user: null,
+      organizationId: null,
+      loading: false,
+      initialized: true,
     })
   }
 
