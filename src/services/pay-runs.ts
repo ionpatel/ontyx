@@ -78,7 +78,7 @@ export const payRunsService = {
     const supabase = createClient()
 
     const { data, error } = await supabase
-      .from('pay_runs')
+      .from('payroll_runs')
       .select('*')
       .eq('organization_id', organizationId)
       .order('pay_date', { ascending: false })
@@ -95,7 +95,7 @@ export const payRunsService = {
     const supabase = createClient()
 
     const { data: payRun, error: payRunError } = await supabase
-      .from('pay_runs')
+      .from('payroll_runs')
       .select('*')
       .eq('id', id)
       .eq('organization_id', organizationId)
@@ -107,9 +107,9 @@ export const payRunsService = {
     }
 
     const { data: employees, error: empError } = await supabase
-      .from('pay_run_employees')
-      .select('*')
-      .eq('pay_run_id', id)
+      .from('payslips')
+      .select('*, employee:employees(first_name, last_name, email)')
+      .eq('payroll_run_id', id)
 
     if (empError) {
       console.error('Error fetching pay run employees:', empError)
@@ -174,7 +174,7 @@ export const payRunsService = {
 
     // Insert pay run
     const { data: payRun, error: payRunError } = await supabase
-      .from('pay_runs')
+      .from('payroll_runs')
       .insert({
         organization_id: organizationId,
         pay_period_start: input.payPeriodStart,
@@ -197,25 +197,28 @@ export const payRunsService = {
 
     // Insert employees
     const employeeRecords = payrollResults.map(({ employee, result }) => ({
-      pay_run_id: payRun.id,
+      payroll_run_id: payRun.id,
       employee_id: employee.id,
-      employee_name: `${employee.firstName} ${employee.lastName}`,
       regular_hours: 80,
       overtime_hours: 0,
+      regular_pay: result.grossPay,
+      overtime_pay: 0,
       gross_pay: result.grossPay,
-      cpp: result.cpp,
-      ei: result.ei,
-      federal_tax: result.federalTax,
-      provincial_tax: result.provincialTax,
+      taxes: {
+        cpp: result.cpp,
+        ei: result.ei,
+        federal: result.federalTax,
+        provincial: result.provincialTax,
+      },
+      total_taxes: result.cpp + result.ei + result.federalTax + result.provincialTax,
       total_deductions: result.totalDeductions,
       net_pay: result.netPay,
       ytd_gross: result.grossPay,
-      ytd_cpp: result.cpp,
-      ytd_ei: result.ei,
-      ytd_tax: result.federalTax + result.provincialTax,
+      ytd_taxes: result.federalTax + result.provincialTax + result.cpp + result.ei,
+      ytd_net: result.netPay,
     }))
 
-    const { error: empError } = await supabase.from('pay_run_employees').insert(employeeRecords)
+    const { error: empError } = await supabase.from('payslips').insert(employeeRecords)
     if (empError) console.error('Error inserting pay run employees:', empError)
 
     return this.getPayRun(payRun.id, organizationId)
@@ -230,7 +233,7 @@ export const payRunsService = {
     }
 
     const { error } = await supabase
-      .from('pay_runs')
+      .from('payroll_runs')
       .update(updates)
       .eq('id', id)
       .eq('organization_id', organizationId)
@@ -246,10 +249,10 @@ export const payRunsService = {
     const supabase = createClient()
 
     // Delete employees first
-    await supabase.from('pay_run_employees').delete().eq('pay_run_id', id)
+    await supabase.from('payslips').delete().eq('payroll_run_id', id)
 
     const { error } = await supabase
-      .from('pay_runs')
+      .from('payroll_runs')
       .delete()
       .eq('id', id)
       .eq('organization_id', organizationId)
@@ -288,24 +291,25 @@ function mapPayRunFromDb(row: any): PayRun {
 }
 
 function mapPayRunEmployeeFromDb(row: any): PayRunEmployee {
+  const taxes = row.taxes || {}
   return {
     id: row.id,
-    payRunId: row.pay_run_id,
+    payRunId: row.payroll_run_id,
     employeeId: row.employee_id,
-    employeeName: row.employee_name,
-    regularHours: row.regular_hours,
-    overtimeHours: row.overtime_hours,
-    grossPay: row.gross_pay,
-    cpp: row.cpp,
-    ei: row.ei,
-    federalTax: row.federal_tax,
-    provincialTax: row.provincial_tax,
-    totalDeductions: row.total_deductions,
-    netPay: row.net_pay,
-    ytdGross: row.ytd_gross,
-    ytdCpp: row.ytd_cpp,
-    ytdEi: row.ytd_ei,
-    ytdTax: row.ytd_tax,
+    employeeName: row.employee?.first_name ? `${row.employee.first_name} ${row.employee.last_name}` : 'Unknown',
+    regularHours: row.regular_hours || 0,
+    overtimeHours: row.overtime_hours || 0,
+    grossPay: row.gross_pay || 0,
+    cpp: taxes.cpp || 0,
+    ei: taxes.ei || 0,
+    federalTax: taxes.federal || 0,
+    provincialTax: taxes.provincial || 0,
+    totalDeductions: row.total_deductions || 0,
+    netPay: row.net_pay || 0,
+    ytdGross: row.ytd_gross || 0,
+    ytdCpp: taxes.cpp || 0,
+    ytdEi: taxes.ei || 0,
+    ytdTax: row.ytd_taxes || 0,
   }
 }
 
@@ -313,20 +317,24 @@ function mapEmployeeFromDb(row: any): Employee {
   return {
     id: row.id,
     organizationId: row.organization_id,
-    firstName: row.first_name,
-    lastName: row.last_name,
-    email: row.email,
-    phone: row.phone,
-    employeeNumber: row.employee_number,
-    department: row.department,
-    position: row.position,
+    firstName: row.first_name || '',
+    lastName: row.last_name || '',
+    email: row.email || '',
+    phone: row.phone || row.mobile,
+    employeeNumber: row.employee_number || '',
+    department: row.department_id, // TODO: join with departments table
+    position: row.job_title,
     hireDate: row.hire_date,
-    salary: row.salary,
-    payFrequency: row.pay_frequency,
-    province: row.province,
-    sin: row.sin,
-    bankInfo: row.bank_info,
-    isActive: row.is_active,
+    salary: 50000, // TODO: get from employee_compensation table
+    payFrequency: 'biweekly', // TODO: get from employee_compensation table
+    province: row.state || 'ON', // using state field as province
+    sin: row.tax_id,
+    bankInfo: row.bank_account_number ? {
+      institution: row.bank_name || '',
+      transit: row.bank_routing_number || '',
+      account: row.bank_account_number || '',
+    } : undefined,
+    isActive: row.employment_status !== 'terminated',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
