@@ -39,8 +39,26 @@ function clearCachedProfile() {
 export function useUserProfile() {
   const { user, loading: authLoading, initialized } = useAuth()
   
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Try to load cached profile IMMEDIATELY for instant hydration
+  const [profile, setProfile] = useState<UserProfile | null>(() => {
+    if (typeof window === 'undefined') return null
+    const cached = getCachedProfile()
+    // Only use cache if we have a cached user that matches
+    const cachedUser = localStorage.getItem('ontyx_user_cache')
+    if (cached && cachedUser) {
+      try {
+        const user = JSON.parse(cachedUser)
+        if (user?.id === cached.id) return cached
+      } catch {}
+    }
+    return null
+  })
+  const [loading, setLoading] = useState(() => {
+    // Not loading if we have cached profile
+    if (typeof window === 'undefined') return true
+    const cached = getCachedProfile()
+    return !cached
+  })
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   
