@@ -123,16 +123,13 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center justify-between px-4 border-b">
-          <Link href="/dashboard" className={cn(
-            "flex items-center",
-            collapsed ? "justify-center w-full" : ""
-          )}>
+        <div className="flex h-16 items-center justify-center px-4 border-b">
+          <Link href="/dashboard" className="flex items-center justify-center">
             <Image
               src="/logo.png"
               alt="Ontyx"
-              width={36}
-              height={36}
+              width={44}
+              height={44}
               className="dark:invert"
             />
           </Link>
