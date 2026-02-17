@@ -39,8 +39,10 @@ function useAuthState(): AuthContextType {
 
     async function initAuth() {
       try {
+        console.log('initAuth: starting...')
         // Get current session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        console.log('initAuth: session result', session?.user?.id, sessionError)
         
         if (sessionError) {
           console.error('Session error:', sessionError)
@@ -49,11 +51,13 @@ function useAuthState(): AuthContextType {
         }
 
         if (!session?.user) {
+          console.log('initAuth: no user, setting loading false')
           if (mounted) setState({ user: null, organizationId: null, loading: false })
           return
         }
 
         // Get organization membership
+        console.log('initAuth: fetching org membership...')
         const { data: orgData, error: orgError } = await supabase
           .from('organization_members')
           .select('organization_id')
@@ -61,11 +65,14 @@ function useAuthState(): AuthContextType {
           .eq('is_active', true)
           .single()
 
+        console.log('initAuth: org result', orgData, orgError)
+
         if (orgError) {
           console.error('Org membership error:', orgError)
         }
 
         if (mounted) {
+          console.log('initAuth: setting final state')
           setState({
             user: session.user,
             organizationId: orgData?.organization_id || null,
@@ -83,17 +90,21 @@ function useAuthState(): AuthContextType {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state change:', event)
+        console.log('Auth state change:', event, session?.user?.id)
         
         if (session?.user) {
-          const { data } = await supabase
+          console.log('Fetching org membership...')
+          const { data, error } = await supabase
             .from('organization_members')
             .select('organization_id')
             .eq('user_id', session.user.id)
             .eq('is_active', true)
             .single()
           
+          console.log('Org result:', data, error)
+          
           if (mounted) {
+            console.log('Setting state with org:', data?.organization_id)
             setState({
               user: session.user,
               organizationId: data?.organization_id || null,
