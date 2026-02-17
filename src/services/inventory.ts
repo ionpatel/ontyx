@@ -101,21 +101,20 @@ export const inventoryService = {
       .insert({
         organization_id: organizationId,
         sku: product.sku || `SKU-${Date.now()}`,
-        barcode: product.barcode,
+        vendor_sku: product.barcode || null,
         name: product.name,
         description: product.description,
         category_id: product.categoryId,
-        type: 'inventory',
-        status: 'active',
-        unit_price: product.unitPrice || 0,
+        product_type: 'inventory',
+        sell_price: product.unitPrice || 0,
         cost_price: product.costPrice || 0,
         tax_rate_id: null,
-        default_tax_rate: product.taxRate || 13,
         track_inventory: true,
-        reorder_level: product.reorderLevel || 10,
+        reorder_point: product.reorderLevel || 10,
         reorder_quantity: product.reorderQuantity || 50,
-        unit_of_measure: product.unit || 'piece',
         is_active: true,
+        is_sellable: true,
+        is_purchasable: true,
       })
       .select()
       .single()
@@ -148,17 +147,14 @@ export const inventoryService = {
       .from('products')
       .update({
         sku: updates.sku,
-        barcode: updates.barcode,
+        vendor_sku: updates.barcode,
         name: updates.name,
         description: updates.description,
         category_id: updates.categoryId,
-        unit_price: updates.unitPrice,
+        sell_price: updates.unitPrice,
         cost_price: updates.costPrice,
-        default_tax_rate: updates.taxRate,
-        reorder_level: updates.reorderLevel,
+        reorder_point: updates.reorderLevel,
         reorder_quantity: updates.reorderQuantity,
-        unit_of_measure: updates.unit,
-        status: updates.status,
         is_active: updates.isActive,
         updated_at: new Date().toISOString(),
       })
@@ -379,7 +375,7 @@ export const inventoryService = {
     const { data, error } = await supabase
       .from('products')
       .select(`
-        id, cost_price, reorder_level,
+        id, cost_price, reorder_point,
         inventory_levels(on_hand)
       `)
       .eq('organization_id', organizationId)
@@ -399,7 +395,7 @@ export const inventoryService = {
       const stock = product.inventory_levels?.reduce((sum: number, il: any) => sum + (il.on_hand || 0), 0) || 0
       totalValue += (product.cost_price || 0) * stock
       if (stock === 0) outOfStockCount++
-      else if (stock <= (product.reorder_level || 0)) lowStockCount++
+      else if (stock <= (product.reorder_point || 0)) lowStockCount++
     }
 
     return {
@@ -438,19 +434,19 @@ function transformProduct(row: any): Product {
   return {
     id: row.id,
     sku: row.sku,
-    barcode: row.barcode,
+    barcode: row.vendor_sku || '', // using vendor_sku as barcode fallback
     name: row.name,
     description: row.description,
     categoryId: row.category_id,
     categoryName: row.product_categories?.name || 'Uncategorized',
-    status: row.status || 'active',
-    unitPrice: row.unit_price || 0,
+    status: row.is_active ? 'active' : 'inactive',
+    unitPrice: row.sell_price || 0,
     costPrice: row.cost_price || 0,
-    taxRate: row.tax_rates?.rate || row.default_tax_rate || 13,
+    taxRate: row.tax_rates?.rate || 13,
     stockQuantity: row.total_stock || 0,
-    reorderLevel: row.reorder_level || 10,
+    reorderLevel: row.reorder_point || 10,
     reorderQuantity: row.reorder_quantity || 50,
-    unit: row.unit_of_measure || 'piece',
+    unit: 'piece',
     isActive: row.is_active ?? true,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

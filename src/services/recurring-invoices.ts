@@ -120,7 +120,7 @@ export const recurringInvoicesService = {
       .from('recurring_invoices')
       .insert({
         organization_id: organizationId,
-        customer_id: input.customerId,
+        contact_id: input.customerId,
         frequency: input.frequency,
         next_date: input.startDate,
         end_date: input.endDate,
@@ -241,7 +241,7 @@ function mapRecurringFromDb(row: any): RecurringInvoice {
   return {
     id: row.id,
     organizationId: row.organization_id,
-    customerId: row.customer_id,
+    customerId: row.contact_id,
     customerName: row.customer?.display_name || 'Unknown',
     customerEmail: row.customer?.email,
     frequency: row.frequency,

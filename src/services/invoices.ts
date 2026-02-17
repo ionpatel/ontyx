@@ -111,8 +111,8 @@ export const invoicesService = {
 
     if (filters?.status) query = query.eq('status', filters.status)
     if (filters?.customerId) query = query.eq('contact_id', filters.customerId)
-    if (filters?.fromDate) query = query.gte('invoice_date', filters.fromDate)
-    if (filters?.toDate) query = query.lte('invoice_date', filters.toDate)
+    if (filters?.fromDate) query = query.gte('issue_date', filters.fromDate)
+    if (filters?.toDate) query = query.lte('issue_date', filters.toDate)
 
     const { data, error } = await query
 
@@ -178,7 +178,7 @@ export const invoicesService = {
         organization_id: organizationId,
         invoice_number: generateInvoiceNumber(),
         contact_id: input.customerId,
-        invoice_date: invoiceDate,
+        issue_date: invoiceDate,
         due_date: dueDate,
         status: 'draft',
         subtotal,
@@ -188,12 +188,10 @@ export const invoicesService = {
         amount_paid: 0,
         amount_due: total,
         currency: 'CAD',
-        payment_terms: 30,
         notes: input.notes,
-        internal_notes: input.internalNotes,
         terms: input.terms,
         footer: input.footer,
-        sales_order_id: input.salesOrderId,
+        reference: input.salesOrderId || null,
       })
       .select()
       .single()
@@ -229,7 +227,7 @@ export const invoicesService = {
 
     const updates: Record<string, any> = { status, updated_at: new Date().toISOString() }
     if (status === 'sent') updates.sent_at = new Date().toISOString()
-    if (status === 'paid') updates.paid_date = new Date().toISOString()
+    if (status === 'paid') updates.paid_at = new Date().toISOString()
 
     const { error } = await supabase
       .from('invoices')
@@ -270,7 +268,7 @@ export const invoicesService = {
         amount_paid: newAmountPaid,
         amount_due: balanceDue,
         status,
-        paid_date: status === 'paid' ? new Date().toISOString() : null,
+        paid_at: status === 'paid' ? new Date().toISOString() : null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -374,9 +372,9 @@ function mapInvoiceFromDb(row: any): Invoice {
       postalCode: row.customer?.billing_postal_code || row.billing_postal_code || '',
       country: row.customer?.billing_country || row.billing_country || 'CA',
     },
-    invoiceDate: row.invoice_date,
+    invoiceDate: row.issue_date,
     dueDate: row.due_date,
-    paidDate: row.paid_date,
+    paidDate: row.paid_at,
     status: row.status,
     items: (row.items || []).map((item: any) => ({
       id: item.id,
@@ -394,9 +392,9 @@ function mapInvoiceFromDb(row: any): Invoice {
     total: row.total,
     amountPaid: row.amount_paid || 0,
     amountDue: row.amount_due || row.total,
-    gstAmount: row.gst_amount,
-    hstAmount: row.hst_amount,
-    pstAmount: row.pst_amount,
+    gstAmount: undefined,
+    hstAmount: undefined,
+    pstAmount: undefined,
     qstAmount: row.qst_amount,
     currency: row.currency || 'CAD',
     paymentTerms: `Net ${row.payment_terms || 30}`,

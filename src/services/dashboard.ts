@@ -58,24 +58,32 @@ export const dashboardService = {
     const supabase = createClient()
 
     try {
-      const [invoices, orders, products, contacts] = await Promise.all([
+      const [invoices, orders, products, inventoryLevels, contacts] = await Promise.all([
         supabase.from('invoices').select('total, amount_paid, amount_due, status').eq('organization_id', organizationId),
         supabase.from('sales_orders').select('total, status').eq('organization_id', organizationId),
-        supabase.from('products').select('id, stock_quantity, reorder_level').eq('organization_id', organizationId).eq('is_active', true),
+        supabase.from('products').select('id, reorder_point').eq('organization_id', organizationId).eq('is_active', true),
+        supabase.from('inventory_levels').select('product_id, on_hand').eq('organization_id', organizationId),
         supabase.from('contacts').select('id, is_customer, is_vendor').eq('organization_id', organizationId).eq('is_active', true),
       ])
 
       const invoiceData = invoices.data || []
       const orderData = orders.data || []
       const productData = products.data || []
+      const inventoryData = inventoryLevels.data || []
       const contactData = contacts.data || []
+
+      // Create inventory lookup by product_id
+      const inventoryByProduct = new Map(inventoryData.map(inv => [inv.product_id, inv.on_hand || 0]))
 
       const paidInvoices = invoiceData.filter(i => i.status === 'paid')
       const totalRevenue = paidInvoices.reduce((sum, i) => sum + (i.total || 0), 0)
       const outstanding = invoiceData.filter(i => (i.amount_due || 0) > 0)
       const overdue = invoiceData.filter(i => i.status === 'overdue')
       const pendingOrders = orderData.filter(o => ['draft', 'confirmed', 'processing'].includes(o.status))
-      const lowStock = productData.filter(p => (p.stock_quantity || 0) <= (p.reorder_level || 0))
+      const lowStock = productData.filter(p => {
+        const stockQty = inventoryByProduct.get(p.id) || 0
+        return stockQty <= (p.reorder_point || 0)
+      })
 
       return {
         totalRevenue,
