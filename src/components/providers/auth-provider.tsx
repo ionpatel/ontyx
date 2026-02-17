@@ -73,11 +73,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function initAuth() {
       try {
+        console.log('[Auth] initAuth starting...')
         // Supabase recovers session from cookies (set by middleware)
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
+        console.log('[Auth] getSession result:', { hasSession: !!session, hasUser: !!session?.user, error: sessionError?.message })
+        
         if (sessionError || !session?.user) {
           // No valid session
+          console.log('[Auth] No valid session, clearing cache')
           clearAuthCache()
           if (mounted) {
             setState({ 
@@ -92,9 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Session exists! Check for cached org ID first (faster)
         const cachedOrgId = getCachedOrgId()
+        console.log('[Auth] Session valid, cachedOrgId:', cachedOrgId)
         
         if (cachedOrgId) {
           // Use cached org immediately
+          console.log('[Auth] Using cached org, setting state...')
           if (mounted) {
             setState({
               user: session.user,
@@ -119,19 +125,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             })
         } else {
           // No cache - fetch org membership
-          const { data: orgData } = await supabase
+          console.log('[Auth] No cached org, fetching from DB...')
+          const { data: orgData, error: orgError } = await supabase
             .from('organization_members')
             .select('organization_id')
             .eq('user_id', session.user.id)
             .eq('is_active', true)
             .single()
 
+          console.log('[Auth] Org query result:', { orgData, error: orgError?.message })
+          
           const orgId = orgData?.organization_id || null
           
           if (orgId) {
             setCachedOrgId(orgId)
           }
 
+          console.log('[Auth] Setting final state, orgId:', orgId)
           if (mounted) {
             setState({
               user: session.user,
