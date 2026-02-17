@@ -44,6 +44,10 @@ import {
   Megaphone,
   MapPin,
   UtensilsCrossed,
+  Pill,
+  Scissors,
+  Car,
+  Stethoscope,
 } from "lucide-react"
 
 interface NavItem {
@@ -122,6 +126,15 @@ const navigation: NavGroup[] = [
       { title: "Knowledge", href: "/knowledge", icon: BookOpen },
       { title: "Approvals", href: "/approvals", icon: CheckSquare },
       { title: "Surveys", href: "/surveys", icon: ClipboardList },
+    ],
+  },
+  {
+    title: "Industry",
+    items: [
+      { title: "Pharmacy", href: "/pharmacy", icon: Pill },
+      { title: "Salon & Spa", href: "/salon", icon: Scissors },
+      { title: "Auto Shop", href: "/auto-shop", icon: Car },
+      { title: "Clinic", href: "/clinic", icon: Stethoscope },
     ],
   },
   {
