@@ -10,9 +10,10 @@ import {
   LayoutDashboard, FileText, Receipt, Building2, BookOpen,
   BarChart3, Package, ShoppingCart, Users, Briefcase,
   Settings, Menu, X, ChevronDown, LogOut, User,
-  Bell, Search, Moon, Sun, Factory, FolderKanban, 
+  Bell, Moon, Sun, Factory, FolderKanban, 
   Layers, CheckCircle2, ClipboardList, Clock, Wallet, UserCircle
 } from "lucide-react"
+import { GlobalSearch } from '@/components/global-search'
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -263,15 +264,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <div className="relative hidden md:block">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search..."
-                className="w-[300px] pl-9"
-              />
-              <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 hidden lg:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-                ⌘K
-              </kbd>
+            <div className="hidden md:block">
+              <GlobalSearch />
             </div>
           </div>
 

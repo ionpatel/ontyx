@@ -19,6 +19,7 @@ import {
   FileText, ShoppingCart, Headphones, Calendar, RefreshCw,
   DollarSign, Globe, User, MoreVertical, Send, ExternalLink
 } from 'lucide-react';
+import { Chatter } from '@/components/chatter';
 import { format } from 'date-fns';
 
 const formatCurrency = (amount: number) =>
@@ -241,6 +242,9 @@ export default function ContactDetailPage() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
+          {/* Chatter - Notes & Activities */}
+          <Chatter entityType="contact" entityId={contactId} entityName={contact.name} />
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Contact Info */}
             <Card>
