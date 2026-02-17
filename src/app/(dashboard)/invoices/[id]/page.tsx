@@ -105,7 +105,7 @@ export default function InvoiceDetailPage() {
 
   const status = statusConfig[invoice.status] || statusConfig.draft
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     setActionLoading('download')
     
     try {
@@ -125,6 +125,7 @@ export default function InvoiceDetailPage() {
         companyPhone: organization?.phone,
         companyEmail: organization?.email,
         companyGstNumber: organization?.taxNumber,
+        companyLogoUrl: organization?.logoUrl,
         
         // Customer
         customerName: invoice.customerName,
@@ -156,7 +157,7 @@ export default function InvoiceDetailPage() {
         template: defaultTemplate,
       }
       
-      downloadInvoicePDF(pdfData)
+      await downloadInvoicePDF(pdfData)
     } catch (error) {
       console.error('PDF generation error:', error)
       showError('PDF Error', 'Failed to generate PDF')
@@ -179,7 +180,7 @@ export default function InvoiceDetailPage() {
     
     try {
       // Generate PDF blob with template branding
-      const pdfBlob = getInvoicePDFBlob({
+      const pdfBlob = await getInvoicePDFBlob({
         invoiceNumber: invoice.invoiceNumber,
         issueDate: invoice.invoiceDate,
         dueDate: invoice.dueDate,
@@ -192,6 +193,7 @@ export default function InvoiceDetailPage() {
         companyPhone: organization?.phone,
         companyEmail: organization?.email,
         companyGstNumber: organization?.taxNumber,
+        companyLogoUrl: organization?.logoUrl,
         customerName: invoice.customerName,
         customerEmail: invoice.customerEmail,
         customerAddress: invoice.billingAddress?.street,

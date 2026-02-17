@@ -109,7 +109,37 @@ const FONTS = {
 // PDF GENERATION
 // ============================================================================
 
+// Helper to load image as base64
+async function loadImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url)
+    const blob = await response.blob()
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.onerror = () => resolve(null)
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return null
+  }
+}
+
+export async function generateInvoicePDFAsync(data: InvoicePDFData): Promise<jsPDF> {
+  // Pre-load logo if provided
+  let logoBase64: string | null = null
+  if (data.companyLogoUrl) {
+    logoBase64 = await loadImageAsBase64(data.companyLogoUrl)
+  }
+  return generateInvoicePDFWithLogo(data, logoBase64)
+}
+
 export function generateInvoicePDF(data: InvoicePDFData): jsPDF {
+  // Sync version without logo (for backwards compatibility)
+  return generateInvoicePDFWithLogo(data, null)
+}
+
+function generateInvoicePDFWithLogo(data: InvoicePDFData, logoBase64: string | null): jsPDF {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -142,8 +172,28 @@ export function generateInvoicePDF(data: InvoicePDFData): jsPDF {
   const logoSize = logoSizes[template.logoSize]
 
   // -------------------------------------------------------------------------
-  // HEADER
+  // HEADER WITH LOGO
   // -------------------------------------------------------------------------
+  
+  // Add logo if available
+  const logoSizes = { small: 15, medium: 20, large: 25 }
+  const logoHeight = logoSizes[template.logoSize]
+  let logoAdded = false
+  
+  if (template.showLogo && logoBase64) {
+    try {
+      const logoX = template.logoPosition === 'center' 
+        ? (pageWidth - logoHeight) / 2 
+        : template.logoPosition === 'right' 
+          ? pageWidth - margin - logoHeight 
+          : margin
+      
+      doc.addImage(logoBase64, 'AUTO', logoX, y - 5, logoHeight, logoHeight)
+      logoAdded = true
+    } catch (err) {
+      console.error('Failed to add logo:', err)
+    }
+  }
   
   // Header layout based on logo position
   if (template.logoPosition === 'center') {
@@ -470,17 +520,17 @@ function truncateText(text: string, maxLength: number): string {
 // DOWNLOAD / PREVIEW
 // ============================================================================
 
-export function downloadInvoicePDF(data: InvoicePDFData): void {
-  const doc = generateInvoicePDF(data)
+export async function downloadInvoicePDF(data: InvoicePDFData): Promise<void> {
+  const doc = await generateInvoicePDFAsync(data)
   doc.save(`${data.invoiceNumber}.pdf`)
 }
 
-export function previewInvoicePDF(data: InvoicePDFData): string {
-  const doc = generateInvoicePDF(data)
+export async function previewInvoicePDF(data: InvoicePDFData): Promise<string> {
+  const doc = await generateInvoicePDFAsync(data)
   return doc.output('datauristring')
 }
 
-export function getInvoicePDFBlob(data: InvoicePDFData): Blob {
-  const doc = generateInvoicePDF(data)
+export async function getInvoicePDFBlob(data: InvoicePDFData): Promise<Blob> {
+  const doc = await generateInvoicePDFAsync(data)
   return doc.output('blob')
 }
