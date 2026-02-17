@@ -37,7 +37,13 @@ function useAuthState(): AuthContextType {
     const supabase = createClient()
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error: sessionError }) => {
+      if (sessionError) {
+        console.error('Auth session error:', sessionError)
+        setState({ user: null, organizationId: null, loading: false })
+        return
+      }
+      
       if (session?.user) {
         // Get user's organization
         supabase
@@ -46,7 +52,10 @@ function useAuthState(): AuthContextType {
           .eq('user_id', session.user.id)
           .eq('is_active', true)
           .single()
-          .then(({ data }) => {
+          .then(({ data, error: orgError }) => {
+            if (orgError) {
+              console.error('Org membership error:', orgError)
+            }
             setState({
               user: session.user,
               organizationId: data?.organization_id || null,
@@ -60,6 +69,9 @@ function useAuthState(): AuthContextType {
           loading: false,
         })
       }
+    }).catch(err => {
+      console.error('Auth error:', err)
+      setState({ user: null, organizationId: null, loading: false })
     })
 
     // Listen for auth changes
