@@ -5,8 +5,8 @@ import { userProfileService, type UserProfile, type UpdateProfileInput } from '@
 import { useAuth } from '@/components/providers/auth-provider'
 
 // ============================================================================
-// SESSION-LINKED PROFILE HOOK
-// Loads instantly from cache if session valid, clears on logout
+// USER PROFILE HOOK
+// Caches profile in localStorage for faster loads
 // ============================================================================
 
 const PROFILE_CACHE_KEY = 'ontyx_profile_cache'
@@ -39,26 +39,8 @@ function clearCachedProfile() {
 export function useUserProfile() {
   const { user, loading: authLoading, initialized } = useAuth()
   
-  // Try to load cached profile IMMEDIATELY for instant hydration
-  const [profile, setProfile] = useState<UserProfile | null>(() => {
-    if (typeof window === 'undefined') return null
-    const cached = getCachedProfile()
-    // Only use cache if we have a cached user that matches
-    const cachedUser = localStorage.getItem('ontyx_user_cache')
-    if (cached && cachedUser) {
-      try {
-        const user = JSON.parse(cachedUser)
-        if (user?.id === cached.id) return cached
-      } catch {}
-    }
-    return null
-  })
-  const [loading, setLoading] = useState(() => {
-    // Not loading if we have cached profile
-    if (typeof window === 'undefined') return true
-    const cached = getCachedProfile()
-    return !cached
-  })
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   
@@ -98,13 +80,13 @@ export function useUserProfile() {
       return
     }
     
-    // Try to load from cache immediately
+    // Try to load from cache first
     const cached = getCachedProfile()
     if (cached && cached.id === userId) {
       setProfile(cached)
       setLoading(false)
       
-      // Verify in background
+      // Still verify in background
       if (!hasFetched.current) {
         hasFetched.current = true
         userProfileService.getProfile(userId).then(data => {
