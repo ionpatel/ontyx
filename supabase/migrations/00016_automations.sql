@@ -118,18 +118,5 @@ CREATE POLICY "Users can manage own org email templates"
     SELECT organization_id FROM organization_members WHERE user_id = auth.uid()
   ));
 
--- Insert default email templates
-INSERT INTO email_templates (organization_id, name, slug, subject, body_html, is_system) VALUES
-  ('00000000-0000-0000-0000-000000000000', 'Invoice Reminder', 'invoice_reminder', 
-   'Reminder: Invoice {{invoice_number}} is overdue',
-   '<h2>Payment Reminder</h2><p>Dear {{customer_name}},</p><p>This is a friendly reminder that invoice <strong>{{invoice_number}}</strong> for <strong>{{amount}}</strong> was due on {{due_date}}.</p><p>Please arrange payment at your earliest convenience.</p><p>Thank you,<br>{{company_name}}</p>',
-   true),
-  ('00000000-0000-0000-0000-000000000000', 'Welcome Customer', 'welcome_customer',
-   'Welcome to {{company_name}}!',
-   '<h2>Welcome!</h2><p>Dear {{customer_name}},</p><p>Thank you for choosing {{company_name}}. We''re excited to have you as a customer!</p><p>If you have any questions, please don''t hesitate to reach out.</p><p>Best regards,<br>{{company_name}}</p>',
-   true),
-  ('00000000-0000-0000-0000-000000000000', 'Subscription Renewal', 'subscription_renewal',
-   'Your subscription expires soon',
-   '<h2>Subscription Reminder</h2><p>Dear {{customer_name}},</p><p>Your subscription to <strong>{{plan_name}}</strong> will expire on {{expiry_date}}.</p><p>To continue enjoying our services, please renew your subscription.</p><p>Thank you,<br>{{company_name}}</p>',
-   true)
-ON CONFLICT DO NOTHING;
+-- Note: Email templates will be created per-organization when needed
+-- The automation service handles template creation
