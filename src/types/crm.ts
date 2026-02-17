@@ -1,72 +1,170 @@
-// CRM Types for Ontyx
+// CRM Types
 
-export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'unqualified'
-export type DealStage = 'lead' | 'qualified' | 'proposal' | 'negotiation' | 'won' | 'lost'
-export type ActivityType = 'call' | 'email' | 'meeting' | 'task' | 'note'
-export type Priority = 'low' | 'medium' | 'high' | 'urgent'
+export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'unqualified' | 'converted'
+export type OpportunityStatus = 'open' | 'won' | 'lost'
 
 export interface Lead {
   id: string
-  name: string
-  email: string
+  organization_id: string
+  source?: string
+  campaign?: string
+  first_name?: string
+  last_name?: string
+  email?: string
   phone?: string
-  company?: string
-  source: string
+  company_name?: string
+  job_title?: string
+  website?: string
+  address_line1?: string
+  city?: string
+  state?: string
+  postal_code?: string
+  country?: string
   status: LeadStatus
   score: number
-  assignedTo?: string
+  assigned_to?: string
   notes?: string
-  createdAt: string
-  convertedAt?: string
-}
-
-export interface Deal {
-  id: string
-  title: string
-  value: number
-  currency: string
-  stage: DealStage
-  probability: number
-  contactId: string
-  contactName: string
-  contactEmail: string
-  company?: string
-  assignedTo: string
-  assignedToName: string
-  assignedToAvatar?: string
-  expectedCloseDate: string
-  createdAt: string
-  updatedAt: string
-  activities: DealActivity[]
-  tags: string[]
-  notes?: string
-}
-
-export interface DealActivity {
-  id: string
-  type: ActivityType
-  title: string
-  description?: string
-  date: string
-  user: string
-  completed: boolean
+  converted_at?: string
+  converted_to_contact_id?: string
+  converted_to_opportunity_id?: string
+  last_activity_at?: string
+  next_follow_up?: string
+  tags?: string[]
+  created_by?: string
+  created_at: string
+  updated_at: string
+  // Joined
+  assigned_user?: {
+    id: string
+    full_name?: string
+    email?: string
+  }
 }
 
 export interface PipelineStage {
-  id: DealStage
+  id: string
+  organization_id: string
   name: string
+  description?: string
+  probability: number
+  sort_order: number
   color: string
-  deals: Deal[]
-  totalValue: number
+  is_won: boolean
+  is_lost: boolean
+  is_active: boolean
+  created_at: string
 }
 
-export interface CRMStats {
-  totalDeals: number
-  totalValue: number
-  wonDeals: number
-  wonValue: number
-  lostDeals: number
-  conversionRate: number
-  avgDealSize: number
-  pipelineValue: number
+export interface Opportunity {
+  id: string
+  organization_id: string
+  name: string
+  contact_id?: string
+  lead_id?: string
+  stage_id?: string
+  probability: number
+  currency: string
+  amount?: number
+  expected_revenue?: number
+  expected_close?: string
+  actual_close?: string
+  status: OpportunityStatus
+  lost_reason?: string
+  assigned_to?: string
+  description?: string
+  next_step?: string
+  last_activity_at?: string
+  tags?: string[]
+  created_by?: string
+  created_at: string
+  updated_at: string
+  // Joined
+  stage?: PipelineStage
+  contact?: {
+    id: string
+    display_name: string
+    email?: string
+  }
+  assigned_user?: {
+    id: string
+    full_name?: string
+  }
+}
+
+export interface Activity {
+  id: string
+  organization_id: string
+  activity_type: string
+  entity_type?: string
+  entity_id?: string
+  subject?: string
+  description?: string
+  scheduled_at?: string
+  completed_at?: string
+  duration_minutes?: number
+  assigned_to?: string
+  outcome?: string
+  created_by?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateLeadInput {
+  first_name?: string
+  last_name?: string
+  email?: string
+  phone?: string
+  company_name?: string
+  job_title?: string
+  source?: string
+  notes?: string
+  assigned_to?: string
+  score?: number
+}
+
+export interface UpdateLeadInput {
+  first_name?: string
+  last_name?: string
+  email?: string
+  phone?: string
+  company_name?: string
+  job_title?: string
+  source?: string
+  notes?: string
+  assigned_to?: string
+  score?: number
+  status?: LeadStatus
+  next_follow_up?: string
+}
+
+export interface CreateOpportunityInput {
+  name: string
+  contact_id?: string
+  lead_id?: string
+  stage_id?: string
+  amount?: number
+  expected_close?: string
+  description?: string
+  assigned_to?: string
+}
+
+export interface UpdateOpportunityInput {
+  name?: string
+  stage_id?: string
+  amount?: number
+  expected_close?: string
+  description?: string
+  next_step?: string
+  assigned_to?: string
+}
+
+export interface CRMSummary {
+  total_leads: number
+  new_leads: number
+  qualified_leads: number
+  total_opportunities: number
+  open_opportunities: number
+  pipeline_value: number
+  won_this_month: number
+  conversion_rate: number
 }

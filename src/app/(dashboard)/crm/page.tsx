@@ -2,288 +2,419 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { 
-  Plus, Search, Filter, TrendingUp, DollarSign, Target, 
-  Award, BarChart3, Users, Calendar, ArrowRight
+  Plus, Search, Target, DollarSign, TrendingUp, 
+  Users, ArrowRight, MoreHorizontal, Eye, UserPlus, Trash2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { cn, formatCurrency, formatDate, getInitials } from '@/lib/utils'
-import { getPipelineStages, mockCRMStats, stageConfig } from '@/lib/mock-data/crm'
-import { Deal, DealStage } from '@/types/crm'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
+} from '@/components/ui/table'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { 
+  useLeads, 
+  useOpportunities, 
+  usePipelineStages,
+  useCRMSummary,
+  useDeleteLead,
+  useConvertLead,
+  useUpdateOpportunity
+} from '@/hooks/use-crm'
+import { formatCurrency, formatDate, cn } from '@/lib/utils'
+import type { LeadStatus, Opportunity } from '@/types/crm'
+import { useToast } from '@/components/ui/toast'
 
-function StatCard({ title, value, subtitle, icon: Icon, trend, color }: { 
-  title: string
-  value: string
-  subtitle?: string
-  icon: React.ElementType
-  trend?: { value: string; positive: boolean }
-  color?: string
-}) {
-  return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold mt-1">{value}</p>
-            {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
-            {trend && (
-              <p className={cn(
-                "text-xs mt-1 flex items-center gap-1",
-                trend.positive ? "text-green-500" : "text-red-500"
-              )}>
-                <TrendingUp className={cn("h-3 w-3", !trend.positive && "rotate-180")} />
-                {trend.value}
-              </p>
-            )}
-          </div>
-          <div className={cn(
-            "h-12 w-12 rounded-full flex items-center justify-center",
-            color || "bg-primary/10"
-          )}>
-            <Icon className={cn("h-6 w-6", color ? "text-white" : "text-primary")} />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function DealCard({ deal }: { deal: Deal }) {
-  return (
-    <Link href={`/crm/${deal.id}`}>
-      <Card className="cursor-pointer hover:shadow-md transition-shadow">
-        <CardContent className="pt-4">
-          <div className="space-y-3">
-            <div>
-              <h4 className="font-medium line-clamp-1">{deal.title}</h4>
-              <p className="text-sm text-muted-foreground">{deal.company || deal.contactName}</p>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <span className="text-lg font-bold text-primary">
-                {formatCurrency(deal.value)}
-              </span>
-              <Badge variant="outline" className="text-xs">
-                {deal.probability}%
-              </Badge>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={deal.assignedToAvatar} />
-                <AvatarFallback className="text-xs">{getInitials(deal.assignedToName)}</AvatarFallback>
-              </Avatar>
-              <span className="text-xs text-muted-foreground">{deal.assignedToName}</span>
-            </div>
-
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                {formatDate(deal.expectedCloseDate)}
-              </span>
-              {deal.tags.length > 0 && (
-                <Badge variant="secondary" className="text-xs">
-                  {deal.tags[0]}
-                </Badge>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  )
-}
-
-function PipelineColumn({ stage, name, color, deals, totalValue }: { 
-  stage: DealStage
-  name: string
-  color: string
-  deals: Deal[]
-  totalValue: number
-}) {
-  const isClosedStage = stage === 'won' || stage === 'lost'
-  
-  return (
-    <div className="flex-shrink-0 w-80">
-      <div className="bg-muted/50 rounded-lg p-4 h-full">
-        {/* Column Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className={cn("w-3 h-3 rounded-full", color)} />
-            <h3 className="font-semibold">{name}</h3>
-            <Badge variant="outline" className="text-xs">{deals.length}</Badge>
-          </div>
-          {!isClosedStage && (
-            <Button variant="ghost" size="icon" className="h-6 w-6">
-              <Plus className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-
-        {/* Column Value */}
-        <div className="mb-4 text-sm text-muted-foreground">
-          {formatCurrency(totalValue)} total
-        </div>
-
-        {/* Deal Cards */}
-        <div className="space-y-3">
-          {deals.map((deal) => (
-            <DealCard key={deal.id} deal={deal} />
-          ))}
-        </div>
-
-        {deals.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground text-sm">
-            No deals in this stage
-          </div>
-        )}
-      </div>
-    </div>
-  )
+const leadStatusConfig: Record<LeadStatus, { label: string; color: string }> = {
+  new: { label: 'New', color: 'bg-blue-100 text-blue-700' },
+  contacted: { label: 'Contacted', color: 'bg-yellow-100 text-yellow-700' },
+  qualified: { label: 'Qualified', color: 'bg-green-100 text-green-700' },
+  unqualified: { label: 'Unqualified', color: 'bg-gray-100 text-gray-700' },
+  converted: { label: 'Converted', color: 'bg-purple-100 text-purple-700' }
 }
 
 export default function CRMPage() {
-  const [search, setSearch] = useState('')
-  const pipelineStages = getPipelineStages()
-
-  // Filter to only show active pipeline stages (not won/lost)
-  const activeStages = pipelineStages.filter(s => s.id !== 'won' && s.id !== 'lost')
-  const closedStages = pipelineStages.filter(s => s.id === 'won' || s.id === 'lost')
-
+  const router = useRouter()
+  const toast = useToast()
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeTab, setActiveTab] = useState('pipeline')
+  
+  const { data: leads = [], isLoading: leadsLoading } = useLeads()
+  const { data: opportunities = [], isLoading: oppsLoading } = useOpportunities()
+  const { data: stages = [] } = usePipelineStages()
+  const { data: summary } = useCRMSummary()
+  const deleteLeadMutation = useDeleteLead()
+  const convertLeadMutation = useConvertLead()
+  const updateOppMutation = useUpdateOpportunity()
+  
+  // Filter leads
+  const filteredLeads = leads.filter(lead => {
+    const searchLower = searchQuery.toLowerCase()
+    return (
+      lead.first_name?.toLowerCase().includes(searchLower) ||
+      lead.last_name?.toLowerCase().includes(searchLower) ||
+      lead.email?.toLowerCase().includes(searchLower) ||
+      lead.company_name?.toLowerCase().includes(searchLower)
+    )
+  }).filter(l => l.status !== 'converted')
+  
+  // Group opportunities by stage for pipeline view
+  const pipelineData = stages.map(stage => ({
+    stage,
+    opportunities: opportunities.filter(o => o.stage_id === stage.id && o.status === 'open')
+  }))
+  
+  const handleDeleteLead = async (id: string) => {
+    if (!confirm('Delete this lead?')) return
+    try {
+      await deleteLeadMutation.mutateAsync(id)
+      toast.success('Lead deleted')
+    } catch (error) {
+      toast.error('Failed to delete lead')
+    }
+  }
+  
+  const handleConvertLead = async (id: string) => {
+    try {
+      await convertLeadMutation.mutateAsync({ leadId: id, createOpportunity: true })
+      toast.success('Lead converted to contact and opportunity')
+    } catch (error) {
+      toast.error('Failed to convert lead')
+    }
+  }
+  
+  const handleMoveOpportunity = async (oppId: string, stageId: string) => {
+    try {
+      await updateOppMutation.mutateAsync({ id: oppId, input: { stage_id: stageId } })
+      toast.success('Opportunity moved')
+    } catch (error) {
+      toast.error('Failed to move opportunity')
+    }
+  }
+  
+  const stats = [
+    {
+      title: 'Total Leads',
+      value: summary?.total_leads || 0,
+      subtitle: `${summary?.new_leads || 0} new`,
+      icon: Users,
+      color: 'text-blue-600'
+    },
+    {
+      title: 'Pipeline Value',
+      value: formatCurrency(summary?.pipeline_value || 0, 'CAD'),
+      subtitle: `${summary?.open_opportunities || 0} open deals`,
+      icon: DollarSign,
+      color: 'text-green-600'
+    },
+    {
+      title: 'Won This Month',
+      value: formatCurrency(summary?.won_this_month || 0, 'CAD'),
+      icon: TrendingUp,
+      color: 'text-emerald-600'
+    },
+    {
+      title: 'Conversion Rate',
+      value: `${summary?.conversion_rate || 0}%`,
+      subtitle: 'leads to customers',
+      icon: Target,
+      color: 'text-purple-600'
+    }
+  ]
+  
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">CRM Pipeline</h1>
-          <p className="text-muted-foreground">Track deals and opportunities</p>
+          <h1 className="text-3xl font-bold tracking-tight">CRM</h1>
+          <p className="text-muted-foreground">
+            Manage leads and sales pipeline
+          </p>
         </div>
         <div className="flex gap-2">
-          <Link href="/crm/leads">
-            <Button variant="outline">
-              <Users className="h-4 w-4 mr-2" />
-              Leads
-            </Button>
-          </Link>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            New Deal
+          <Button variant="outline" asChild>
+            <Link href="/crm/leads/new">
+              <UserPlus className="mr-2 h-4 w-4" />
+              New Lead
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/crm/opportunities/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New Opportunity
+            </Link>
           </Button>
         </div>
       </div>
-
+      
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-4">
-        <StatCard 
-          title="Pipeline Value" 
-          value={formatCurrency(mockCRMStats.pipelineValue)}
-          subtitle={`${mockCRMStats.totalDeals} active deals`}
-          icon={DollarSign}
-        />
-        <StatCard 
-          title="Won This Quarter" 
-          value={formatCurrency(mockCRMStats.wonValue)}
-          subtitle={`${mockCRMStats.wonDeals} deals closed`}
-          icon={Award}
-          trend={{ value: '+23% vs last quarter', positive: true }}
-          color="bg-green-500"
-        />
-        <StatCard 
-          title="Conversion Rate" 
-          value={`${mockCRMStats.conversionRate}%`}
-          icon={Target}
-          trend={{ value: '+5% improvement', positive: true }}
-        />
-        <StatCard 
-          title="Avg Deal Size" 
-          value={formatCurrency(mockCRMStats.avgDealSize)}
-          icon={BarChart3}
-        />
+        {stats.map((stat) => (
+          <Card key={stat.title}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+              <stat.icon className={cn("h-4 w-4", stat.color)} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stat.value}</div>
+              {stat.subtitle && (
+                <p className="text-xs text-muted-foreground">{stat.subtitle}</p>
+              )}
+            </CardContent>
+          </Card>
+        ))}
       </div>
-
-      {/* Search */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search deals..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Button variant="outline">
-              <Filter className="h-4 w-4 mr-2" />
-              Filter
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Pipeline Kanban */}
-      <div className="overflow-x-auto pb-4">
-        <div className="flex gap-4 min-w-max">
-          {activeStages.map((stage) => (
-            <PipelineColumn
-              key={stage.id}
-              stage={stage.id}
-              name={stage.name}
-              color={stage.color}
-              deals={stage.deals}
-              totalValue={stage.totalValue}
+      
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+            <TabsTrigger value="leads">Leads</TabsTrigger>
+            <TabsTrigger value="opportunities">Opportunities</TabsTrigger>
+          </TabsList>
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
             />
-          ))}
+          </div>
         </div>
-      </div>
-
-      {/* Closed Deals Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Closed Deals</CardTitle>
-          <CardDescription>Won and lost opportunities</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
-            {closedStages.map((stage) => (
-              <div key={stage.id} className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className={cn("w-3 h-3 rounded-full", stage.color)} />
-                  <h4 className="font-medium">{stage.name}</h4>
-                  <Badge variant="outline">{stage.deals.length}</Badge>
-                  <span className="text-sm text-muted-foreground ml-auto">
-                    {formatCurrency(stage.totalValue)}
-                  </span>
+        
+        {/* Pipeline View */}
+        <TabsContent value="pipeline" className="mt-6">
+          <div className="flex gap-4 overflow-x-auto pb-4">
+            {pipelineData.map(({ stage, opportunities: stageOpps }) => (
+              <div 
+                key={stage.id} 
+                className="flex-shrink-0 w-72 bg-muted/50 rounded-lg p-4"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: stage.color }}
+                    />
+                    <h3 className="font-semibold">{stage.name}</h3>
+                  </div>
+                  <Badge variant="secondary">{stageOpps.length}</Badge>
                 </div>
-                <div className="space-y-2">
-                  {stage.deals.slice(0, 3).map((deal) => (
-                    <Link 
-                      key={deal.id} 
-                      href={`/crm/${deal.id}`}
-                      className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                <div className="space-y-3">
+                  {stageOpps.map((opp) => (
+                    <Card 
+                      key={opp.id}
+                      className="cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={() => router.push(`/crm/opportunities/${opp.id}`)}
                     >
-                      <div>
-                        <p className="font-medium">{deal.title}</p>
-                        <p className="text-sm text-muted-foreground">{deal.company}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">{formatCurrency(deal.value)}</p>
-                        <p className="text-xs text-muted-foreground">{formatDate(deal.updatedAt)}</p>
-                      </div>
-                    </Link>
+                      <CardContent className="p-4">
+                        <h4 className="font-medium truncate">{opp.name}</h4>
+                        {opp.contact && (
+                          <p className="text-sm text-muted-foreground truncate">
+                            {opp.contact.display_name}
+                          </p>
+                        )}
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="font-semibold text-green-600">
+                            {opp.amount ? formatCurrency(opp.amount, opp.currency) : '—'}
+                          </span>
+                          {opp.expected_close && (
+                            <span className="text-xs text-muted-foreground">
+                              {formatDate(opp.expected_close)}
+                            </span>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
+                  {stageOpps.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No opportunities
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </TabsContent>
+        
+        {/* Leads List */}
+        <TabsContent value="leads" className="mt-6">
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Score</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {leadsLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        Loading...
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredLeads.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        No leads found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredLeads.map((lead) => {
+                      const status = leadStatusConfig[lead.status]
+                      return (
+                        <TableRow 
+                          key={lead.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => router.push(`/crm/leads/${lead.id}`)}
+                        >
+                          <TableCell className="font-medium">
+                            {lead.first_name} {lead.last_name}
+                          </TableCell>
+                          <TableCell>{lead.company_name || '—'}</TableCell>
+                          <TableCell>{lead.email || '—'}</TableCell>
+                          <TableCell>{lead.source || '—'}</TableCell>
+                          <TableCell>
+                            <Badge className={cn("font-normal", status.color)}>
+                              {status.label}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{lead.score}</Badge>
+                          </TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => router.push(`/crm/leads/${lead.id}`)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                {lead.status === 'qualified' && (
+                                  <DropdownMenuItem onClick={() => handleConvertLead(lead.id)}>
+                                    <ArrowRight className="mr-2 h-4 w-4" />
+                                    Convert to Customer
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => handleDeleteLead(lead.id)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* Opportunities List */}
+        <TabsContent value="opportunities" className="mt-6">
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Opportunity</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Stage</TableHead>
+                    <TableHead>Close Date</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {oppsLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        Loading...
+                      </TableCell>
+                    </TableRow>
+                  ) : opportunities.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        No opportunities found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    opportunities.map((opp) => (
+                      <TableRow 
+                        key={opp.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => router.push(`/crm/opportunities/${opp.id}`)}
+                      >
+                        <TableCell className="font-medium">{opp.name}</TableCell>
+                        <TableCell>{opp.contact?.display_name || '—'}</TableCell>
+                        <TableCell>
+                          {opp.stage && (
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-2 h-2 rounded-full" 
+                                style={{ backgroundColor: opp.stage.color }}
+                              />
+                              {opp.stage.name}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {opp.expected_close ? formatDate(opp.expected_close) : '—'}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {opp.amount ? formatCurrency(opp.amount, opp.currency) : '—'}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => router.push(`/crm/opportunities/${opp.id}`)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

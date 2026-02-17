@@ -65,7 +65,7 @@ const navigation: NavGroup[] = [
       { title: "Inventory", href: "/inventory", icon: Package },
       { title: "Warehouses", href: "/warehouses", icon: Warehouse },
       { title: "Sales", href: "/sales", icon: ShoppingCart },
-      { title: "Purchases", href: "/purchases", icon: Truck },
+      { title: "Purchase Orders", href: "/purchase-orders", icon: Truck },
       { title: "Manufacturing", href: "/manufacturing", icon: Factory },
     ],
   },
