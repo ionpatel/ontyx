@@ -5,17 +5,19 @@ import { userProfileService, type UserProfile, type UpdateProfileInput } from '@
 import { useAuth } from './use-auth'
 
 export function useUserProfile() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  // Use 'demo' as fallback for demo mode
   const userId = user?.id 
 
   const fetchProfile = useCallback(async () => {
+    if (authLoading) return // Wait for auth
+    
     if (!userId) {
+      setProfile(null)
       setLoading(false)
       return
     }
@@ -32,7 +34,7 @@ export function useUserProfile() {
     } finally {
       setLoading(false)
     }
-  }, [userId])
+  }, [userId, authLoading])
 
   useEffect(() => {
     fetchProfile()
@@ -91,7 +93,7 @@ export function useUserProfile() {
 
   return {
     profile,
-    loading,
+    loading: loading || authLoading,
     error,
     saving,
     refetch: fetchProfile,
