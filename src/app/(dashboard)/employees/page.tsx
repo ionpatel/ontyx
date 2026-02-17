@@ -526,7 +526,7 @@ export default function EmployeesPage() {
                 <div className="space-y-2">
                   <Label>Province/State</Label>
                   <Select
-                    value={form.state}
+                    value={form.state || 'ON'}
                     onValueChange={(v) => setForm(f => ({ ...f, state: v }))}
                   >
                     <SelectTrigger>
@@ -552,7 +552,7 @@ export default function EmployeesPage() {
                 <div className="space-y-2">
                   <Label>Country</Label>
                   <Select
-                    value={form.country}
+                    value={form.country || 'CA'}
                     onValueChange={(v) => setForm(f => ({ ...f, country: v }))}
                   >
                     <SelectTrigger>
@@ -580,7 +580,7 @@ export default function EmployeesPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No Department</SelectItem>
-                      {departments.map(d => (
+                      {departments.filter(d => d.id).map(d => (
                         <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -599,7 +599,7 @@ export default function EmployeesPage() {
                 <div className="space-y-2">
                   <Label>Employment Type</Label>
                   <Select
-                    value={form.employmentType}
+                    value={form.employmentType || 'full_time'}
                     onValueChange={(v) => setForm(f => ({ ...f, employmentType: v as EmploymentType }))}
                   >
                     <SelectTrigger>
