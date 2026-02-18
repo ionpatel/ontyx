@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { GlobalSearch } from '@/components/global-search'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { KeyboardShortcuts, useNavigationShortcuts } from '@/components/keyboard-shortcuts'
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -128,6 +129,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const { signOut, loading: authLoading, user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  
+  // Enable keyboard navigation shortcuts
+  useNavigationShortcuts()
 
   // Redirect to onboarding if needed
   useEffect(() => {
@@ -317,6 +321,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2">
+            <KeyboardShortcuts />
             <ThemeToggle />
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
