@@ -543,18 +543,20 @@ function StepComplete({ onBack, data, updateData }: StepProps) {
       
       if (user) {
         // Update organization with onboarding data
+        const updateData: Record<string, unknown> = {
+          name: data.businessName,
+          business_type: data.businessType,
+          business_subtype: data.businessSubtype,
+          business_size: data.businessSize,
+          province: data.province,
+          enabled_modules: enabledModules,
+          onboarding_completed: true,
+          updated_at: new Date().toISOString(),
+        }
+        
         const { error } = await supabase
           .from('organizations')
-          .update({
-            name: data.businessName,
-            business_type: data.businessType,
-            business_subtype: data.businessSubtype,
-            business_size: data.businessSize,
-            province: data.province,
-            enabled_modules: enabledModules,
-            onboarding_completed: true,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updateData as any)
           .eq('id', user.user_metadata?.organization_id)
 
         if (error) {

@@ -79,7 +79,7 @@ export default function OnboardingPage() {
 
   // Check if already onboarded
   useEffect(() => {
-    if (organization?.industry && organization?.onboarding_completed) {
+    if (organization?.businessType && organization?.onboardingCompleted) {
       router.push('/dashboard');
     }
   }, [organization, router]);
@@ -111,21 +111,12 @@ export default function OnboardingPage() {
       // Apply industry template
       await industryTemplateService.applyTemplate(organization.id, selectedIndustry);
 
-      // Update organization info
+      // Update organization info - use camelCase properties
       await updateOrganization({
         name: businessInfo.name,
-        legal_name: businessInfo.legalName,
-        tax_number: businessInfo.taxNumber,
-        phone: businessInfo.phone,
-        email: businessInfo.email,
-        website: businessInfo.website,
-        address: businessInfo.address,
-        city: businessInfo.city,
         province: businessInfo.province,
-        postal_code: businessInfo.postalCode,
-        country: businessInfo.country,
-        onboarding_completed: true,
-      });
+        onboardingCompleted: true,
+      } as any);
 
       setStep('complete');
 

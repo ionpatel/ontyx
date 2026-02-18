@@ -75,18 +75,20 @@ export function useOrganization() {
     try {
       const supabase = createClient()
       
+      // Build update object, filtering undefined values
+      const updateData: Record<string, unknown> = {}
+      if (updates.name !== undefined) updateData.name = updates.name
+      if (updates.businessType !== undefined) updateData.business_type = updates.businessType
+      if (updates.businessSubtype !== undefined) updateData.business_subtype = updates.businessSubtype
+      if (updates.businessSize !== undefined) updateData.business_size = updates.businessSize
+      if (updates.enabledModules !== undefined) updateData.enabled_modules = updates.enabledModules
+      if (updates.onboardingCompleted !== undefined) updateData.onboarding_completed = updates.onboardingCompleted
+      if (updates.province !== undefined) updateData.province = updates.province
+      updateData.updated_at = new Date().toISOString()
+      
       const { data, error } = await supabase
         .from('organizations')
-        .update({
-          name: updates.name,
-          business_type: updates.businessType,
-          business_subtype: updates.businessSubtype,
-          business_size: updates.businessSize,
-          enabled_modules: updates.enabledModules,
-          onboarding_completed: updates.onboardingCompleted,
-          province: updates.province,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData as any)
         .eq('id', organizationId)
         .select()
         .single()
