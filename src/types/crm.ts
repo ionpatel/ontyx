@@ -168,3 +168,16 @@ export interface CRMSummary {
   won_this_month: number
   conversion_rate: number
 }
+
+// Type aliases for backwards compatibility
+export type DealActivity = Activity
+export type DealStage = PipelineStage
+
+// Helper type for leads page
+export interface LeadWithHelpers extends Lead {
+  name?: string  // computed from first_name + last_name
+  company?: string  // alias for company_name
+  createdAt?: string  // alias for created_at
+  assignedTo?: string  // alias for assigned_to
+}
+

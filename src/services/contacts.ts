@@ -320,4 +320,13 @@ function mapContactToDb(updates: Partial<CreateContactInput>): Record<string, an
   return mapped
 }
 
+// Named exports for direct imports
+export const getContacts = contactsService.getContacts
+export const getContact = contactsService.getContact
+export const createContact = contactsService.createContact
+export const updateContact = contactsService.updateContact
+export const deleteContact = contactsService.deleteContact
+export const searchContacts = contactsService.searchContacts
+export const getContactStats = contactsService.getContactStats
+
 export default contactsService

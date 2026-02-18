@@ -38,7 +38,7 @@ export default function NewBillPage() {
   const createMutation = useCreateBill()
   
   // Filter to vendors only
-  const vendors = contacts.filter(c => c.is_vendor)
+  const vendors = contacts.filter(c => c.type === 'vendor' || c.type === 'both')
   
   // Form state
   const [contactId, setContactId] = useState('')
@@ -87,7 +87,7 @@ export default function NewBillPage() {
               ...item,
               product_id: productId,
               description: product.name,
-              unit_price: product.cost_price || 0
+              unit_price: product.costPrice || 0
             }
           : item
       ))
@@ -180,7 +180,7 @@ export default function NewBillPage() {
                       ) : (
                         vendors.map((vendor) => (
                           <SelectItem key={vendor.id} value={vendor.id}>
-                            {vendor.display_name}
+                            {vendor.name}
                           </SelectItem>
                         ))
                       )}

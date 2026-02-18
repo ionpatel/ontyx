@@ -24,7 +24,7 @@ export default function NewOpportunityPage() {
   const createMutation = useCreateOpportunity()
   
   // Filter to customers only
-  const customers = contacts.filter(c => c.is_customer)
+  const customers = contacts.filter(c => c.type === 'customer' || c.type === 'both')
   
   const [name, setName] = useState('')
   const [contactId, setContactId] = useState('')
