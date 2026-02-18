@@ -9,8 +9,10 @@ import {
   ChevronRight, ChevronLeft, Check, Sparkles, Users, Home,
   Truck, Stethoscope, Laptop, Palette, Hammer, Zap, Store,
   Package, FileText, Receipt, BarChart3, Clock, UserCircle,
-  Settings, ArrowRight, Loader2
+  Settings, ArrowRight, Loader2, Crown
 } from "lucide-react"
+import { TierSelection, TIERS, getRecommendedTier } from "@/components/onboarding/tier-selection"
+import { BusinessNeeds, calculateRecommendations } from "@/components/onboarding/business-needs"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -175,6 +177,8 @@ interface OnboardingData {
   businessSize: string
   province: string
   enabledModules: string[]
+  needsAnswers: Record<string, string | string[]>
+  selectedTier: 'starter' | 'growth' | 'enterprise' | null
 }
 
 // Step 1: Welcome & Business Type
@@ -504,12 +508,12 @@ function StepDetails({ onNext, onBack, data, updateData }: StepProps) {
   )
 }
 
-// Step 5: Module Preview & Completion
+// Step 7: Module Preview & Completion
 function StepComplete({ onBack, data, updateData }: StepProps) {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const businessType = BUSINESS_TYPES.find(t => t.id === data.businessType)
-  const recommendedModules = MODULE_RECOMMENDATIONS[data.businessType] || []
+  const selectedTierInfo = TIERS.find(t => t.id === data.selectedTier)
 
   const allModules = [
     { id: "invoices", name: "Invoices", icon: FileText },
@@ -522,9 +526,13 @@ function StepComplete({ onBack, data, updateData }: StepProps) {
     { id: "employees", name: "Employees", icon: Users },
     { id: "payroll", name: "Payroll", icon: Receipt },
     { id: "reports", name: "Reports", icon: BarChart3 },
+    { id: "manufacturing", name: "Manufacturing", icon: Factory },
   ]
 
-  const [enabledModules, setEnabledModules] = useState<string[]>(recommendedModules)
+  // Use modules from selected tier or data
+  const [enabledModules, setEnabledModules] = useState<string[]>(
+    data.enabledModules.length > 0 ? data.enabledModules : selectedTierInfo?.modules || []
+  )
 
   const toggleModule = (moduleId: string) => {
     setEnabledModules(prev => 
@@ -543,20 +551,21 @@ function StepComplete({ onBack, data, updateData }: StepProps) {
       
       if (user) {
         // Update organization with onboarding data
-        const updateData: Record<string, unknown> = {
+        const orgUpdate: Record<string, unknown> = {
           name: data.businessName,
           business_type: data.businessType,
           business_subtype: data.businessSubtype,
           business_size: data.businessSize,
           province: data.province,
           enabled_modules: enabledModules,
+          tier: data.selectedTier || 'starter',
           onboarding_completed: true,
           updated_at: new Date().toISOString(),
         }
         
         const { error } = await supabase
           .from('organizations')
-          .update(updateData as any)
+          .update(orgUpdate as any)
           .eq('id', user.user_metadata?.organization_id)
 
         if (error) {
@@ -600,26 +609,39 @@ function StepComplete({ onBack, data, updateData }: StepProps) {
             )}>
               {businessType && <businessType.icon className="h-6 w-6" />}
             </div>
-            <div>
+            <div className="flex-1">
               <h3 className="font-semibold">{businessType?.name}</h3>
               <p className="text-sm text-muted-foreground">
                 {businessType?.subtypes.find(s => s.id === data.businessSubtype)?.name}
               </p>
             </div>
-            <Badge variant="secondary" className="ml-auto">
-              {SIZE_OPTIONS.find(s => s.id === data.businessSize)?.name}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">
+                {SIZE_OPTIONS.find(s => s.id === data.businessSize)?.name}
+              </Badge>
+              {selectedTierInfo && (
+                <Badge className={cn(
+                  "bg-gradient-to-r text-white",
+                  selectedTierInfo.color
+                )}>
+                  {selectedTierInfo.icon && <selectedTierInfo.icon className="h-3 w-3 mr-1" />}
+                  {selectedTierInfo.name}
+                </Badge>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Module Selection */}
       <div className="max-w-3xl mx-auto space-y-4">
-        <h3 className="font-semibold text-center">Your modules (tap to toggle)</h3>
+        <h3 className="font-semibold text-center">
+          Your {selectedTierInfo?.name} modules (tap to toggle)
+        </h3>
         <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
           {allModules.map((module) => {
             const isEnabled = enabledModules.includes(module.id)
-            const isRecommended = recommendedModules.includes(module.id)
+            const isInTier = selectedTierInfo?.modules.includes(module.id)
             return (
               <motion.div
                 key={module.id}
@@ -628,9 +650,10 @@ function StepComplete({ onBack, data, updateData }: StepProps) {
                 <Card
                   className={cn(
                     "cursor-pointer transition-all",
-                    isEnabled ? "ring-2 ring-primary bg-primary/5" : "opacity-60"
+                    isEnabled ? "ring-2 ring-primary bg-primary/5" : "opacity-60",
+                    !isInTier && "opacity-40 cursor-not-allowed"
                   )}
-                  onClick={() => toggleModule(module.id)}
+                  onClick={() => isInTier && toggleModule(module.id)}
                 >
                   <CardContent className="p-3 flex items-center gap-3">
                     <div className={cn(
@@ -640,9 +663,9 @@ function StepComplete({ onBack, data, updateData }: StepProps) {
                       <module.icon className="h-4 w-4" />
                     </div>
                     <span className="text-sm font-medium flex-1">{module.name}</span>
-                    {isRecommended && (
-                      <Badge variant="outline" className="text-xs">
-                        Recommended
+                    {!isInTier && (
+                      <Badge variant="outline" className="text-xs text-muted-foreground">
+                        Upgrade
                       </Badge>
                     )}
                   </CardContent>
@@ -697,9 +720,11 @@ export default function OnboardingPage() {
     businessSize: "",
     province: "ON",
     enabledModules: [],
+    needsAnswers: {},
+    selectedTier: null,
   })
 
-  const totalSteps = 5
+  const totalSteps = 7
   const progress = (step / totalSteps) * 100
 
   const updateData = (updates: Partial<OnboardingData>) => {
@@ -752,7 +777,48 @@ export default function OnboardingPage() {
             {step === 2 && <StepSubtype key="subtype" {...stepProps} />}
             {step === 3 && <StepSize key="size" {...stepProps} />}
             {step === 4 && <StepDetails key="details" {...stepProps} />}
-            {step === 5 && <StepComplete key="complete" {...stepProps} />}
+            {step === 5 && (
+              <BusinessNeeds
+                key="needs"
+                businessType={data.businessType}
+                answers={data.needsAnswers}
+                onAnswer={(questionId, answer) => {
+                  updateData({
+                    needsAnswers: { ...data.needsAnswers, [questionId]: answer }
+                  })
+                }}
+                onNext={() => {
+                  // Calculate recommendations and move to tier selection
+                  const { modules, tier } = calculateRecommendations(data.needsAnswers)
+                  updateData({ 
+                    enabledModules: modules,
+                    selectedTier: tier,
+                  })
+                  setStep(6)
+                }}
+                onBack={() => setStep(4)}
+              />
+            )}
+            {step === 6 && (
+              <TierSelection
+                key="tier"
+                businessSize={data.businessSize}
+                businessType={data.businessType}
+                selectedTier={data.selectedTier}
+                onSelect={(tierId) => {
+                  const tier = TIERS.find(t => t.id === tierId)
+                  if (tier) {
+                    updateData({ 
+                      selectedTier: tierId,
+                      enabledModules: tier.modules,
+                    })
+                  }
+                }}
+                onNext={() => setStep(7)}
+                onBack={() => setStep(5)}
+              />
+            )}
+            {step === 7 && <StepComplete key="complete" {...stepProps} />}
           </AnimatePresence>
         </div>
       </main>
