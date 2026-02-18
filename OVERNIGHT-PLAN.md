@@ -8,33 +8,36 @@ Transform Ontyx from a collection of modules into a polished, cohesive Canadian 
 
 ## 📋 Tonight's Priorities
 
-### Phase 2A: Business Onboarding Wizard (2-3 hours)
-- [ ] Welcome screen with business type selection
-- [ ] Sub-type refinement (e.g., Plumber → Residential/Commercial)
-- [ ] Business size tier (Solo/Small/Corporate)
-- [ ] Smart questions based on type
-- [ ] Module preview & customization
-- [ ] Database setup with defaults
+### Phase 2A: Business Onboarding Wizard ✅ DONE
+- [x] Welcome screen with business type selection (6 types)
+- [x] Sub-type refinement (e.g., Plumber → Residential/Commercial)
+- [x] Business size tier (Solo/Small/Medium)
+- [x] Business details (name, province)
+- [x] Module preview & customization
+- [x] Database migration for onboarding fields
+- [x] Auto-seed categories trigger
 
-### Phase 2B: UI/UX Overhaul (2-3 hours)
-- [ ] Consistent design tokens (colors, spacing, shadows)
-- [ ] Responsive navigation (mobile hamburger, tablet sidebar, desktop full)
+### Phase 2B: UI/UX Overhaul (IN PROGRESS)
+- [x] Simplified sidebar navigation (filtered by enabled modules)
+- [x] Loading skeletons (StatCard, Table, Dashboard, Form, etc.)
+- [x] Empty states with helpful CTAs
 - [ ] Card-based layouts that work on all screens
-- [ ] Loading states and skeletons
-- [ ] Empty states with helpful CTAs
 - [ ] Micro-interactions (hover, focus, transitions)
+- [ ] More responsive polish
 
 ### Phase 2C: Core Module Polish (2 hours)
-- [ ] Dashboard with real metrics
+- [x] Inventory form: validation + category creation + service toggle
+- [x] contacts/new: full page with address fields
+- [ ] Dashboard with real metrics (already good)
 - [ ] Invoice flow end-to-end
-- [ ] Contact improvements
 - [ ] Settings page overhaul
 
-### Phase 2D: PWA Enhancement (1 hour)
-- [ ] Service worker for offline
-- [ ] Install prompt component
-- [ ] App manifest polish
-- [ ] Splash screen
+### Phase 2D: PWA Enhancement ✅ DONE
+- [x] Service worker (sw.js) with caching strategies
+- [x] Install prompt component (iOS + Android)
+- [x] App manifest (already good)
+- [x] ServiceWorkerRegister component
+- [x] Root layout PWA meta tags
 
 ## 🎨 Ion's Design Opinions
 
