@@ -3,15 +3,19 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Save, Package, Loader2 } from "lucide-react"
+import { ArrowLeft, Save, Package, Loader2, Plus, Wrench } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog"
 import { useCategories } from "@/hooks/use-inventory"
 import { inventoryService } from "@/services/inventory"
 import { motion } from "framer-motion"
@@ -19,9 +23,13 @@ import { motion } from "framer-motion"
 
 export default function NewProductPage() {
   const router = useRouter()
-  const { categories } = useCategories()
+  const { categories, createCategory } = useCategories()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [showCategoryDialog, setShowCategoryDialog] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState("")
+  const [creatingCategory, setCreatingCategory] = useState(false)
   const [formData, setFormData] = useState({
     sku: "",
     barcode: "",
@@ -39,10 +47,42 @@ export default function NewProductPage() {
     length: "",
     width: "",
     height: "",
+    isService: false, // NEW: Service vs Physical product
   })
+
+  // Validate form before submit
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {}
+    
+    if (!formData.sku.trim()) {
+      errors.sku = "SKU is required"
+    }
+    if (!formData.name.trim()) {
+      errors.name = "Product name is required"
+    }
+    if (!formData.categoryId) {
+      errors.categoryId = "Please select a category"
+    }
+    if (!formData.unitPrice || parseFloat(formData.unitPrice) < 0) {
+      errors.unitPrice = "Please enter a valid selling price"
+    }
+    if (!formData.costPrice || parseFloat(formData.costPrice) < 0) {
+      errors.costPrice = "Please enter a valid cost price"
+    }
+    
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validate first
+    if (!validateForm()) {
+      setError("Please fix the errors below before saving")
+      return
+    }
+    
     setLoading(true)
     setError(null)
     
@@ -56,9 +96,9 @@ export default function NewProductPage() {
         unitPrice: parseFloat(formData.unitPrice) || 0,
         costPrice: parseFloat(formData.costPrice) || 0,
         taxRate: parseFloat(formData.taxRate) || 13,
-        stockQuantity: parseInt(formData.stockQuantity) || 0,
-        reorderLevel: parseInt(formData.reorderLevel) || 10,
-        reorderQuantity: parseInt(formData.reorderQuantity) || 50,
+        stockQuantity: formData.isService ? 0 : (parseInt(formData.stockQuantity) || 0),
+        reorderLevel: formData.isService ? 0 : (parseInt(formData.reorderLevel) || 10),
+        reorderQuantity: formData.isService ? 0 : (parseInt(formData.reorderQuantity) || 50),
         unit: formData.unit,
         weight: formData.weight ? parseFloat(formData.weight) : undefined,
         dimensions: formData.length || formData.width || formData.height ? {
@@ -66,6 +106,7 @@ export default function NewProductPage() {
           width: parseFloat(formData.width) || 0,
           height: parseFloat(formData.height) || 0,
         } : undefined,
+        isService: formData.isService,
       })
       
       router.push("/inventory")
@@ -75,9 +116,33 @@ export default function NewProductPage() {
       setLoading(false)
     }
   }
+  
+  // Create new category
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return
+    
+    setCreatingCategory(true)
+    try {
+      const newCat = await createCategory({ name: newCategoryName.trim() })
+      if (newCat) {
+        setFormData(prev => ({ ...prev, categoryId: newCat.id }))
+        setValidationErrors(prev => ({ ...prev, categoryId: "" }))
+      }
+      setShowCategoryDialog(false)
+      setNewCategoryName("")
+    } catch (err) {
+      console.error("Failed to create category:", err)
+    } finally {
+      setCreatingCategory(false)
+    }
+  }
 
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+    if (field === "isService") {
+      setFormData(prev => ({ ...prev, isService: value === "true" }))
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }))
+    }
   }
 
   return (
@@ -143,9 +208,15 @@ export default function NewProductPage() {
                       id="sku"
                       placeholder="PROD-001"
                       value={formData.sku}
-                      onChange={(e) => handleChange("sku", e.target.value)}
-                      required
+                      onChange={(e) => {
+                        handleChange("sku", e.target.value)
+                        setValidationErrors(prev => ({ ...prev, sku: "" }))
+                      }}
+                      className={validationErrors.sku ? "border-destructive" : ""}
                     />
+                    {validationErrors.sku && (
+                      <p className="text-sm text-destructive">{validationErrors.sku}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="barcode">Barcode</Label>
@@ -158,14 +229,20 @@ export default function NewProductPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="name">Product Name *</Label>
+                  <Label htmlFor="name">{formData.isService ? "Service" : "Product"} Name *</Label>
                   <Input
                     id="name"
-                    placeholder="Enter product name"
+                    placeholder={formData.isService ? "e.g., Plumbing Service - 1 Hour" : "Enter product name"}
                     value={formData.name}
-                    onChange={(e) => handleChange("name", e.target.value)}
-                    required
+                    onChange={(e) => {
+                      handleChange("name", e.target.value)
+                      setValidationErrors(prev => ({ ...prev, name: "" }))
+                    }}
+                    className={validationErrors.name ? "border-destructive" : ""}
                   />
+                  {validationErrors.name && (
+                    <p className="text-sm text-destructive">{validationErrors.name}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
@@ -179,20 +256,60 @@ export default function NewProductPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="category">Category *</Label>
-                  <Select
-                    value={formData.categoryId}
-                    onValueChange={(value) => handleChange("categoryId", value)}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map(cat => (
-                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select
+                      value={formData.categoryId}
+                      onValueChange={(value) => {
+                        handleChange("categoryId", value)
+                        setValidationErrors(prev => ({ ...prev, categoryId: "" }))
+                      }}
+                    >
+                      <SelectTrigger className={validationErrors.categoryId ? "border-destructive" : ""}>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.length === 0 ? (
+                          <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                            No categories yet. Create one!
+                          </div>
+                        ) : (
+                          categories.map(cat => (
+                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setShowCategoryDialog(true)}
+                      title="Add new category"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {validationErrors.categoryId && (
+                    <p className="text-sm text-destructive">{validationErrors.categoryId}</p>
+                  )}
+                </div>
+                
+                {/* Product Type Toggle */}
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="isService" className="flex items-center gap-2">
+                      <Wrench className="h-4 w-4" />
+                      This is a Service
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Services don't track inventory (e.g., "Plumbing Service - 1hr")
+                    </p>
+                  </div>
+                  <Switch
+                    id="isService"
+                    checked={formData.isService}
+                    onCheckedChange={(checked) => handleChange("isService", checked ? "true" : "false")}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -212,7 +329,7 @@ export default function NewProductPage() {
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="unitPrice">Selling Price *</Label>
+                    <Label htmlFor="unitPrice">{formData.isService ? "Hourly Rate" : "Selling Price"} *</Label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                       <Input
@@ -221,15 +338,20 @@ export default function NewProductPage() {
                         step="0.01"
                         min="0"
                         placeholder="0.00"
-                        className="pl-7"
+                        className={`pl-7 ${validationErrors.unitPrice ? "border-destructive" : ""}`}
                         value={formData.unitPrice}
-                        onChange={(e) => handleChange("unitPrice", e.target.value)}
-                        required
+                        onChange={(e) => {
+                          handleChange("unitPrice", e.target.value)
+                          setValidationErrors(prev => ({ ...prev, unitPrice: "" }))
+                        }}
                       />
                     </div>
+                    {validationErrors.unitPrice && (
+                      <p className="text-sm text-destructive">{validationErrors.unitPrice}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="costPrice">Cost Price *</Label>
+                    <Label htmlFor="costPrice">Cost {formData.isService ? "(your cost/hr)" : "Price"} *</Label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                       <Input
@@ -238,12 +360,17 @@ export default function NewProductPage() {
                         step="0.01"
                         min="0"
                         placeholder="0.00"
-                        className="pl-7"
+                        className={`pl-7 ${validationErrors.costPrice ? "border-destructive" : ""}`}
                         value={formData.costPrice}
-                        onChange={(e) => handleChange("costPrice", e.target.value)}
-                        required
+                        onChange={(e) => {
+                          handleChange("costPrice", e.target.value)
+                          setValidationErrors(prev => ({ ...prev, costPrice: "" }))
+                        }}
                       />
                     </div>
+                    {validationErrors.costPrice && (
+                      <p className="text-sm text-destructive">{validationErrors.costPrice}</p>
+                    )}
                   </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -305,56 +432,58 @@ export default function NewProductPage() {
             </Card>
           </motion.div>
 
-          {/* Inventory */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>Inventory</CardTitle>
-                <CardDescription>Stock levels and reorder settings</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="stockQuantity">Initial Stock</Label>
-                    <Input
-                      id="stockQuantity"
-                      type="number"
-                      min="0"
-                      value={formData.stockQuantity}
-                      onChange={(e) => handleChange("stockQuantity", e.target.value)}
-                    />
+          {/* Inventory - Hidden for services */}
+          {!formData.isService && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle>Inventory</CardTitle>
+                  <CardDescription>Stock levels and reorder settings</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="stockQuantity">Initial Stock</Label>
+                      <Input
+                        id="stockQuantity"
+                        type="number"
+                        min="0"
+                        value={formData.stockQuantity}
+                        onChange={(e) => handleChange("stockQuantity", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="reorderLevel">Reorder Level</Label>
+                      <Input
+                        id="reorderLevel"
+                        type="number"
+                        min="0"
+                        value={formData.reorderLevel}
+                        onChange={(e) => handleChange("reorderLevel", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="reorderQuantity">Reorder Qty</Label>
+                      <Input
+                        id="reorderQuantity"
+                        type="number"
+                        min="0"
+                        value={formData.reorderQuantity}
+                        onChange={(e) => handleChange("reorderQuantity", e.target.value)}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="reorderLevel">Reorder Level</Label>
-                    <Input
-                      id="reorderLevel"
-                      type="number"
-                      min="0"
-                      value={formData.reorderLevel}
-                      onChange={(e) => handleChange("reorderLevel", e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="reorderQuantity">Reorder Qty</Label>
-                    <Input
-                      id="reorderQuantity"
-                      type="number"
-                      min="0"
-                      value={formData.reorderQuantity}
-                      onChange={(e) => handleChange("reorderQuantity", e.target.value)}
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Low stock alerts trigger when inventory falls below the reorder level.
-                </p>
-              </CardContent>
-            </Card>
-          </motion.div>
+                  <p className="text-xs text-muted-foreground">
+                    Low stock alerts trigger when inventory falls below the reorder level.
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
 
           {/* Dimensions */}
           <motion.div
@@ -445,6 +574,53 @@ export default function NewProductPage() {
           </Button>
         </motion.div>
       </form>
+      
+      {/* Create Category Dialog */}
+      <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Category</DialogTitle>
+            <DialogDescription>
+              Add a new category to organize your products and services.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="newCategoryName">Category Name</Label>
+              <Input
+                id="newCategoryName"
+                placeholder="e.g., Plumbing Parts, Services, Tools..."
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    handleCreateCategory()
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCategoryDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateCategory}
+              disabled={!newCategoryName.trim() || creatingCategory}
+            >
+              {creatingCategory ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create Category"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

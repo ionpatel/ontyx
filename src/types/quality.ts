@@ -45,6 +45,9 @@ export interface CreateQualityCheckInput {
   equipment_id?: string;
   purchase_order_id?: string;
   check_type: 'incoming' | 'in_process' | 'final' | 'random';
-  criteria: QualityCriterion[];
+  criteria?: QualityCriterion[];
   inspector_id?: string;
+  status?: 'pending' | 'passed' | 'failed' | 'conditional';
+  notes?: string;
+  inspection_date?: string;
 }

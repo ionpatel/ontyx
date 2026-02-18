@@ -23,6 +23,8 @@ interface ToastContextValue {
   error: (title: string, description?: string) => string;
   warning: (title: string, description?: string) => string;
   info: (title: string, description?: string) => string;
+  // shadcn-compatible API
+  toast: (opts: { title?: string; description?: string; variant?: string }) => string;
 }
 
 const ToastContext = React.createContext<ToastContextValue | undefined>(
@@ -86,9 +88,27 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [addToast]
   );
 
+  // shadcn-compatible toast() function
+  const toast = React.useCallback(
+    (opts: { title?: string; description?: string; variant?: string }) => {
+      // Map shadcn variant names to our variants
+      let variant: Toast['variant'] = 'default'
+      if (opts.variant === 'destructive') variant = 'error'
+      else if (opts.variant === 'success') variant = 'success'
+      else if (opts.variant === 'warning') variant = 'warning'
+      
+      return addToast({ 
+        title: opts.title, 
+        description: opts.description, 
+        variant 
+      })
+    },
+    [addToast]
+  );
+
   return (
     <ToastContext.Provider
-      value={{ toasts, addToast, removeToast, success, error, warning, info }}
+      value={{ toasts, addToast, removeToast, success, error, warning, info, toast }}
     >
       {children}
       <ToastViewport toasts={toasts} onRemove={removeToast} />

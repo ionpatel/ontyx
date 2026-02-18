@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ontyx Business Research — Real World Analysis</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #94a3b8;
+            margin-bottom: 2rem;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+        
+        .nav-tab {
+            padding: 0.75rem 1.5rem;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        
+        .nav-tab:hover {
+            background: #334155;
+        }
+        
+        .nav-tab.active {
+            background: #3b82f6;
+            border-color: #3b82f6;
+        }
+        
+        .category-section {
+            display: none;
+        }
+        
+        .category-section.active {
+            display: block;
+        }
+        
+        .category-header {
+            background: linear-gradient(135deg, #1e293b, #334155);
+            padding: 2rem;
+            border-radius: 1rem;
+            margin-bottom: 2rem;
+            border: 1px solid #475569;
+        }
+        
+        .category-header h2 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .category-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .stat-box {
+            background: rgba(59, 130, 246, 0.1);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+        
+        .stat-box .number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #60a5fa;
+        }
+        
+        .stat-box .label {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+        
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .example-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+        
+        .example-header {
+            background: linear-gradient(135deg, #334155, #475569);
+            padding: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .example-icon {
+            width: 50px;
+            height: 50px;
+            background: #3b82f6;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        
+        .example-title h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .example-title span {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+        
+        .example-body {
+            padding: 1.25rem;
+        }
+        
+        .workflow-section {
+            margin-bottom: 1.5rem;
+        }
+        
+        .workflow-section h4 {
+            color: #60a5fa;
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .workflow-steps {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        .workflow-step {
+            background: #334155;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.85rem;
+        }
+        
+        .workflow-arrow {
+            color: #60a5fa;
+        }
+        
+        .needs-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+        
+        .need-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            padding: 0.375rem;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 0.25rem;
+        }
+        
+        .need-item.critical {
+            background: rgba(239, 68, 68, 0.15);
+            border-left: 2px solid #ef4444;
+        }
+        
+        .need-item.important {
+            background: rgba(245, 158, 11, 0.15);
+            border-left: 2px solid #f59e0b;
+        }
+        
+        .need-item.optional {
+            background: rgba(34, 197, 94, 0.1);
+            border-left: 2px solid #22c55e;
+        }
+        
+        .scale-comparison {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .scale-comparison h3 {
+            margin-bottom: 1rem;
+            color: #f8fafc;
+        }
+        
+        .scale-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+        
+        .scale-column {
+            background: #0f172a;
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            border: 1px solid #334155;
+        }
+        
+        .scale-column.solo {
+            border-top: 3px solid #22c55e;
+        }
+        
+        .scale-column.small {
+            border-top: 3px solid #f59e0b;
+        }
+        
+        .scale-column.corporate {
+            border-top: 3px solid #ef4444;
+        }
+        
+        .scale-column h4 {
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .scale-column .size {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-bottom: 1rem;
+        }
+        
+        .scale-column ul {
+            list-style: none;
+            font-size: 0.85rem;
+        }
+        
+        .scale-column li {
+            padding: 0.375rem 0;
+            border-bottom: 1px solid #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .scale-column li:last-child {
+            border-bottom: none;
+        }
+        
+        .check {
+            color: #22c55e;
+        }
+        
+        .pain-points {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            margin-top: 1rem;
+        }
+        
+        .pain-points h4 {
+            color: #fca5a5;
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+        }
+        
+        .pain-points ul {
+            list-style: none;
+            font-size: 0.85rem;
+        }
+        
+        .pain-points li {
+            padding: 0.25rem 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        
+        .legend {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+        
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+        
+        .legend-dot.critical { background: #ef4444; }
+        .legend-dot.important { background: #f59e0b; }
+        .legend-dot.optional { background: #22c55e; }
+        
+        @media (max-width: 768px) {
+            .scale-grid {
+                grid-template-columns: 1fr;
+            }
+            .examples-grid {
+                grid-template-columns: 1fr;
+            }
+            .needs-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏢 Ontyx Business Research</h1>
+        <p class="subtitle">Real-world analysis of business types, workflows, and software needs</p>
+        
+        <div class="legend">
+            <div class="legend-item"><div class="legend-dot critical"></div> Critical (Must Have)</div>
+            <div class="legend-item"><div class="legend-dot important"></div> Important (Should Have)</div>
+            <div class="legend-item"><div class="legend-dot optional"></div> Optional (Nice to Have)</div>
+        </div>
+        
+        <div class="nav-tabs">
+            <div class="nav-tab active" onclick="showCategory('trades')">🔧 Trades & Services</div>
+            <div class="nav-tab" onclick="showCategory('retail')">🏪 Retail & Store</div>
+            <div class="nav-tab" onclick="showCategory('food')">🍽️ Food & Restaurant</div>
+            <div class="nav-tab" onclick="showCategory('professional')">💼 Professional Services</div>
+            <div class="nav-tab" onclick="showCategory('health')">🏥 Healthcare</div>
+            <div class="nav-tab" onclick="showCategory('creative')">🎨 Creative & Agency</div>
+        </div>
+        
+        <!-- TRADES & SERVICES -->
+        <div id="trades" class="category-section active">
+            <div class="category-header">
+                <h2>🔧 Trades & Services</h2>
+                <p>Plumbers, electricians, HVAC, contractors, cleaning services</p>
+                <div class="category-stats">
+                    <div class="stat-box">
+                        <div class="number">~120K</div>
+                        <div class="label">Businesses in Canada</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">$85B</div>
+                        <div class="label">Annual Revenue</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">70%</div>
+                        <div class="label">Solo/Micro</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">Mobile</div>
+                        <div class="label">Work Style</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="examples-grid">
+                <!-- Example 1: Plumber -->
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-icon">🔧</div>
+                        <div class="example-title">
+                            <h3>Mike's Plumbing</h3>
+                            <span>Solo plumber, Toronto • 15 years experience</span>
+                        </div>
+                    </div>
+                    <div class="example-body">
+                        <div class="workflow-section">
+                            <h4>Daily Workflow</h4>
+                            <div class="workflow-steps">
+                                <span class="workflow-step">📱 Customer calls</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📅 Schedule visit</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🚗 Drive to site</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🔍 Diagnose</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">💵 Quote</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🔧 Fix</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📄 Invoice</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">💳 Collect payment</span>
+                            </div>
+                        </div>
+                        <div class="workflow-section">
+                            <h4>Software Needs</h4>
+                            <div class="needs-grid">
+                                <div class="need-item critical">📄 Invoicing</div>
+                                <div class="need-item critical">📅 Scheduling</div>
+                                <div class="need-item critical">👥 Customer list</div>
+                                <div class="need-item critical">🧾 Expense tracking</div>
+                                <div class="need-item important">💵 Quote/Estimate</div>
+                                <div class="need-item important">📱 Mobile access</div>
+                                <div class="need-item optional">📦 Parts inventory</div>
+                                <div class="need-item optional">🚗 Mileage tracking</div>
+                            </div>
+                        </div>
+                        <div class="pain-points">
+                            <h4>😤 Current Pain Points</h4>
+                            <ul>
+                                <li>❌ Uses paper invoices, loses them</li>
+                                <li>❌ Calendar on phone, no customer link</li>
+                                <li>❌ Receipts in shoebox for accountant</li>
+                                <li>❌ No idea which jobs were profitable</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Example 2: HVAC Company -->
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-icon">❄️</div>
+                        <div class="example-title">
+                            <h3>CoolAir HVAC Services</h3>
+                            <span>8 employees, Mississauga • 2 service vans</span>
+                        </div>
+                    </div>
+                    <div class="example-body">
+                        <div class="workflow-section">
+                            <h4>Daily Workflow</h4>
+                            <div class="workflow-steps">
+                                <span class="workflow-step">📞 Office takes calls</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📋 Create work order</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">👷 Dispatch tech</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🔧 On-site service</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📝 Tech completes form</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📄 Office invoices</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">💳 Payment</span>
+                            </div>
+                        </div>
+                        <div class="workflow-section">
+                            <h4>Software Needs</h4>
+                            <div class="needs-grid">
+                                <div class="need-item critical">📋 Work orders/Dispatch</div>
+                                <div class="need-item critical">📄 Invoicing</div>
+                                <div class="need-item critical">👥 Customer database</div>
+                                <div class="need-item critical">👷 Employee tracking</div>
+                                <div class="need-item important">📦 Parts inventory</div>
+                                <div class="need-item important">⏱️ Time tracking</div>
+                                <div class="need-item important">💰 Payroll</div>
+                                <div class="need-item important">📊 Job costing</div>
+                                <div class="need-item optional">🔄 Maintenance contracts</div>
+                                <div class="need-item optional">📈 Performance reports</div>
+                            </div>
+                        </div>
+                        <div class="pain-points">
+                            <h4>😤 Current Pain Points</h4>
+                            <ul>
+                                <li>❌ Techs use paper forms, office re-types</li>
+                                <li>❌ No visibility of tech location</li>
+                                <li>❌ Double-booking happens weekly</li>
+                                <li>❌ Parts used not tracked accurately</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Example 3: Cleaning Company -->
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-icon">🧹</div>
+                        <div class="example-title">
+                            <h3>Sparkle Clean Co.</h3>
+                            <span>25 cleaners, GTA • Residential & Commercial</span>
+                        </div>
+                    </div>
+                    <div class="example-body">
+                        <div class="workflow-section">
+                            <h4>Daily Workflow</h4>
+                            <div class="workflow-steps">
+                                <span class="workflow-step">📅 Weekly schedule</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">👷 Assign cleaners</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📍 Route to sites</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">✅ Check-in app</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🧹 Clean</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📸 Before/after photos</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">✅ Check-out</span>
+                            </div>
+                        </div>
+                        <div class="workflow-section">
+                            <h4>Software Needs</h4>
+                            <div class="needs-grid">
+                                <div class="need-item critical">📅 Recurring scheduling</div>
+                                <div class="need-item critical">👷 Staff assignment</div>
+                                <div class="need-item critical">💰 Recurring billing</div>
+                                <div class="need-item critical">⏱️ Time tracking</div>
+                                <div class="need-item important">💰 Payroll</div>
+                                <div class="need-item important">📍 Route optimization</div>
+                                <div class="need-item important">👥 Customer portal</div>
+                                <div class="need-item optional">📦 Supply inventory</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Scale Comparison -->
+            <div class="scale-comparison">
+                <h3>📊 Solo → Small → Corporate Comparison</h3>
+                <div class="scale-grid">
+                    <div class="scale-column solo">
+                        <h4>🧑 Solo Operator</h4>
+                        <div class="size">1-2 people • Under $200K/year</div>
+                        <ul>
+                            <li><span class="check">✓</span> Invoice customers</li>
+                            <li><span class="check">✓</span> Track expenses</li>
+                            <li><span class="check">✓</span> Simple calendar</li>
+                            <li><span class="check">✓</span> Customer contacts</li>
+                            <li>— No payroll needed</li>
+                            <li>— No inventory tracking</li>
+                            <li>— No dispatch board</li>
+                        </ul>
+                    </div>
+                    <div class="scale-column small">
+                        <h4>👥 Small Company</h4>
+                        <div class="size">3-15 people • $200K-$2M/year</div>
+                        <ul>
+                            <li><span class="check">✓</span> Everything in Solo +</li>
+                            <li><span class="check">✓</span> Employee management</li>
+                            <li><span class="check">✓</span> Dispatch/work orders</li>
+                            <li><span class="check">✓</span> Time tracking</li>
+                            <li><span class="check">✓</span> Basic payroll</li>
+                            <li><span class="check">✓</span> Parts inventory</li>
+                            <li><span class="check">✓</span> Job costing</li>
+                        </ul>
+                    </div>
+                    <div class="scale-column corporate">
+                        <h4>🏢 Growing Company</h4>
+                        <div class="size">15-100+ people • $2M+/year</div>
+                        <ul>
+                            <li><span class="check">✓</span> Everything in Small +</li>
+                            <li><span class="check">✓</span> Multi-location</li>
+                            <li><span class="check">✓</span> Advanced payroll</li>
+                            <li><span class="check">✓</span> Customer portal</li>
+                            <li><span class="check">✓</span> Fleet management</li>
+                            <li><span class="check">✓</span> Profitability reports</li>
+                            <li><span class="check">✓</span> Role-based access</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- RETAIL & STORE -->
+        <div id="retail" class="category-section">
+            <div class="category-header">
+                <h2>🏪 Retail & Store</h2>
+                <p>Physical stores, e-commerce, boutiques, specialty shops</p>
+                <div class="category-stats">
+                    <div class="stat-box">
+                        <div class="number">~230K</div>
+                        <div class="label">Retail Businesses CA</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">$650B</div>
+                        <div class="label">Annual Sales</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">POS</div>
+                        <div class="label">Core System</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">Inventory</div>
+                        <div class="label">Biggest Challenge</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="examples-grid">
+                <!-- Example 1: Boutique -->
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-icon">👗</div>
+                        <div class="example-title">
+                            <h3>Luna Boutique</h3>
+                            <span>Women's clothing, Queen West • 2 staff</span>
+                        </div>
+                    </div>
+                    <div class="example-body">
+                        <div class="workflow-section">
+                            <h4>Daily Workflow</h4>
+                            <div class="workflow-steps">
+                                <span class="workflow-step">🚪 Open store</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">💵 Count cash drawer</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🛍️ Serve customers</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">💳 Process sales (POS)</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📦 Restock displays</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🔒 Close & count</span>
+                            </div>
+                        </div>
+                        <div class="workflow-section">
+                            <h4>Software Needs</h4>
+                            <div class="needs-grid">
+                                <div class="need-item critical">💳 POS system</div>
+                                <div class="need-item critical">📦 Inventory tracking</div>
+                                <div class="need-item critical">💵 Cash management</div>
+                                <div class="need-item important">👥 Customer loyalty</div>
+                                <div class="need-item important">📊 Sales reports</div>
+                                <div class="need-item important">📱 Online store sync</div>
+                                <div class="need-item optional">👷 Employee schedule</div>
+                                <div class="need-item optional">📦 Purchase orders</div>
+                            </div>
+                        </div>
+                        <div class="pain-points">
+                            <h4>😤 Current Pain Points</h4>
+                            <ul>
+                                <li>❌ Inventory count doesn't match POS</li>
+                                <li>❌ No idea what's selling vs sitting</li>
+                                <li>❌ Online orders separate from store</li>
+                                <li>❌ Can't see trends by size/color</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Example 2: Hardware Store -->
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-icon">🔨</div>
+                        <div class="example-title">
+                            <h3>Dave's Hardware</h3>
+                            <span>Hardware store, Scarborough • 6 staff</span>
+                        </div>
+                    </div>
+                    <div class="example-body">
+                        <div class="workflow-section">
+                            <h4>Daily Workflow</h4>
+                            <div class="workflow-steps">
+                                <span class="workflow-step">📦 Receive shipments</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🏷️ Price & stock</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🛒 Customer sales</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📋 Special orders</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📊 Low stock alerts</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📝 Reorder</span>
+                            </div>
+                        </div>
+                        <div class="workflow-section">
+                            <h4>Software Needs</h4>
+                            <div class="needs-grid">
+                                <div class="need-item critical">💳 POS with barcode</div>
+                                <div class="need-item critical">📦 Inventory (5000+ SKUs)</div>
+                                <div class="need-item critical">📋 Purchase orders</div>
+                                <div class="need-item critical">🏭 Vendor management</div>
+                                <div class="need-item important">👷 Employee scheduling</div>
+                                <div class="need-item important">📊 Margin reports</div>
+                                <div class="need-item important">🔔 Low stock alerts</div>
+                                <div class="need-item optional">🚚 Delivery tracking</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Example 3: Multi-location -->
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-icon">👟</div>
+                        <div class="example-title">
+                            <h3>StepUp Footwear</h3>
+                            <span>Shoe retailer • 4 locations, 35 staff</span>
+                        </div>
+                    </div>
+                    <div class="example-body">
+                        <div class="workflow-section">
+                            <h4>Operations</h4>
+                            <div class="workflow-steps">
+                                <span class="workflow-step">🏢 Central buying</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📦 Warehouse receives</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🔄 Distribute to stores</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🏪 Store sells</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📊 HQ sees all data</span>
+                            </div>
+                        </div>
+                        <div class="workflow-section">
+                            <h4>Software Needs</h4>
+                            <div class="needs-grid">
+                                <div class="need-item critical">🏢 Multi-location POS</div>
+                                <div class="need-item critical">📦 Central inventory</div>
+                                <div class="need-item critical">🔄 Inter-store transfers</div>
+                                <div class="need-item critical">💰 Consolidated payroll</div>
+                                <div class="need-item important">👷 Staff scheduling</div>
+                                <div class="need-item important">📊 Store comparison</div>
+                                <div class="need-item important">👥 Customer across stores</div>
+                                <div class="need-item optional">📱 Omnichannel</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="scale-comparison">
+                <h3>📊 Solo → Small → Corporate Comparison</h3>
+                <div class="scale-grid">
+                    <div class="scale-column solo">
+                        <h4>🧑 Pop-up / Market Vendor</h4>
+                        <div class="size">Just owner • Weekend sales</div>
+                        <ul>
+                            <li><span class="check">✓</span> Simple mobile POS</li>
+                            <li><span class="check">✓</span> Basic inventory</li>
+                            <li><span class="check">✓</span> Cash tracking</li>
+                            <li>— No employee mgmt</li>
+                            <li>— No multi-location</li>
+                        </ul>
+                    </div>
+                    <div class="scale-column small">
+                        <h4>🏪 Single Store</h4>
+                        <div class="size">2-10 staff • Full-time operation</div>
+                        <ul>
+                            <li><span class="check">✓</span> Full POS system</li>
+                            <li><span class="check">✓</span> Inventory management</li>
+                            <li><span class="check">✓</span> Purchase orders</li>
+                            <li><span class="check">✓</span> Employee scheduling</li>
+                            <li><span class="check">✓</span> Customer loyalty</li>
+                            <li><span class="check">✓</span> Sales analytics</li>
+                        </ul>
+                    </div>
+                    <div class="scale-column corporate">
+                        <h4>🏢 Chain / Franchise</h4>
+                        <div class="size">15-100+ staff • Multiple locations</div>
+                        <ul>
+                            <li><span class="check">✓</span> Central management</li>
+                            <li><span class="check">✓</span> Warehouse/distribution</li>
+                            <li><span class="check">✓</span> Inter-store transfers</li>
+                            <li><span class="check">✓</span> Consolidated payroll</li>
+                            <li><span class="check">✓</span> Role-based access</li>
+                            <li><span class="check">✓</span> Franchise reporting</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- FOOD & RESTAURANT -->
+        <div id="food" class="category-section">
+            <div class="category-header">
+                <h2>🍽️ Food & Restaurant</h2>
+                <p>Restaurants, cafés, food trucks, bakeries, bars</p>
+                <div class="category-stats">
+                    <div class="stat-box">
+                        <div class="number">~98K</div>
+                        <div class="label">Restaurants CA</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">$95B</div>
+                        <div class="label">Annual Sales</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">3-5%</div>
+                        <div class="label">Avg Profit Margin</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">Food Cost</div>
+                        <div class="label">Biggest Challenge</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="examples-grid">
+                <!-- Example 1: Coffee Shop -->
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-icon">☕</div>
+                        <div class="example-title">
+                            <h3>Bean & Brew Café</h3>
+                            <span>Coffee shop, Kensington • Owner + 4 baristas</span>
+                        </div>
+                    </div>
+                    <div class="example-body">
+                        <div class="workflow-section">
+                            <h4>Daily Workflow</h4>
+                            <div class="workflow-steps">
+                                <span class="workflow-step">☕ Open 6AM</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">💵 Cash drawer</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🛎️ Rush orders</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📦 Check supplies</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📋 Restock pastries</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📊 End of day count</span>
+                            </div>
+                        </div>
+                        <div class="workflow-section">
+                            <h4>Software Needs</h4>
+                            <div class="needs-grid">
+                                <div class="need-item critical">💳 Fast POS</div>
+                                <div class="need-item critical">💵 Cash management</div>
+                                <div class="need-item critical">👷 Staff schedule</div>
+                                <div class="need-item important">📦 Supply tracking</div>
+                                <div class="need-item important">💰 Payroll</div>
+                                <div class="need-item important">☕ Loyalty program</div>
+                                <div class="need-item optional">📊 Sales by hour</div>
+                                <div class="need-item optional">📱 Mobile orders</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Example 2: Restaurant -->
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-icon">🍝</div>
+                        <div class="example-title">
+                            <h3>Trattoria Roma</h3>
+                            <span>Italian restaurant, 60 seats • 15 staff</span>
+                        </div>
+                    </div>
+                    <div class="example-body">
+                        <div class="workflow-section">
+                            <h4>Daily Workflow</h4>
+                            <div class="workflow-steps">
+                                <span class="workflow-step">📦 Receive produce</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">👨‍🍳 Prep kitchen</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📋 Reservations</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🍽️ Service</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📝 Orders → Kitchen</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">💳 Bill & payment</span>
+                            </div>
+                        </div>
+                        <div class="workflow-section">
+                            <h4>Software Needs</h4>
+                            <div class="needs-grid">
+                                <div class="need-item critical">💳 Table-based POS</div>
+                                <div class="need-item critical">👨‍🍳 Kitchen display</div>
+                                <div class="need-item critical">📋 Reservations</div>
+                                <div class="need-item critical">👷 Staff scheduling</div>
+                                <div class="need-item important">📦 Ingredient inventory</div>
+                                <div class="need-item important">📊 Food cost tracking</div>
+                                <div class="need-item important">💰 Tip management</div>
+                                <div class="need-item important">💰 Payroll</div>
+                                <div class="need-item optional">📱 Online ordering</div>
+                                <div class="need-item optional">📈 Table turn reports</div>
+                            </div>
+                        </div>
+                        <div class="pain-points">
+                            <h4>😤 Current Pain Points</h4>
+                            <ul>
+                                <li>❌ Food waste not tracked</li>
+                                <li>❌ Scheduling takes 3 hours/week</li>
+                                <li>❌ Don't know actual food cost %</li>
+                                <li>❌ Inventory is guesswork</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Example 3: Food Truck -->
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-icon">🚚</div>
+                        <div class="example-title">
+                            <h3>Taco Loco Truck</h3>
+                            <span>Food truck, various locations • 2 people</span>
+                        </div>
+                    </div>
+                    <div class="example-body">
+                        <div class="workflow-section">
+                            <h4>Daily Workflow</h4>
+                            <div class="workflow-steps">
+                                <span class="workflow-step">🌅 Prep at commissary</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🚚 Drive to location</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🛎️ Serve customers</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">💵 Cash + card</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📊 Count at end</span>
+                            </div>
+                        </div>
+                        <div class="workflow-section">
+                            <h4>Software Needs</h4>
+                            <div class="needs-grid">
+                                <div class="need-item critical">📱 Mobile POS</div>
+                                <div class="need-item critical">💳 Card payments</div>
+                                <div class="need-item critical">💵 Cash tracking</div>
+                                <div class="need-item important">📊 Daily sales</div>
+                                <div class="need-item important">🧾 Expense tracking</div>
+                                <div class="need-item optional">📍 Location tracking</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="scale-comparison">
+                <h3>📊 Solo → Small → Corporate Comparison</h3>
+                <div class="scale-grid">
+                    <div class="scale-column solo">
+                        <h4>🚚 Food Truck / Popup</h4>
+                        <div class="size">1-2 people • Mobile operation</div>
+                        <ul>
+                            <li><span class="check">✓</span> Mobile POS</li>
+                            <li><span class="check">✓</span> Basic sales tracking</li>
+                            <li><span class="check">✓</span> Expense receipts</li>
+                            <li>— No inventory (daily buy)</li>
+                            <li>— No reservations</li>
+                        </ul>
+                    </div>
+                    <div class="scale-column small">
+                        <h4>🍽️ Single Restaurant</h4>
+                        <div class="size">10-25 staff • Fixed location</div>
+                        <ul>
+                            <li><span class="check">✓</span> Table POS + KDS</li>
+                            <li><span class="check">✓</span> Reservations</li>
+                            <li><span class="check">✓</span> Ingredient tracking</li>
+                            <li><span class="check">✓</span> Staff scheduling</li>
+                            <li><span class="check">✓</span> Payroll + tips</li>
+                            <li><span class="check">✓</span> Food cost reports</li>
+                        </ul>
+                    </div>
+                    <div class="scale-column corporate">
+                        <h4>🏢 Restaurant Group</h4>
+                        <div class="size">50+ staff • Multiple locations</div>
+                        <ul>
+                            <li><span class="check">✓</span> Central menu mgmt</li>
+                            <li><span class="check">✓</span> Consolidated purchasing</li>
+                            <li><span class="check">✓</span> Cross-location reports</li>
+                            <li><span class="check">✓</span> Recipe costing</li>
+                            <li><span class="check">✓</span> Labor % management</li>
+                            <li><span class="check">✓</span> Catering/events</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- PROFESSIONAL SERVICES -->
+        <div id="professional" class="category-section">
+            <div class="category-header">
+                <h2>💼 Professional Services</h2>
+                <p>Consultants, lawyers, accountants, architects, engineers</p>
+                <div class="category-stats">
+                    <div class="stat-box">
+                        <div class="number">~180K</div>
+                        <div class="label">Firms in Canada</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">Hourly</div>
+                        <div class="label">Billing Model</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">Time</div>
+                        <div class="label">Core Asset</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">80%+</div>
+                        <div class="label">Knowledge Workers</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="examples-grid">
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-icon">📋</div>
+                        <div class="example-title">
+                            <h3>Sarah Chen Consulting</h3>
+                            <span>HR Consultant, solo • Project-based</span>
+                        </div>
+                    </div>
+                    <div class="example-body">
+                        <div class="workflow-section">
+                            <h4>Project Workflow</h4>
+                            <div class="workflow-steps">
+                                <span class="workflow-step">🤝 Client inquiry</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📄 Proposal</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">✅ Engagement</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">⏱️ Track time</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📦 Deliverables</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📄 Invoice</span>
+                            </div>
+                        </div>
+                        <div class="workflow-section">
+                            <h4>Software Needs</h4>
+                            <div class="needs-grid">
+                                <div class="need-item critical">⏱️ Time tracking</div>
+                                <div class="need-item critical">📄 Invoicing</div>
+                                <div class="need-item critical">👥 Client contacts</div>
+                                <div class="need-item important">📄 Proposals</div>
+                                <div class="need-item important">📁 Documents</div>
+                                <div class="need-item optional">📊 Profitability</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-icon">⚖️</div>
+                        <div class="example-title">
+                            <h3>Morrison & Associates</h3>
+                            <span>Law firm • 3 lawyers, 2 staff</span>
+                        </div>
+                    </div>
+                    <div class="example-body">
+                        <div class="workflow-section">
+                            <h4>Matter Workflow</h4>
+                            <div class="workflow-steps">
+                                <span class="workflow-step">📞 New client</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📋 Conflict check</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">💵 Retainer</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">⏱️ Work (track time)</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📄 Bill monthly</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📁 Close matter</span>
+                            </div>
+                        </div>
+                        <div class="workflow-section">
+                            <h4>Software Needs</h4>
+                            <div class="needs-grid">
+                                <div class="need-item critical">⏱️ Time tracking (6 min)</div>
+                                <div class="need-item critical">📄 Trust accounting</div>
+                                <div class="need-item critical">📁 Document mgmt</div>
+                                <div class="need-item critical">📋 Matter tracking</div>
+                                <div class="need-item important">📄 Billing</div>
+                                <div class="need-item important">📅 Deadlines</div>
+                                <div class="need-item important">🔒 Conflict check</div>
+                                <div class="need-item optional">📊 Firm analytics</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-icon">🏗️</div>
+                        <div class="example-title">
+                            <h3>UrbanEdge Architecture</h3>
+                            <span>Architecture firm • 12 staff</span>
+                        </div>
+                    </div>
+                    <div class="example-body">
+                        <div class="workflow-section">
+                            <h4>Project Workflow</h4>
+                            <div class="workflow-steps">
+                                <span class="workflow-step">🤝 Win project</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📐 Schematic design</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📋 Design development</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📄 Construction docs</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🏗️ Construction admin</span>
+                            </div>
+                        </div>
+                        <div class="workflow-section">
+                            <h4>Software Needs</h4>
+                            <div class="needs-grid">
+                                <div class="need-item critical">📊 Project tracking</div>
+                                <div class="need-item critical">⏱️ Time by project</div>
+                                <div class="need-item critical">📄 Invoicing (phases)</div>
+                                <div class="need-item important">👷 Resource planning</div>
+                                <div class="need-item important">📁 Doc management</div>
+                                <div class="need-item important">💰 Profitability</div>
+                                <div class="need-item optional">🧾 Reimbursables</div>
+                                <div class="need-item optional">📊 Utilization</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- HEALTHCARE -->
+        <div id="health" class="category-section">
+            <div class="category-header">
+                <h2>🏥 Healthcare</h2>
+                <p>Clinics, dental, physio, chiro, optometry, veterinary</p>
+                <div class="category-stats">
+                    <div class="stat-box">
+                        <div class="number">~85K</div>
+                        <div class="label">Practices in CA</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">OHIP</div>
+                        <div class="label">Billing (ON)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">Privacy</div>
+                        <div class="label">Top Concern</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">Appt-based</div>
+                        <div class="label">Work Style</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="examples-grid">
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-icon">🦷</div>
+                        <div class="example-title">
+                            <h3>Smile Dental Clinic</h3>
+                            <span>Dental office • 2 dentists, 6 staff</span>
+                        </div>
+                    </div>
+                    <div class="example-body">
+                        <div class="workflow-section">
+                            <h4>Patient Flow</h4>
+                            <div class="workflow-steps">
+                                <span class="workflow-step">📞 Book appt</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📋 Check-in</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🦷 Treatment</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📄 Claim to insurance</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">💳 Collect balance</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📅 Book next</span>
+                            </div>
+                        </div>
+                        <div class="workflow-section">
+                            <h4>Software Needs</h4>
+                            <div class="needs-grid">
+                                <div class="need-item critical">📅 Scheduling (multi-chair)</div>
+                                <div class="need-item critical">📋 Patient records</div>
+                                <div class="need-item critical">💳 Insurance claims</div>
+                                <div class="need-item critical">📄 Billing</div>
+                                <div class="need-item important">📱 Reminders (SMS/email)</div>
+                                <div class="need-item important">👷 Staff scheduling</div>
+                                <div class="need-item important">📦 Supplies tracking</div>
+                                <div class="need-item optional">📊 Production reports</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-icon">💪</div>
+                        <div class="example-title">
+                            <h3>ActiveLife Physio</h3>
+                            <span>Physiotherapy • 4 PTs, 2 admin</span>
+                        </div>
+                    </div>
+                    <div class="example-body">
+                        <div class="workflow-section">
+                            <h4>Patient Flow</h4>
+                            <div class="workflow-steps">
+                                <span class="workflow-step">📞 Referral/call</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📋 Initial assessment</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📋 Treatment plan</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🔄 Sessions</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📄 Bill insurance</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📊 Progress notes</span>
+                            </div>
+                        </div>
+                        <div class="workflow-section">
+                            <h4>Software Needs</h4>
+                            <div class="needs-grid">
+                                <div class="need-item critical">📅 Scheduling (by PT)</div>
+                                <div class="need-item critical">📋 SOAP notes</div>
+                                <div class="need-item critical">💳 Direct billing</div>
+                                <div class="need-item important">📊 Exercise prescriptions</div>
+                                <div class="need-item important">📱 Patient portal</div>
+                                <div class="need-item optional">📈 Outcomes tracking</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- CREATIVE & AGENCY -->
+        <div id="creative" class="category-section">
+            <div class="category-header">
+                <h2>🎨 Creative & Agency</h2>
+                <p>Design studios, marketing agencies, dev shops, video production</p>
+                <div class="category-stats">
+                    <div class="stat-box">
+                        <div class="number">~45K</div>
+                        <div class="label">Agencies in CA</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">Project</div>
+                        <div class="label">Billing Model</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">Retainer</div>
+                        <div class="label">Ideal Model</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">Creative</div>
+                        <div class="label">Work Style</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="examples-grid">
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-icon">🎨</div>
+                        <div class="example-title">
+                            <h3>Pixel Perfect Studio</h3>
+                            <span>Design studio • Solo designer</span>
+                        </div>
+                    </div>
+                    <div class="example-body">
+                        <div class="workflow-section">
+                            <h4>Project Workflow</h4>
+                            <div class="workflow-steps">
+                                <span class="workflow-step">🤝 Discovery call</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📄 Proposal</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">💵 50% deposit</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🎨 Design</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🔄 Revisions</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📦 Deliver</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📄 Final invoice</span>
+                            </div>
+                        </div>
+                        <div class="workflow-section">
+                            <h4>Software Needs</h4>
+                            <div class="needs-grid">
+                                <div class="need-item critical">📄 Proposals/Contracts</div>
+                                <div class="need-item critical">📄 Invoicing</div>
+                                <div class="need-item critical">📊 Project tracking</div>
+                                <div class="need-item important">⏱️ Time tracking</div>
+                                <div class="need-item important">👥 Client portal</div>
+                                <div class="need-item optional">📁 File sharing</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-icon">📱</div>
+                        <div class="example-title">
+                            <h3>BrightSpark Digital</h3>
+                            <span>Marketing agency • 8 staff</span>
+                        </div>
+                    </div>
+                    <div class="example-body">
+                        <div class="workflow-section">
+                            <h4>Client Workflow</h4>
+                            <div class="workflow-steps">
+                                <span class="workflow-step">🤝 Onboard</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📋 Strategy</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">🔄 Monthly retainer</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📊 Campaigns</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📈 Reporting</span>
+                                <span class="workflow-arrow">→</span>
+                                <span class="workflow-step">📄 Monthly invoice</span>
+                            </div>
+                        </div>
+                        <div class="workflow-section">
+                            <h4>Software Needs</h4>
+                            <div class="needs-grid">
+                                <div class="need-item critical">📊 Project management</div>
+                                <div class="need-item critical">⏱️ Time tracking</div>
+                                <div class="need-item critical">📄 Recurring invoicing</div>
+                                <div class="need-item critical">👥 Team collaboration</div>
+                                <div class="need-item important">📊 Resource planning</div>
+                                <div class="need-item important">💰 Profitability</div>
+                                <div class="need-item important">👥 Client portal</div>
+                                <div class="need-item optional">🧾 Expense tracking</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function showCategory(categoryId) {
+            // Hide all sections
+            document.querySelectorAll('.category-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Remove active from all tabs
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(categoryId).classList.add('active');
+            
+            // Mark selected tab as active
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

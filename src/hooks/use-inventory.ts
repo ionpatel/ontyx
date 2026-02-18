@@ -68,6 +68,7 @@ export function useProducts(options: UseProductsOptions = {}) {
 
   return {
     products,
+    data: products, // Alias for compatibility
     count,
     loading,
     error,
@@ -137,9 +138,11 @@ export function useCategories() {
     fetch()
   }, [organizationId])
 
-  const createCategory = async (category: Partial<ProductCategory>) => {
+  const createCategory = async (category: Partial<ProductCategory>): Promise<ProductCategory | null> => {
     const newCategory = await inventoryService.createCategory(category, organizationId || undefined)
-    setCategories(prev => [...prev, newCategory])
+    if (newCategory) {
+      setCategories(prev => [...prev, newCategory])
+    }
     return newCategory
   }
 

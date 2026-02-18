@@ -77,6 +77,7 @@ export function useContacts(type?: ContactType) {
 
   return {
     contacts,
+    data: contacts, // Alias for compatibility
     loading,
     error,
     refetch: fetchContacts,
