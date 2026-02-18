@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, Check, ChevronRight, Building2, Users, FileText, 
-  Package, CreditCard, Settings, Sparkles, ArrowRight
+  Package, CreditCard, Settings, Sparkles, ArrowRight, Database
 } from 'lucide-react'
+import { SampleDataLoader } from './sample-data-loader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -206,6 +207,26 @@ export function QuickStartGuide({
                       </div>
                     )
                   })}
+                </div>
+
+                {/* Sample Data Option */}
+                <div className="mt-4 p-3 rounded-lg bg-muted/50 border border-dashed">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Database className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">Want to explore first?</p>
+                        <p className="text-xs text-muted-foreground">Load sample data to see how everything works</p>
+                      </div>
+                    </div>
+                    <SampleDataLoader 
+                      trigger={
+                        <Button variant="outline" size="sm">
+                          Load Samples
+                        </Button>
+                      }
+                    />
+                  </div>
                 </div>
 
                 <div className="mt-4 pt-3 border-t flex items-center justify-between">
