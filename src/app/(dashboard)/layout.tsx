@@ -11,13 +11,13 @@ import {
   LayoutDashboard, FileText, Receipt, Building2, BookOpen,
   BarChart3, Package, ShoppingCart, Users, Briefcase,
   Settings, Menu, X, ChevronDown, LogOut, User,
-  Bell, Factory, FolderKanban, Store,
-  Layers, CheckCircle2, ClipboardList, Clock, Wallet, UserCircle,
-  Loader2, Home
+  Factory, FolderKanban, Store,
+  Clock, Wallet, UserCircle, Loader2
 } from "lucide-react"
 import { GlobalSearch } from '@/components/global-search'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { KeyboardShortcuts, useNavigationShortcuts } from '@/components/keyboard-shortcuts'
+import { NotificationCenter } from '@/components/notifications'
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -323,11 +323,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2">
             <KeyboardShortcuts />
             <ThemeToggle />
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              {/* Notification dot */}
-              <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full" />
-            </Button>
+            <NotificationCenter />
             <Separator orientation="vertical" className="h-6" />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
