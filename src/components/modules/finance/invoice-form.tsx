@@ -26,6 +26,7 @@ import { useCustomers } from "@/hooks/use-contacts"
 import { useOrganization } from "@/hooks/use-organization"
 import { type CreateInvoiceInput } from "@/services/invoices"
 import { downloadInvoicePDF, type InvoicePDFData } from "@/services/pdf"
+import { useAutosave, AutosaveBanner } from "@/hooks/use-autosave"
 
 // ============================================================================
 // TYPES
@@ -136,6 +137,30 @@ export function InvoiceForm({ invoice, onSave, onSend, saving }: InvoiceFormProp
 
   const [totals, setTotals] = useState({ subtotal: 0, taxTotal: 0, total: 0 })
 
+  // Autosave draft data
+  const { save: autosave, restore, clear: clearAutosave, hasSavedData, lastSaved } = useAutosave<{
+    formData: InvoiceFormData
+    lineItems: LineItem[]
+  }>({
+    key: invoice ? `invoice-edit-${invoice.invoiceNumber}` : 'invoice-new',
+  })
+
+  // Autosave on changes (only for new invoices)
+  useEffect(() => {
+    if (!invoice) {
+      autosave({ formData, lineItems })
+    }
+  }, [formData, lineItems, invoice, autosave])
+
+  // Handle restore
+  const handleRestore = () => {
+    const saved = restore()
+    if (saved) {
+      setFormData(saved.formData)
+      setLineItems(saved.lineItems)
+    }
+  }
+
   // Calculate totals when line items change
   useEffect(() => {
     let subtotal = 0
@@ -216,6 +241,7 @@ export function InvoiceForm({ invoice, onSave, onSend, saving }: InvoiceFormProp
       return
     }
     await onSave(buildInput())
+    clearAutosave() // Clear autosave on successful save
   }
 
   const handleSend = async () => {
@@ -277,6 +303,16 @@ export function InvoiceForm({ invoice, onSave, onSend, saving }: InvoiceFormProp
 
   return (
     <div className="space-y-6">
+      {/* Autosave Recovery Banner */}
+      {!invoice && (
+        <AutosaveBanner
+          hasSavedData={hasSavedData}
+          lastSaved={lastSaved}
+          onRestore={handleRestore}
+          onDiscard={clearAutosave}
+        />
+      )}
+
       {/* Header Info */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Left Column - Invoice Details */}
