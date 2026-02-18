@@ -19,6 +19,8 @@ import {
 import { formatCurrency, cn } from "@/lib/utils"
 import { useDashboardStats, useRecentInvoices, useRecentOrders, useRecentActivity } from "@/hooks/use-dashboard"
 import { QuickInvoiceModal } from "@/components/quick-invoice-modal"
+import { TierUpgradeBanner, WelcomeHero } from "@/components/dashboard/tier-banner"
+import { useOrganization } from "@/hooks/use-organization"
 
 const invoiceStatusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   draft: { label: "Draft", color: "bg-slate-100 text-slate-700", icon: FileText },
@@ -42,6 +44,11 @@ export default function DashboardPage() {
   const { invoices, loading: invoicesLoading } = useRecentInvoices(5)
   const { orders, loading: ordersLoading } = useRecentOrders(5)
   const { activity, loading: activityLoading } = useRecentActivity(8)
+  const { organization } = useOrganization()
+  
+  // Get tier from organization (default to starter)
+  const currentTier = (organization?.tier as 'starter' | 'growth' | 'enterprise') || 'starter'
+  const isNewUser = organization && !organization.onboardingCompleted
 
   const statCards = [
     {
@@ -106,6 +113,19 @@ export default function DashboardPage() {
 
   return (
     <div className="flex-1 space-y-6 p-6">
+      {/* Welcome Hero for New Users */}
+      {isNewUser && organization?.name && (
+        <WelcomeHero 
+          businessName={organization.name} 
+          tier={currentTier}
+        />
+      )}
+
+      {/* Tier Upgrade Banner (only for starter/growth) */}
+      {!isNewUser && currentTier !== 'enterprise' && (
+        <TierUpgradeBanner currentTier={currentTier} />
+      )}
+
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
