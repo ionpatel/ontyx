@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table"
 import { formatCurrency, cn } from "@/lib/utils"
 import { useDashboardStats, useRecentInvoices, useRecentOrders, useRecentActivity } from "@/hooks/use-dashboard"
+import { QuickInvoiceModal } from "@/components/quick-invoice-modal"
 
 const invoiceStatusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   draft: { label: "Draft", color: "bg-slate-100 text-slate-700", icon: FileText },
@@ -132,8 +133,15 @@ export default function DashboardPage() {
             <span className="text-sm font-medium text-muted-foreground whitespace-nowrap flex items-center gap-2">
               <Zap className="h-4 w-4" /> Quick Actions:
             </span>
+            <QuickInvoiceModal 
+              trigger={
+                <Button variant="default" size="sm" className="whitespace-nowrap bg-green-600 hover:bg-green-700">
+                  <Zap className="h-3 w-3 mr-1" /> Quick Invoice
+                </Button>
+              }
+            />
             <Button variant="outline" size="sm" asChild className="whitespace-nowrap">
-              <Link href="/invoices/new"><Plus className="h-3 w-3 mr-1" /> Invoice</Link>
+              <Link href="/invoices/new"><Plus className="h-3 w-3 mr-1" /> Full Invoice</Link>
             </Button>
             <Button variant="outline" size="sm" asChild className="whitespace-nowrap">
               <Link href="/sales/new"><ShoppingCart className="h-3 w-3 mr-1" /> Sale</Link>

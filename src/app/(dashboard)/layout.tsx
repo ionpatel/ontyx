@@ -18,6 +18,7 @@ import { GlobalSearch } from '@/components/global-search'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { KeyboardShortcuts, useNavigationShortcuts } from '@/components/keyboard-shortcuts'
 import { NotificationCenter } from '@/components/notifications'
+import { MobileBottomNav, MobileNavSpacer } from '@/components/mobile-nav'
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -377,10 +378,14 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
         {/* Page content */}
         <main className="flex-1 overflow-auto">
-          <div className="p-4 lg:p-6">
+          <div className="p-4 lg:p-6 pb-20 md:pb-6">
             {children}
           </div>
+          <MobileNavSpacer />
         </main>
+
+        {/* Mobile bottom navigation */}
+        <MobileBottomNav />
       </div>
     </div>
   )
