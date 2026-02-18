@@ -1,22 +1,23 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { useUserProfile } from "@/hooks/use-user-profile"
+import { useOrganization } from "@/hooks/use-organization"
 import { AuthProvider, useAuth } from "@/components/providers/auth-provider"
 import { 
   LayoutDashboard, FileText, Receipt, Building2, BookOpen,
   BarChart3, Package, ShoppingCart, Users, Briefcase,
   Settings, Menu, X, ChevronDown, LogOut, User,
-  Bell, Moon, Sun, Factory, FolderKanban, 
-  Layers, CheckCircle2, ClipboardList, Clock, Wallet, UserCircle
+  Bell, Factory, FolderKanban, Store,
+  Layers, CheckCircle2, ClipboardList, Clock, Wallet, UserCircle,
+  Loader2, Home
 } from "lucide-react"
 import { GlobalSearch } from '@/components/global-search'
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -31,91 +32,113 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { ToastProvider } from "@/components/ui/toast"
 
-const navigation = [
-  {
-    name: "Overview",
-    items: [
-      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    ],
-  },
-  {
-    name: "Finance",
-    items: [
-      { name: "Invoices", href: "/invoices", icon: FileText },
-      { name: "Expenses", href: "/expenses", icon: Wallet },
-      { name: "Bills", href: "/bills", icon: Receipt },
-      { name: "Banking", href: "/banking", icon: Building2 },
-      { name: "Accounting", href: "/accounting", icon: BookOpen },
-      { name: "Subscriptions", href: "/subscriptions", icon: Clock },
-    ],
-  },
-  {
-    name: "Sales",
-    items: [
-      { name: "POS", href: "/pos", icon: Layers },
-      { name: "Sales Orders", href: "/sales", icon: ShoppingCart },
-      { name: "CRM", href: "/crm", icon: Users },
-    ],
-  },
-  {
-    name: "Operations",
-    items: [
-      { name: "Inventory", href: "/inventory", icon: Package },
-      { name: "Warehouses", href: "/warehouses", icon: Package },
-      { name: "Purchases", href: "/purchases", icon: Layers },
-      { name: "Manufacturing", href: "/manufacturing", icon: Factory },
-      { name: "Maintenance", href: "/maintenance", icon: Settings },
-      { name: "Quality", href: "/quality", icon: CheckCircle2 },
-    ],
-  },
-  {
-    name: "Services",
-    items: [
-      { name: "Projects", href: "/projects", icon: FolderKanban },
-      { name: "Helpdesk", href: "/helpdesk", icon: ClipboardList },
-      { name: "Appointments", href: "/appointments", icon: Clock },
-    ],
-  },
-  {
-    name: "Human Resources",
-    items: [
-      { name: "Employees", href: "/employees", icon: Briefcase },
-      { name: "Payroll", href: "/payroll", icon: Wallet },
-      { name: "Time Off", href: "/time-off", icon: Clock },
-      { name: "Recruitment", href: "/recruitment", icon: UserCircle },
-      { name: "Appraisals", href: "/appraisals", icon: BarChart3 },
-    ],
-  },
-  {
-    name: "Productivity",
-    items: [
-      { name: "Documents", href: "/documents", icon: FileText },
-      { name: "Knowledge", href: "/knowledge", icon: BookOpen },
-      { name: "Approvals", href: "/approvals", icon: CheckCircle2 },
-      { name: "Surveys", href: "/surveys", icon: ClipboardList },
-    ],
-  },
-  {
-    name: "Insights",
-    items: [
-      { name: "Reports", href: "/reports", icon: BarChart3 },
-      { name: "Contacts", href: "/contacts", icon: Users },
-    ],
-  },
-]
+// ============================================================================
+// NAVIGATION CONFIG - Module-based
+// ============================================================================
+
+interface NavItem {
+  name: string
+  href: string
+  icon: React.ElementType
+  moduleId?: string // If set, only show if module is enabled
+  badge?: string
+}
+
+interface NavSection {
+  name: string
+  items: NavItem[]
+}
+
+// Simplified navigation - fewer items, smart grouping
+const getNavigation = (enabledModules: string[]): NavSection[] => {
+  const allNav: NavSection[] = [
+    {
+      name: "Overview",
+      items: [
+        { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      ],
+    },
+    {
+      name: "Money",
+      items: [
+        { name: "Invoices", href: "/invoices", icon: FileText, moduleId: "invoices" },
+        { name: "Expenses", href: "/expenses", icon: Wallet, moduleId: "expenses" },
+        { name: "Banking", href: "/banking", icon: Building2, moduleId: "banking" },
+      ],
+    },
+    {
+      name: "Sales",
+      items: [
+        { name: "Point of Sale", href: "/pos", icon: Store, moduleId: "pos" },
+        { name: "Sales Orders", href: "/sales", icon: ShoppingCart, moduleId: "sales" },
+        { name: "Contacts", href: "/contacts", icon: Users, moduleId: "contacts" },
+      ],
+    },
+    {
+      name: "Operations",
+      items: [
+        { name: "Inventory", href: "/inventory", icon: Package, moduleId: "inventory" },
+        { name: "Projects", href: "/projects", icon: FolderKanban, moduleId: "projects" },
+        { name: "Appointments", href: "/appointments", icon: Clock, moduleId: "appointments" },
+        { name: "Manufacturing", href: "/manufacturing", icon: Factory, moduleId: "manufacturing" },
+      ],
+    },
+    {
+      name: "Team",
+      items: [
+        { name: "Employees", href: "/employees", icon: Briefcase, moduleId: "employees" },
+        { name: "Payroll", href: "/payroll", icon: Wallet, moduleId: "payroll" },
+        { name: "Time Off", href: "/time-off", icon: Clock, moduleId: "timeoff" },
+      ],
+    },
+    {
+      name: "Insights",
+      items: [
+        { name: "Reports", href: "/reports", icon: BarChart3, moduleId: "reports" },
+      ],
+    },
+  ]
+
+  // If no modules specified (legacy), show all
+  if (!enabledModules || enabledModules.length === 0) {
+    return allNav
+  }
+
+  // Filter sections based on enabled modules
+  return allNav
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => 
+        !item.moduleId || enabledModules.includes(item.moduleId)
+      ),
+    }))
+    .filter(section => section.items.length > 0)
+}
 
 // ============================================================================
-// INNER LAYOUT - Uses auth context (must be INSIDE AuthProvider)
+// INNER LAYOUT
 // ============================================================================
+
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const { profile, loading: profileLoading } = useUserProfile()
-  const { signOut, loading: authLoading, user, organizationId } = useAuth()
+  const { organization, loading: orgLoading, needsOnboarding } = useOrganization()
+  const { signOut, loading: authLoading, user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
 
-  // Show skeleton while auth/profile loading, then show real data
+  // Redirect to onboarding if needed
+  useEffect(() => {
+    if (needsOnboarding && pathname !== '/onboarding') {
+      router.push('/onboarding')
+    }
+  }, [needsOnboarding, pathname, router])
+
+  // Get filtered navigation based on enabled modules
+  const navigation = getNavigation(organization?.enabledModules || [])
+
+  // Loading state
   const isLoadingUser = authLoading || profileLoading
   const userName = profile 
     ? `${profile.firstName} ${profile.lastName}`.trim() || profile.email 
@@ -133,6 +156,15 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       console.error('Logout error:', err)
       router.push('/login')
     }
+  }
+
+  // Show loading while checking onboarding
+  if (orgLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   return (
@@ -155,19 +187,31 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       >
         {/* Logo */}
         <div className="flex h-16 items-center justify-between px-4 border-b gap-4">
-          <Link href="/dashboard" className="flex items-center justify-center">
+          <Link href="/dashboard" className="flex items-center gap-3">
             <Image
               src="/logo.png"
               alt="Ontyx"
-              width={40}
-              height={40}
+              width={36}
+              height={36}
               className="dark:invert"
             />
+            {!collapsed && (
+              <div className="flex flex-col">
+                <span className="font-semibold text-lg leading-none">
+                  {organization?.name || 'Ontyx'}
+                </span>
+                {organization?.businessType && (
+                  <span className="text-xs text-muted-foreground capitalize">
+                    {organization.businessType}
+                  </span>
+                )}
+              </div>
+            )}
           </Link>
           <Button
             variant="ghost"
             size="icon"
-            className="hidden lg:flex"
+            className="hidden lg:flex shrink-0"
             onClick={() => setCollapsed(!collapsed)}
           >
             <Menu className={cn(
@@ -182,7 +226,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className="lg:hidden shrink-0"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="h-5 w-5" />
@@ -207,20 +251,21 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                         key={item.href}
                         href={item.href}
                         className={cn(
-                          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
                           isActive 
-                            ? "bg-primary text-primary-foreground" 
+                            ? "bg-primary text-primary-foreground shadow-sm" 
                             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                           collapsed && "justify-center px-2"
                         )}
                         onClick={() => setSidebarOpen(false)}
+                        title={collapsed ? item.name : undefined}
                       >
-                        <item.icon className="h-4 w-4 shrink-0" />
+                        <item.icon className="h-5 w-5 shrink-0" />
                         {!collapsed && (
                           <>
                             <span className="flex-1">{item.name}</span>
                             {item.badge && (
-                              <Badge variant="secondary" className="ml-auto">
+                              <Badge variant="secondary" className="ml-auto text-xs">
                                 {item.badge}
                               </Badge>
                             )}
@@ -240,12 +285,13 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           <Link
             href="/settings"
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-accent hover:text-accent-foreground",
               pathname === '/settings' && "bg-primary text-primary-foreground",
               collapsed && "justify-center px-2"
             )}
+            title={collapsed ? "Settings" : undefined}
           >
-            <Settings className="h-4 w-4" />
+            <Settings className="h-5 w-5" />
             {!collapsed && <span>Settings</span>}
           </Link>
         </div>
@@ -254,24 +300,26 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="flex h-16 items-center justify-between border-b bg-card px-4 lg:px-6">
-          <div className="flex items-center gap-4">
+        <header className="flex h-16 items-center justify-between border-b bg-card px-4 lg:px-6 gap-4">
+          <div className="flex items-center gap-4 flex-1">
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden"
+              className="lg:hidden shrink-0"
               onClick={() => setSidebarOpen(true)}
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <div className="hidden md:block">
+            <div className="hidden md:block flex-1 max-w-md">
               <GlobalSearch />
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
+              {/* Notification dot */}
+              <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full" />
             </Button>
             <Separator orientation="vertical" className="h-6" />
             <DropdownMenu>
@@ -279,7 +327,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 <Button variant="ghost" className="gap-2 px-2">
                   <Avatar className="h-8 w-8">
                     {profile?.avatarUrl && <AvatarImage src={profile.avatarUrl} alt={userName} />}
-                    <AvatarFallback>{isLoadingUser ? '' : userInitials}</AvatarFallback>
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      {isLoadingUser ? '' : userInitials}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="hidden md:block text-left">
                     {isLoadingUser ? (
@@ -294,7 +344,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                       </>
                     )}
                   </div>
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  <ChevronDown className="h-4 w-4 text-muted-foreground hidden md:block" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -323,8 +373,10 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto p-4 lg:p-6">
-          {children}
+        <main className="flex-1 overflow-auto">
+          <div className="p-4 lg:p-6">
+            {children}
+          </div>
         </main>
       </div>
     </div>
@@ -332,8 +384,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 }
 
 // ============================================================================
-// MAIN LAYOUT - Wraps with providers FIRST, then renders inner layout
+// MAIN LAYOUT
 // ============================================================================
+
 export default function DashboardLayout({
   children,
 }: {
