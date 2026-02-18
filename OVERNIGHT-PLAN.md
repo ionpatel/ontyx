@@ -68,13 +68,20 @@ By morning, a new user should be able to:
 3. ✅ Create their first invoice on mobile (InvoiceCard, responsive forms)
 4. ✅ Feel like they're using a premium product (dark mode, animations, polish)
 
-## 🎁 Bonus Features Delivered
+## 🎁 Bonus Features Delivered (22 commits!)
 - ⌨️ Keyboard shortcuts (Cmd+K, G+X, N+X)
 - 🔔 Notification center with unread badges
 - 🌙 Dark mode with system preference
 - 📱 PWA with service worker
 - 🚀 QuickStartGuide onboarding checklist
 - 🎨 Empty states & skeleton loaders
+- 🗂️ Breadcrumb navigation
+- 💬 Feedback widget
+- ❓ HelpTip tooltips
+- 💰 CurrencyInput & PercentageInput
+- 📅 DatePicker & DateRangePicker
+- 🏷️ StatusBadge & StatusDot
+- 📇 InvoiceCard & ContactCard (mobile-friendly)
 
 ## 🔧 Technical Approach
 - Server components where possible
