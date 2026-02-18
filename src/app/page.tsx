@@ -155,7 +155,7 @@ export default function LandingPage() {
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-8 text-sm">
             <a href="#features" className="text-text-secondary hover:text-text-primary transition-colors">Features</a>
-            <a href="#pricing" className="text-text-secondary hover:text-text-primary transition-colors">Pricing</a>
+            <a href="/pricing" className="text-text-secondary hover:text-text-primary transition-colors">Pricing</a>
             <a href="#testimonials" className="text-text-secondary hover:text-text-primary transition-colors">Testimonials</a>
           </div>
 
@@ -187,7 +187,7 @@ export default function LandingPage() {
             className="md:hidden border-t border-border bg-background px-4 py-4 space-y-4"
           >
             <a href="#features" className="block py-2 text-text-secondary">Features</a>
-            <a href="#pricing" className="block py-2 text-text-secondary">Pricing</a>
+            <a href="/pricing" className="block py-2 text-text-secondary">Pricing</a>
             <a href="#testimonials" className="block py-2 text-text-secondary">Testimonials</a>
             <div className="pt-4 border-t border-border space-y-2">
               <Button variant="outline" asChild className="w-full">
