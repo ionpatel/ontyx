@@ -1,0 +1,11 @@
+Date,Description,Amount,Category,Vendor,Payment Method,Receipt #
+2026-01-15,Office supplies from Staples,145.99,Office Supplies,Staples,Credit Card,RCP-001
+2026-01-18,Monthly internet bill,89.99,Utilities,Rogers,Bank Transfer,RCP-002
+2026-01-22,Business lunch with client,78.45,Meals & Entertainment,The Keg,Credit Card,RCP-003
+2026-01-25,Uber to client meeting,32.50,Transportation,Uber,Credit Card,RCP-004
+2026-01-28,Software subscription - Adobe,79.99,Software,Adobe,Credit Card,RCP-005
+2026-02-01,Rent payment,2500.00,Rent,Landlord Inc,Bank Transfer,RCP-006
+2026-02-03,Phone bill - Rogers Business,125.00,Utilities,Rogers,Bank Transfer,RCP-007
+2026-02-05,Cleaning supplies,45.67,Office Supplies,Costco,Debit,RCP-008
+2026-02-08,Client parking,15.00,Transportation,Green P,Cash,RCP-009
+2026-02-10,Marketing - Google Ads,500.00,Marketing,Google,Credit Card,RCP-010

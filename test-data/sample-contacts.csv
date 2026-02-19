@@ -1,0 +1,11 @@
+Name,Email,Phone,Company,City,Province,Type
+John's Hardware Supply,orders@johnshardware.ca,(905) 555-1234,John's Hardware Supply Ltd,Mississauga,ON,vendor
+Maria Electronics,maria@mariaelectronics.com,(416) 555-5678,Maria Electronics Inc,Toronto,ON,vendor
+Best Buy Customer,james.wilson@gmail.com,(647) 555-9012,,Toronto,ON,customer
+Sarah's Home Goods,sarah@homegoodsco.ca,(905) 555-3456,Sarah's Home Goods,Brampton,ON,customer
+Tech Solutions,info@techsolutions.ca,(416) 555-7890,Tech Solutions Corp,North York,ON,vendor
+Emily Chen,emily.chen@outlook.com,(647) 555-2345,,Scarborough,ON,customer
+Mike's Wholesale,mike@mikewholesale.com,(905) 555-6789,Mike's Wholesale Ltd,Markham,ON,vendor
+Restaurant Supply Co,orders@restaurantsupply.ca,(416) 555-0123,Restaurant Supply Co,Etobicoke,ON,vendor
+Jane Smith,jane.smith@gmail.com,(647) 555-4567,,Toronto,ON,customer
+Office Max,purchasing@officemax.ca,(905) 555-8901,Office Max Canada,Vaughan,ON,vendor

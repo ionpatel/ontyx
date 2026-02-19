@@ -1,694 +1,534 @@
-"use client"
+'use client'
 
-import { useState } from "react"
+import { useState, useEffect } from 'react'
 import { 
-  Building2, Plus, ArrowUpRight, ArrowDownRight, 
-  RefreshCw, CheckCircle2, AlertCircle, Link as LinkIcon,
-  MoreHorizontal, Eye, Trash2, Loader2, DollarSign
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+  Building2, Plus, RefreshCw, Link2, Unlink, Upload, 
+  ArrowUpRight, ArrowDownLeft, CheckCircle2, AlertCircle,
+  Search, Filter, Download, Sparkles
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { 
-  Table, TableBody, TableCell, TableHead, 
-  TableHeader, TableRow 
-} from "@/components/ui/table"
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
+} from '@/components/ui/table'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter
+} from '@/components/ui/dialog'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { formatCurrency, cn } from "@/lib/utils"
-import { useBankAccounts, useBankTransactions, useBankingSummary, useTransactionCategories } from "@/hooks/use-banking"
-import type { BankAccountType, TransactionType, CreateBankAccountInput, CreateTransactionInput } from "@/services/banking"
-import { useToast } from "@/components/ui/toast"
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from '@/components/ui/select'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { formatCurrency, formatDate } from '@/lib/utils'
 
-const accountTypeLabels: Record<BankAccountType, string> = {
-  checking: "Checking",
-  savings: "Savings",
-  credit_card: "Credit Card",
-  line_of_credit: "Line of Credit",
-  investment: "Investment",
+interface BankAccount {
+  id: string
+  institution: string
+  accountName: string
+  accountNumber: string // Last 4 digits
+  type: 'checking' | 'savings' | 'credit'
+  balance: number
+  currency: string
+  lastSync: string
+  status: 'connected' | 'error' | 'disconnected'
 }
 
+interface BankTransaction {
+  id: string
+  date: string
+  description: string
+  amount: number
+  type: 'credit' | 'debit'
+  category?: string
+  matched?: boolean
+  matchedTo?: { type: 'invoice' | 'expense' | 'bill', id: string, number: string }
+  accountId: string
+}
+
+const CANADIAN_BANKS = [
+  { id: 'td', name: 'TD Canada Trust', logo: '🟢' },
+  { id: 'rbc', name: 'RBC Royal Bank', logo: '🔵' },
+  { id: 'bmo', name: 'BMO Bank of Montreal', logo: '🔴' },
+  { id: 'scotiabank', name: 'Scotiabank', logo: '🔴' },
+  { id: 'cibc', name: 'CIBC', logo: '🟡' },
+  { id: 'tangerine', name: 'Tangerine', logo: '🟠' },
+  { id: 'simplii', name: 'Simplii Financial', logo: '🟢' },
+  { id: 'desjardins', name: 'Desjardins', logo: '🟢' },
+  { id: 'national', name: 'National Bank', logo: '🔴' },
+  { id: 'hsbc', name: 'HSBC Canada', logo: '🔴' },
+]
+
+const EXPENSE_CATEGORIES = [
+  'Office Supplies', 'Utilities', 'Rent', 'Software', 'Marketing',
+  'Meals & Entertainment', 'Transportation', 'Insurance', 'Professional Services',
+  'Bank Fees', 'Payroll', 'Inventory', 'Equipment', 'Other'
+]
+
 export default function BankingPage() {
-  const { accounts, loading: accountsLoading, createAccount, deleteAccount, refetch: refetchAccounts } = useBankAccounts()
-  const [selectedAccountId, setSelectedAccountId] = useState<string | undefined>()
-  const { 
-    transactions, 
-    unreconciledTransactions, 
-    loading: txLoading, 
-    reconcileTransaction,
-    categorizeTransaction,
-    createTransaction,
-    deleteTransaction,
-    refetch: refetchTransactions 
-  } = useBankTransactions(selectedAccountId)
-  const { summary, loading: summaryLoading } = useBankingSummary()
-  const { categories } = useTransactionCategories()
-  const { success, error: showError } = useToast()
+  const [accounts, setAccounts] = useState<BankAccount[]>([])
+  const [transactions, setTransactions] = useState<BankTransaction[]>([])
+  const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
+  const [connectDialogOpen, setConnectDialogOpen] = useState(false)
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [selectedAccount, setSelectedAccount] = useState<string>('all')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterMatched, setFilterMatched] = useState<'all' | 'matched' | 'unmatched'>('all')
 
-  // Dialogs
-  const [showAddAccount, setShowAddAccount] = useState(false)
-  const [showAddTransaction, setShowAddTransaction] = useState(false)
-  const [saving, setSaving] = useState(false)
+  useEffect(() => {
+    loadBankingData()
+  }, [])
 
-  // Forms
-  const [accountForm, setAccountForm] = useState<CreateBankAccountInput>({
-    name: '',
-    accountType: 'checking',
-    accountNumber: '',
-    bankName: '',
-    currentBalance: 0,
-  })
-  const [transactionForm, setTransactionForm] = useState<CreateTransactionInput>({
-    bankAccountId: '',
-    transactionDate: new Date().toISOString().split('T')[0],
-    description: '',
-    amount: 0,
-    transactionType: 'debit',
-  })
-
-  // Selected account
-  const selectedAccount = accounts.find(a => a.id === selectedAccountId)
-  
-  // Set default account when accounts load
-  if (accounts.length > 0 && !selectedAccountId) {
-    setSelectedAccountId(accounts[0].id)
-  }
-
-  const handleCreateAccount = async () => {
-    if (!accountForm.name || !accountForm.bankName) {
-      showError('Missing Info', 'Please fill in all required fields')
-      return
-    }
-
-    setSaving(true)
-    const account = await createAccount(accountForm)
-    setSaving(false)
-
-    if (account) {
-      success('Account Added', `${account.name} has been created`)
-      setShowAddAccount(false)
-      setAccountForm({
-        name: '',
-        accountType: 'checking',
-        accountNumber: '',
-        bankName: '',
-        currentBalance: 0,
-      })
-      setSelectedAccountId(account.id)
-    } else {
-      showError('Error', 'Failed to create account')
-    }
-  }
-
-  const handleCreateTransaction = async () => {
-    if (!transactionForm.description || !transactionForm.amount || !selectedAccountId) {
-      showError('Missing Info', 'Please fill in all required fields')
-      return
-    }
-
-    setSaving(true)
-    const tx = await createTransaction({
-      ...transactionForm,
-      bankAccountId: selectedAccountId,
-    })
-    setSaving(false)
-
-    if (tx) {
-      success('Transaction Added', 'Transaction has been recorded')
-      setShowAddTransaction(false)
-      setTransactionForm({
-        bankAccountId: '',
-        transactionDate: new Date().toISOString().split('T')[0],
-        description: '',
-        amount: 0,
-        transactionType: 'debit',
-      })
-      refetchAccounts() // Update balance
-    } else {
-      showError('Error', 'Failed to record transaction')
-    }
-  }
-
-  const handleReconcile = async (transactionId: string) => {
-    const ok = await reconcileTransaction(transactionId)
-    if (ok) {
-      success('Reconciled', 'Transaction marked as reconciled')
-    }
-  }
-
-  const handleDeleteAccount = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this account?')) return
-    
-    const ok = await deleteAccount(id)
-    if (ok) {
-      success('Deleted', 'Account has been removed')
-      if (selectedAccountId === id && accounts.length > 1) {
-        setSelectedAccountId(accounts.find(a => a.id !== id)?.id)
+  const loadBankingData = async () => {
+    setLoading(true)
+    try {
+      const [accountsRes, transactionsRes] = await Promise.all([
+        fetch('/api/banking/accounts'),
+        fetch('/api/banking/transactions')
+      ])
+      
+      if (accountsRes.ok) {
+        const data = await accountsRes.json()
+        setAccounts(data.accounts || [])
       }
+      
+      if (transactionsRes.ok) {
+        const data = await transactionsRes.json()
+        setTransactions(data.transactions || [])
+      }
+    } catch (err) {
+      console.error('Failed to load banking data:', err)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const loading = accountsLoading || summaryLoading
-
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-6">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
+  const syncAccounts = async () => {
+    setSyncing(true)
+    try {
+      await fetch('/api/banking/sync', { method: 'POST' })
+      await loadBankingData()
+    } catch (err) {
+      console.error('Sync failed:', err)
+    } finally {
+      setSyncing(false)
+    }
   }
+
+  const handleConnectBank = async (bankId: string) => {
+    // In production, this would redirect to Flinks/Plaid OAuth
+    // For now, show a placeholder
+    window.open(`/api/banking/connect?bank=${bankId}`, '_blank', 'width=500,height=600')
+    setConnectDialogOpen(false)
+  }
+
+  const categorizeTransaction = async (transactionId: string, category: string) => {
+    try {
+      await fetch(`/api/banking/transactions/${transactionId}/categorize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category })
+      })
+      
+      setTransactions(prev => 
+        prev.map(t => t.id === transactionId ? { ...t, category } : t)
+      )
+    } catch (err) {
+      console.error('Failed to categorize:', err)
+    }
+  }
+
+  const autoMatchTransactions = async () => {
+    try {
+      const res = await fetch('/api/banking/auto-match', { method: 'POST' })
+      const { matched } = await res.json()
+      await loadBankingData()
+      alert(`Auto-matched ${matched} transactions!`)
+    } catch (err) {
+      console.error('Auto-match failed:', err)
+    }
+  }
+
+  const filteredTransactions = transactions.filter(t => {
+    if (selectedAccount !== 'all' && t.accountId !== selectedAccount) return false
+    if (searchTerm && !t.description.toLowerCase().includes(searchTerm.toLowerCase())) return false
+    if (filterMatched === 'matched' && !t.matched) return false
+    if (filterMatched === 'unmatched' && t.matched) return false
+    return true
+  })
+
+  const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0)
+  const unmatchedCount = transactions.filter(t => !t.matched).length
 
   return (
-    <div className="flex-1 space-y-6 p-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Banking</h1>
+          <h1 className="text-3xl font-bold">Banking</h1>
           <p className="text-muted-foreground">
-            Manage bank accounts and reconcile transactions
+            Connect your bank accounts and reconcile transactions
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => { refetchAccounts(); refetchTransactions() }}>
-            <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+          <Button variant="outline" onClick={syncAccounts} disabled={syncing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+            Sync
           </Button>
-          <Button onClick={() => setShowAddAccount(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Add Bank Account
-          </Button>
+          <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                Import Statement
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Import Bank Statement</DialogTitle>
+                <DialogDescription>
+                  Upload a CSV or OFX file exported from your bank
+                </DialogDescription>
+              </DialogHeader>
+              <ImportStatementForm onComplete={() => {
+                setImportDialogOpen(false)
+                loadBankingData()
+              }} />
+            </DialogContent>
+          </Dialog>
+          <Dialog open={connectDialogOpen} onOpenChange={setConnectDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Connect Bank
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Connect Your Bank</DialogTitle>
+                <DialogDescription>
+                  Securely connect to your Canadian bank account
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-2 py-4">
+                {CANADIAN_BANKS.map(bank => (
+                  <button
+                    key={bank.id}
+                    onClick={() => handleConnectBank(bank.id)}
+                    className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted transition-colors text-left"
+                  >
+                    <span className="text-2xl">{bank.logo}</span>
+                    <span className="font-medium">{bank.name}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                Powered by Flinks • Bank-level security • Read-only access
+              </p>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
-      {/* Empty State */}
-      {accounts.length === 0 ? (
+      {/* Account Overview */}
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No Bank Accounts</h3>
-            <p className="text-muted-foreground text-center mb-6 max-w-md">
-              Add your bank accounts to track transactions, reconcile payments, and manage your cash flow.
+          <CardHeader className="pb-2">
+            <CardDescription>Total Balance</CardDescription>
+            <CardTitle className="text-2xl">{formatCurrency(totalBalance)}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground">
+              Across {accounts.length} account{accounts.length !== 1 ? 's' : ''}
             </p>
-            <Button onClick={() => setShowAddAccount(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Add Your First Account
-            </Button>
           </CardContent>
         </Card>
-      ) : (
-        <>
-          {/* Bank Account Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {accounts.map((account) => (
-              <Card 
-                key={account.id}
-                className={cn(
-                  "cursor-pointer transition-all hover:shadow-md",
-                  selectedAccountId === account.id && "ring-2 ring-primary"
-                )}
-                onClick={() => setSelectedAccountId(account.id)}
-              >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Building2 className="h-5 w-5 text-primary" />
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>This Month In</CardDescription>
+            <CardTitle className="text-2xl text-green-600">
+              {formatCurrency(transactions.filter(t => t.type === 'credit').reduce((s, t) => s + t.amount, 0))}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <ArrowDownLeft className="h-3 w-3" /> Credits & deposits
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>This Month Out</CardDescription>
+            <CardTitle className="text-2xl text-red-600">
+              {formatCurrency(transactions.filter(t => t.type === 'debit').reduce((s, t) => s + Math.abs(t.amount), 0))}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <ArrowUpRight className="h-3 w-3" /> Debits & payments
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card className={unmatchedCount > 0 ? 'border-yellow-500' : ''}>
+          <CardHeader className="pb-2">
+            <CardDescription>Unmatched</CardDescription>
+            <CardTitle className="text-2xl">{unmatchedCount}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground">
+              Transactions to categorize
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Connected Accounts */}
+      {accounts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Connected Accounts</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {accounts.map(account => (
+                <div key={account.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                      <Building2 className="h-5 w-5" />
                     </div>
                     <div>
-                      <CardTitle className="text-base font-medium">{account.name}</CardTitle>
-                      <CardDescription>
-                        {account.bankName} • ****{account.accountNumber}
-                      </CardDescription>
+                      <div className="font-medium">{account.accountName}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {account.institution} •••• {account.accountNumber}
+                      </div>
                     </div>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Eye className="mr-2 h-4 w-4" /> View Details
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        className="text-destructive"
-                        onClick={(e) => { e.stopPropagation(); handleDeleteAccount(account.id) }}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {formatCurrency(account.currentBalance, account.currency)}
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="outline" className="text-xs">
-                      {accountTypeLabels[account.accountType]}
+                  <div className="text-right">
+                    <div className="font-semibold">{formatCurrency(account.balance)}</div>
+                    <Badge variant={account.status === 'connected' ? 'default' : 'destructive'} className="text-xs">
+                      {account.status}
                     </Badge>
-                    {account.isPrimary && (
-                      <Badge variant="default" className="text-xs">Primary</Badge>
-                    )}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Main Content */}
-          <div className="grid gap-6 lg:grid-cols-3">
-            {/* Transactions Panel */}
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>{selectedAccount?.name || 'Select Account'}</CardTitle>
-                      <CardDescription>
-                        {unreconciledTransactions.length} unreconciled transactions
-                      </CardDescription>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setShowAddTransaction(true)}>
-                        <Plus className="mr-2 h-4 w-4" /> Add Transaction
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {txLoading ? (
-                    <div className="flex justify-center py-8">
-                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                    </div>
-                  ) : (
-                    <Tabs defaultValue="all">
-                      <TabsList className="mb-4">
-                        <TabsTrigger value="all">All</TabsTrigger>
-                        <TabsTrigger value="unreconciled">
-                          Unreconciled
-                          {unreconciledTransactions.length > 0 && (
-                            <Badge variant="destructive" className="ml-2 h-5 px-1.5">
-                              {unreconciledTransactions.length}
-                            </Badge>
-                          )}
-                        </TabsTrigger>
-                      </TabsList>
-
-                      <TabsContent value="all">
-                        <TransactionsTable 
-                          transactions={transactions} 
-                          onReconcile={handleReconcile}
-                          onCategorize={categorizeTransaction}
-                          onDelete={deleteTransaction}
-                          categories={categories}
-                        />
-                      </TabsContent>
-
-                      <TabsContent value="unreconciled">
-                        <TransactionsTable 
-                          transactions={unreconciledTransactions} 
-                          onReconcile={handleReconcile}
-                          onCategorize={categorizeTransaction}
-                          onDelete={deleteTransaction}
-                          categories={categories}
-                        />
-                      </TabsContent>
-                    </Tabs>
-                  )}
-                </CardContent>
-              </Card>
+                </div>
+              ))}
             </div>
-
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Summary Card */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Overview</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Total Balance</span>
-                    <span className="font-bold text-lg">
-                      {formatCurrency(summary?.totalBalance || 0)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Accounts</span>
-                    <span className="font-medium">{summary?.accountCount || 0}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Unreconciled</span>
-                    <Badge variant="warning">{summary?.unreconciledCount || 0}</Badge>
-                  </div>
-                  <div className="border-t pt-4 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground text-sm">This Month In</span>
-                      <span className="font-medium text-green-600">
-                        +{formatCurrency(summary?.monthlyInflow || 0)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground text-sm">This Month Out</span>
-                      <span className="font-medium text-red-600">
-                        -{formatCurrency(summary?.monthlyOutflow || 0)}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Quick Actions */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Quick Actions</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start"
-                    onClick={() => {
-                      setTransactionForm(f => ({ ...f, transactionType: 'credit' }))
-                      setShowAddTransaction(true)
-                    }}
-                  >
-                    <ArrowDownRight className="mr-2 h-4 w-4 text-green-600" />
-                    Record Deposit
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start"
-                    onClick={() => {
-                      setTransactionForm(f => ({ ...f, transactionType: 'debit' }))
-                      setShowAddTransaction(true)
-                    }}
-                  >
-                    <ArrowUpRight className="mr-2 h-4 w-4 text-red-600" />
-                    Record Payment
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Add Account Dialog */}
-      <Dialog open={showAddAccount} onOpenChange={setShowAddAccount}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Bank Account</DialogTitle>
-            <DialogDescription>
-              Add a new bank account to track transactions.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Account Name</Label>
-              <Input
-                id="name"
-                placeholder="e.g., Business Checking"
-                value={accountForm.name}
-                onChange={(e) => setAccountForm(f => ({ ...f, name: e.target.value }))}
-              />
+      {/* Empty State */}
+      {accounts.length === 0 && !loading && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No bank accounts connected</h3>
+            <p className="text-muted-foreground text-center mb-4 max-w-md">
+              Connect your Canadian bank account to automatically import transactions 
+              and reconcile with your invoices and expenses.
+            </p>
+            <div className="flex gap-2">
+              <Button onClick={() => setConnectDialogOpen(true)}>
+                <Link2 className="h-4 w-4 mr-2" />
+                Connect Bank
+              </Button>
+              <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Import CSV
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="bankName">Bank Name</Label>
-              <Input
-                id="bankName"
-                placeholder="e.g., TD Bank, RBC, Scotiabank"
-                value={accountForm.bankName}
-                onChange={(e) => setAccountForm(f => ({ ...f, bankName: e.target.value }))}
-              />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Transactions */}
+      {(accounts.length > 0 || transactions.length > 0) && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Transactions</CardTitle>
+              <Button variant="outline" size="sm" onClick={autoMatchTransactions}>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Auto-Match
+              </Button>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="type">Account Type</Label>
-                <Select
-                  value={accountForm.accountType}
-                  onValueChange={(v) => setAccountForm(f => ({ ...f, accountType: v as BankAccountType }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(accountTypeLabels).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="accountNumber">Last 4 Digits</Label>
+            <div className="flex gap-2 mt-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  id="accountNumber"
-                  placeholder="1234"
-                  maxLength={4}
-                  value={accountForm.accountNumber}
-                  onChange={(e) => setAccountForm(f => ({ ...f, accountNumber: e.target.value }))}
+                  placeholder="Search transactions..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="balance">Current Balance</Label>
-              <Input
-                id="balance"
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={accountForm.currentBalance || ''}
-                onChange={(e) => setAccountForm(f => ({ ...f, currentBalance: parseFloat(e.target.value) || 0 }))}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddAccount(false)}>Cancel</Button>
-            <Button onClick={handleCreateAccount} disabled={saving}>
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Add Account
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Transaction Dialog */}
-      <Dialog open={showAddTransaction} onOpenChange={setShowAddTransaction}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {transactionForm.transactionType === 'credit' ? 'Record Deposit' : 'Record Payment'}
-            </DialogTitle>
-            <DialogDescription>
-              Manually add a transaction to {selectedAccount?.name}.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Type</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={transactionForm.transactionType === 'credit' ? 'default' : 'outline'}
-                  className="flex-1"
-                  onClick={() => setTransactionForm(f => ({ ...f, transactionType: 'credit' }))}
-                >
-                  <ArrowDownRight className="mr-2 h-4 w-4" /> Deposit
-                </Button>
-                <Button
-                  type="button"
-                  variant={transactionForm.transactionType === 'debit' ? 'default' : 'outline'}
-                  className="flex-1"
-                  onClick={() => setTransactionForm(f => ({ ...f, transactionType: 'debit' }))}
-                >
-                  <ArrowUpRight className="mr-2 h-4 w-4" /> Payment
-                </Button>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="txDate">Date</Label>
-              <Input
-                id="txDate"
-                type="date"
-                value={transactionForm.transactionDate}
-                onChange={(e) => setTransactionForm(f => ({ ...f, transactionDate: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                placeholder="e.g., Client payment, Supplier invoice"
-                value={transactionForm.description}
-                onChange={(e) => setTransactionForm(f => ({ ...f, description: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="amount">Amount</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={transactionForm.amount || ''}
-                onChange={(e) => setTransactionForm(f => ({ ...f, amount: parseFloat(e.target.value) || 0 }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select
-                value={transactionForm.category || ''}
-                onValueChange={(v) => setTransactionForm(f => ({ ...f, category: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category..." />
+              <Select value={selectedAccount} onValueChange={setSelectedAccount}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All accounts" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map(cat => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  <SelectItem value="all">All accounts</SelectItem>
+                  {accounts.map(a => (
+                    <SelectItem key={a.id} value={a.id}>{a.accountName}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={filterMatched} onValueChange={(v: any) => setFilterMatched(v)}>
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="matched">Matched</SelectItem>
+                  <SelectItem value="unmatched">Unmatched</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddTransaction(false)}>Cancel</Button>
-            <Button onClick={handleCreateTransaction} disabled={saving}>
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Add Transaction
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredTransactions.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      No transactions found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredTransactions.map(transaction => (
+                    <TableRow key={transaction.id}>
+                      <TableCell>{formatDate(transaction.date)}</TableCell>
+                      <TableCell className="max-w-xs truncate">{transaction.description}</TableCell>
+                      <TableCell>
+                        <Select
+                          value={transaction.category || ''}
+                          onValueChange={(v) => categorizeTransaction(transaction.id, v)}
+                        >
+                          <SelectTrigger className="w-40 h-8">
+                            <SelectValue placeholder="Categorize..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {EXPENSE_CATEGORIES.map(cat => (
+                              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className={`text-right font-medium ${
+                        transaction.type === 'credit' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {transaction.type === 'credit' ? '+' : '-'}
+                        {formatCurrency(Math.abs(transaction.amount))}
+                      </TableCell>
+                      <TableCell>
+                        {transaction.matched ? (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            {transaction.matchedTo?.type} #{transaction.matchedTo?.number}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            Unmatched
+                          </Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
 
-// ============================================================================
-// TRANSACTIONS TABLE COMPONENT
-// ============================================================================
+// Import Statement Form Component
+function ImportStatementForm({ onComplete }: { onComplete: () => void }) {
+  const [file, setFile] = useState<File | null>(null)
+  const [accountName, setAccountName] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-function TransactionsTable({ 
-  transactions, 
-  onReconcile, 
-  onCategorize,
-  onDelete,
-  categories 
-}: { 
-  transactions: any[]
-  onReconcile: (id: string) => void
-  onCategorize: (id: string, category: string) => Promise<boolean>
-  onDelete: (id: string) => Promise<boolean>
-  categories: string[]
-}) {
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })
-  }
-
-  if (transactions.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        No transactions found.
-      </div>
-    )
+  const handleImport = async () => {
+    if (!file || !accountName) return
+    
+    setImporting(true)
+    setError(null)
+    
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('accountName', accountName)
+      
+      const res = await fetch('/api/banking/import', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Import failed')
+      }
+      
+      onComplete()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setImporting(false)
+    }
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Date</TableHead>
-          <TableHead>Description</TableHead>
-          <TableHead>Category</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Amount</TableHead>
-          <TableHead className="w-[80px]"></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {transactions.map((transaction) => (
-          <TableRow key={transaction.id}>
-            <TableCell className="font-medium">
-              {formatDate(transaction.transactionDate)}
-            </TableCell>
-            <TableCell>
-              <div className="font-medium">{transaction.description}</div>
-            </TableCell>
-            <TableCell>
-              <Select
-                value={transaction.category || ''}
-                onValueChange={(v) => onCategorize(transaction.id, v)}
-              >
-                <SelectTrigger className="h-8 w-[140px]">
-                  <SelectValue placeholder="Categorize..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map(cat => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </TableCell>
-            <TableCell>
-              <div className="flex items-center gap-1.5">
-                {transaction.isReconciled ? (
-                  <>
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    <span className="text-sm text-green-600">Reconciled</span>
-                  </>
-                ) : (
-                  <>
-                    <AlertCircle className="h-4 w-4 text-amber-500" />
-                    <span className="text-sm text-amber-500">Unreconciled</span>
-                  </>
-                )}
-              </div>
-            </TableCell>
-            <TableCell className="text-right">
-              <span className={cn(
-                "font-medium",
-                transaction.transactionType === 'credit' ? "text-green-600" : "text-red-600"
-              )}>
-                {transaction.transactionType === 'credit' ? '+' : '-'}
-                {formatCurrency(Math.abs(transaction.amount))}
-              </span>
-            </TableCell>
-            <TableCell>
-              {!transaction.isReconciled && (
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => onReconcile(transaction.id)}
-                >
-                  Reconcile
-                </Button>
-              )}
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <div className="space-y-4">
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      
+      <div>
+        <label className="text-sm font-medium">Account Name</label>
+        <Input
+          placeholder="e.g., TD Business Chequing"
+          value={accountName}
+          onChange={(e) => setAccountName(e.target.value)}
+          className="mt-1"
+        />
+      </div>
+      
+      <div>
+        <label className="text-sm font-medium">Bank Statement File</label>
+        <Input
+          type="file"
+          accept=".csv,.ofx,.qfx"
+          onChange={(e) => setFile(e.target.files?.[0] || null)}
+          className="mt-1"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Supports CSV, OFX, and QFX formats from most Canadian banks
+        </p>
+      </div>
+      
+      <DialogFooter>
+        <Button onClick={handleImport} disabled={!file || !accountName || importing}>
+          {importing ? 'Importing...' : 'Import Transactions'}
+        </Button>
+      </DialogFooter>
+    </div>
   )
 }
