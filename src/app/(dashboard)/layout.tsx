@@ -21,6 +21,8 @@ import { NotificationCenter } from '@/components/notifications'
 import { MobileBottomNav, MobileNavSpacer } from '@/components/mobile-nav'
 import { cn } from "@/lib/utils"
 import { usePlanAccess } from "@/hooks/use-plan-access"
+import { UpgradePrompt } from "@/components/upgrade-prompt"
+import { ROUTE_FEATURES } from "@/lib/plan-features"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -145,13 +147,12 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     }
   }, [needsOnboarding, pathname, router])
 
-  // Check plan access for current route - redirect if unauthorized
-  useEffect(() => {
-    if (!planLoading && pathname && !canAccessRoute(pathname)) {
-      // Redirect to dashboard with upgrade message
-      router.push('/dashboard?upgrade=true')
-    }
-  }, [pathname, canAccessRoute, planLoading, router])
+  // Check plan access for current route
+  const isRouteBlocked = !planLoading && pathname && !canAccessRoute(pathname)
+  const blockedFeature = isRouteBlocked ? (
+    ROUTE_FEATURES[pathname] || 
+    Object.entries(ROUTE_FEATURES).find(([route]) => pathname.startsWith(route))?.[1]
+  ) : null
 
   // Get filtered navigation based on enabled modules
   const navigation = getNavigation(organization?.enabledModules || [])
@@ -391,7 +392,15 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         {/* Page content */}
         <main className="flex-1 overflow-auto">
           <div className="p-4 lg:p-6 pb-20 md:pb-6">
-            {children}
+            {isRouteBlocked && blockedFeature ? (
+              <UpgradePrompt 
+                feature={blockedFeature} 
+                currentTier={tier}
+                onClose={() => router.push('/dashboard')}
+              />
+            ) : (
+              children
+            )}
           </div>
           <MobileNavSpacer />
         </main>

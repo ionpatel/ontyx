@@ -44,6 +44,7 @@ const pricing = [
   {
     name: "Starter",
     price: "$29",
+    odooPrice: "$58",
     period: "/month",
     desc: "For small businesses getting started",
     features: [
@@ -56,10 +57,12 @@ const pricing = [
     ],
     cta: "Start Free Trial",
     popular: false,
+    savings: "Save $348/year vs Odoo",
   },
   {
     name: "Professional",
     price: "$49",
+    odooPrice: "$98",
     period: "/month",
     desc: "For growing Canadian businesses",
     features: [
@@ -73,10 +76,12 @@ const pricing = [
     ],
     cta: "Start Free Trial",
     popular: true,
+    savings: "Save $588/year vs Odoo",
   },
   {
     name: "Enterprise",
     price: "$199",
+    odooPrice: "$398",
     period: "/month",
     desc: "For large organizations",
     features: [
@@ -91,6 +96,7 @@ const pricing = [
     ],
     cta: "Contact Sales",
     popular: false,
+    savings: "Save $2,388/year vs Odoo",
   },
 ]
 
@@ -394,7 +400,17 @@ export default function LandingPage() {
                     <div className="mt-3 flex items-baseline gap-1">
                       <span className="text-4xl font-bold">{plan.price}</span>
                       <span className="text-text-muted">{plan.period}</span>
+                      {plan.odooPrice && (
+                        <span className="text-sm text-muted-foreground line-through ml-2">
+                          {plan.odooPrice} Odoo
+                        </span>
+                      )}
                     </div>
+                    {plan.savings && (
+                      <Badge variant="secondary" className="mt-2 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+                        {plan.savings}
+                      </Badge>
+                    )}
                     <p className="mt-2 text-sm text-text-secondary">{plan.desc}</p>
 
                     <ul className="mt-6 space-y-3">
@@ -419,9 +435,14 @@ export default function LandingPage() {
             ))}
           </motion.div>
 
-          <p className="text-center text-sm text-text-muted mt-8">
-            All plans include: 🇨🇦 Canadian tax compliance • Bank connections • Email support • Free updates
-          </p>
+          <div className="text-center mt-8 space-y-2">
+            <p className="text-sm text-text-muted">
+              All plans include: 🇨🇦 Canadian tax compliance • Bank connections • Email support • Free updates
+            </p>
+            <p className="text-sm font-medium text-primary">
+              💰 50% cheaper than Odoo • No setup fees • No hidden costs • Cancel anytime
+            </p>
+          </div>
         </div>
       </section>
 
