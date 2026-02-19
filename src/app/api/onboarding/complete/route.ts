@@ -2,24 +2,34 @@ import { createClient } from '@supabase/supabase-js'
 import { createClient as createBrowserClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-// Use service role for updates (bypasses RLS)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 export async function POST(request: Request) {
   try {
-    // Get user from session
+    // Get user from session using anon client
     const supabase = await createBrowserClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
+      console.error('Auth error:', authError)
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
+
+    // Create service role client for admin operations
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!serviceRoleKey) {
+      console.error('SUPABASE_SERVICE_ROLE_KEY not configured')
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      )
+    }
+
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      serviceRoleKey
+    )
 
     // Get request body
     const body = await request.json()
