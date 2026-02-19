@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { 
   Search, Plus, Building2, User, Phone, Mail, 
   MoreHorizontal, ArrowUpRight, Users, TrendingUp, 
-  UserPlus, Edit, Trash2, Eye, MapPin, FileDown
+  UserPlus, Edit, Trash2, Eye, MapPin, FileDown, AlertTriangle
 } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 import { exportContactsToCSV } from '@/lib/export'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -101,6 +102,9 @@ export default function ContactsPage() {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<ContactType | 'all'>('all')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set())
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [newContact, setNewContact] = useState<Partial<CreateContactInput>>({
     type: 'customer',
     name: '',
@@ -151,10 +155,45 @@ export default function ContactsPage() {
   }
 
   const handleDeleteContact = async (id: string) => {
-    if (confirm('Are you sure you want to delete this contact?')) {
-      await deleteContact(id)
+    setSelectedContacts(new Set([id]))
+    setDeleteDialogOpen(true)
+  }
+
+  const handleBulkDelete = async () => {
+    setIsDeleting(true)
+    try {
+      for (const id of selectedContacts) {
+        await deleteContact(id)
+      }
+      setSelectedContacts(new Set())
+      setDeleteDialogOpen(false)
+    } finally {
+      setIsDeleting(false)
     }
   }
+
+  const toggleSelectContact = (id: string) => {
+    setSelectedContacts(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      return newSet
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedContacts.size === filteredContacts.length) {
+      setSelectedContacts(new Set())
+    } else {
+      setSelectedContacts(new Set(filteredContacts.map(c => c.id)))
+    }
+  }
+
+  const isAllSelected = filteredContacts.length > 0 && selectedContacts.size === filteredContacts.length
+  const isSomeSelected = selectedContacts.size > 0
 
   return (
     <div className="flex-1 space-y-6 p-6">
@@ -165,6 +204,15 @@ export default function ContactsPage() {
           <p className="text-text-secondary mt-1">Manage customers, vendors, and partners</p>
         </div>
         <div className="flex gap-2">
+          {isSomeSelected && (
+            <Button 
+              variant="destructive" 
+              onClick={() => setDeleteDialogOpen(true)}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete ({selectedContacts.size})
+            </Button>
+          )}
           <Button 
             variant="outline" 
             onClick={() => exportContactsToCSV(contacts)}
@@ -363,13 +411,29 @@ export default function ContactsPage() {
       {/* Contact List */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            {filteredContacts.length} Contact{filteredContacts.length !== 1 ? 's' : ''}
-          </CardTitle>
-          <CardDescription>
-            Click on a contact to view details
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                {filteredContacts.length} Contact{filteredContacts.length !== 1 ? 's' : ''}
+              </CardTitle>
+              <CardDescription>
+                {isSomeSelected 
+                  ? `${selectedContacts.size} selected` 
+                  : 'Click on a contact to view details'}
+              </CardDescription>
+            </div>
+            {filteredContacts.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Checkbox 
+                  checked={isAllSelected}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Select all"
+                />
+                <span className="text-sm text-muted-foreground">Select all</span>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -394,9 +458,19 @@ export default function ContactsPage() {
               {filteredContacts.map((contact) => (
                 <div 
                   key={contact.id} 
-                  className="flex items-center justify-between py-4 hover:bg-surface-hover px-4 -mx-4 transition-colors group"
+                  className={cn(
+                    "flex items-center justify-between py-4 hover:bg-surface-hover px-4 -mx-4 transition-colors group",
+                    selectedContacts.has(contact.id) && "bg-primary/5"
+                  )}
                 >
-                  <Link href={`/contacts/${contact.id}`} className="flex items-center gap-4 flex-1">
+                  <div className="flex items-center gap-4 flex-1">
+                    <Checkbox 
+                      checked={selectedContacts.has(contact.id)}
+                      onCheckedChange={() => toggleSelectContact(contact.id)}
+                      aria-label={`Select ${contact.name}`}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <Link href={`/contacts/${contact.id}`} className="flex items-center gap-4 flex-1">
                     <Avatar className="h-12 w-12 border-2 border-border">
                       <AvatarFallback className="bg-primary-light text-primary font-semibold">
                         {getInitials(contact.name)}
@@ -432,6 +506,7 @@ export default function ContactsPage() {
                       </div>
                     </div>
                   </Link>
+                  </div>
                   <div className="flex items-center gap-6">
                     {(contact.type === 'customer' || contact.type === 'both') && (
                       <div className="text-right hidden sm:block">
@@ -475,6 +550,63 @@ export default function ContactsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Delete {selectedContacts.size === 1 ? 'Contact' : `${selectedContacts.size} Contacts`}?
+            </DialogTitle>
+            <DialogDescription>
+              {selectedContacts.size === 1 ? (
+                <>
+                  Are you sure you want to delete this contact? This action cannot be undone. 
+                  All associated invoices and orders will remain but will no longer be linked to this contact.
+                </>
+              ) : (
+                <>
+                  Are you sure you want to delete {selectedContacts.size} contacts? This action cannot be undone.
+                  All associated invoices and orders will remain but will no longer be linked to these contacts.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-destructive/10 rounded-lg p-3 mt-2">
+            <p className="text-sm text-destructive font-medium">Contacts to be deleted:</p>
+            <ul className="text-sm text-muted-foreground mt-1 max-h-32 overflow-auto">
+              {Array.from(selectedContacts).slice(0, 5).map(id => {
+                const contact = contacts.find(c => c.id === id)
+                return contact ? (
+                  <li key={id} className="truncate">• {contact.name}</li>
+                ) : null
+              })}
+              {selectedContacts.size > 5 && (
+                <li className="text-muted-foreground">...and {selectedContacts.size - 5} more</li>
+              )}
+            </ul>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleBulkDelete} disabled={isDeleting}>
+              {isDeleting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete {selectedContacts.size === 1 ? 'Contact' : `${selectedContacts.size} Contacts`}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
