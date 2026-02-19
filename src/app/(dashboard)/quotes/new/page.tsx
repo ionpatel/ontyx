@@ -21,9 +21,28 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { useQuotes } from '@/hooks/use-quotes'
 import { useContacts } from '@/hooks/use-contacts'
-import { useProducts } from '@/hooks/use-products'
+import { useProducts } from '@/hooks/use-inventory'
 import { formatCurrency, cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
+// Helper to get contact display info (works with both DB and app Contact types)
+const getContactName = (contact: any) => contact.displayName || contact.display_name || contact.company || contact.name || ''
+const getContactAddress = (contact: any) => {
+  // Check for flat DB columns first
+  if (contact.billingAddressLine1 || contact.billing_address_line1) {
+    return [
+      contact.billingAddressLine1 || contact.billing_address_line1,
+      contact.billingCity || contact.billing_city,
+      contact.billingState || contact.billing_state,
+      contact.billingPostalCode || contact.billing_postal_code
+    ].filter(Boolean).join(', ')
+  }
+  // Fall back to addresses array
+  const billing = contact.addresses?.find((a: any) => a.type === 'billing' && a.isPrimary) || contact.addresses?.[0]
+  if (!billing) return ''
+  return [billing.line1, billing.city, billing.state, billing.postalCode].filter(Boolean).join(', ')
+}
+const isCustomer = (contact: any) => 
+  contact.isCustomer || contact.is_customer || contact.type === 'customer' || contact.type === 'both'
 
 interface LineItem {
   id: string
@@ -121,7 +140,7 @@ export default function NewQuotePage() {
         id: Date.now().toString(),
         description: product.name,
         quantity: 1,
-        unitPrice: product.sellPrice || 0,
+        unitPrice: product.unitPrice || 0,
         discount: 0,
         taxRate: 13,
       }
@@ -142,15 +161,10 @@ export default function NewQuotePage() {
 
     const quote = await createQuote({
       contact_id: selectedContact,
-      customer_name: contact?.displayName || '',
+      customer_name: contact ? getContactName(contact) : '',
       customer_email: contact?.email,
       customer_phone: contact?.phone,
-      customer_address: [
-        contact?.billingAddressLine1,
-        contact?.billingCity,
-        contact?.billingState,
-        contact?.billingPostalCode
-      ].filter(Boolean).join(', '),
+      customer_address: contact ? getContactAddress(contact) : '',
       title: formData.title || undefined,
       summary: formData.summary || undefined,
       valid_days: formData.validDays,
@@ -224,9 +238,9 @@ export default function NewQuotePage() {
                   <SelectValue placeholder="Select a customer..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {contacts.filter(c => c.isCustomer).map(c => (
+                  {contacts.filter(c => isCustomer(c)).map(c => (
                     <SelectItem key={c.id} value={c.id}>
-                      {c.displayName} {c.email && `(${c.email})`}
+                      {getContactName(c)} {c.email && `(${c.email})`}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -234,12 +248,12 @@ export default function NewQuotePage() {
               
               {contact && (
                 <div className="mt-4 p-3 bg-muted rounded-lg text-sm">
-                  <p className="font-medium">{contact.displayName}</p>
+                  <p className="font-medium">{getContactName(contact)}</p>
                   {contact.email && <p>{contact.email}</p>}
                   {contact.phone && <p>{contact.phone}</p>}
-                  {contact.billingAddressLine1 && (
+                  {getContactAddress(contact) && (
                     <p className="text-muted-foreground mt-1">
-                      {contact.billingAddressLine1}, {contact.billingCity}, {contact.billingState} {contact.billingPostalCode}
+                      {getContactAddress(contact)}
                     </p>
                   )}
                 </div>
@@ -312,7 +326,7 @@ export default function NewQuotePage() {
                     <SelectContent>
                       {products.slice(0, 20).map(p => (
                         <SelectItem key={p.id} value={p.id}>
-                          {p.name} - {formatCurrency(p.sellPrice || 0)}
+                          {p.name} - {formatCurrency(p.unitPrice || 0)}
                         </SelectItem>
                       ))}
                     </SelectContent>

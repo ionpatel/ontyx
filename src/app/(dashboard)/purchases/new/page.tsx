@@ -21,7 +21,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { usePurchaseOrders } from '@/hooks/use-purchase-orders'
 import { useContacts } from '@/hooks/use-contacts'
-import { useProducts } from '@/hooks/use-products'
+import { useProducts } from '@/hooks/use-inventory'
 import { formatCurrency, cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 

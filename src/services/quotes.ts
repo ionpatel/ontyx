@@ -1,6 +1,53 @@
 import { createClient } from '@/lib/supabase/client'
 import type { Quote, QuoteStatus, CreateQuoteInput, QuoteStats, QuoteLineItem } from '@/types/quotes'
 
+// Helper to get untyped table access for tables not in Supabase schema
+const getQuotesTable = () => {
+  const supabase = createClient()
+  // Using 'as any' to bypass strict typing for tables not yet in generated types
+  return (supabase as any).from('quotes')
+}
+
+// Database contact type (matches actual Supabase schema)
+interface DBContact {
+  id: string
+  display_name: string
+  email?: string
+  phone?: string
+  billing_address_line1?: string
+  billing_city?: string
+  billing_state?: string
+  billing_postal_code?: string
+}
+
+// Database quote with joined contact
+interface DBQuote {
+  id: string
+  organization_id: string
+  contact_id?: string
+  quote_number: string
+  status: QuoteStatus
+  quote_date: string
+  valid_until: string
+  title?: string
+  summary?: string
+  customer_name?: string
+  customer_email?: string
+  customer_phone?: string
+  customer_address?: string
+  subtotal: number
+  discount_total: number
+  tax_total: number
+  total: number
+  items: QuoteLineItem[]
+  terms?: string
+  notes?: string
+  created_at: string
+  updated_at: string
+  created_by: string
+  contact?: DBContact
+}
+
 // Generate quote number
 function generateQuoteNumber(): string {
   const prefix = 'QT'
@@ -47,12 +94,12 @@ export const quotesService = {
       return []
     }
 
-    return (data || []).map(q => ({
+    return (data || []).map((q: DBQuote) => ({
       ...q,
       customer_name: q.contact?.display_name || q.customer_name,
       customer_email: q.contact?.email || q.customer_email,
       items: q.items || [],
-    }))
+    } as Quote))
   },
 
   /**
@@ -76,12 +123,13 @@ export const quotesService = {
       return null
     }
 
+    const q = data as DBQuote
     return {
-      ...data,
-      customer_name: data.contact?.display_name || data.customer_name,
-      customer_email: data.contact?.email || data.customer_email,
-      items: data.items || [],
-    }
+      ...q,
+      customer_name: q.contact?.display_name || q.customer_name,
+      customer_email: q.contact?.email || q.customer_email,
+      items: q.items || [],
+    } as Quote
   },
 
   /**
@@ -150,7 +198,7 @@ export const quotesService = {
 
     const { data, error } = await supabase
       .from('quotes')
-      .insert(quote)
+      .insert(quote as any)
       .select()
       .single()
 
@@ -159,7 +207,7 @@ export const quotesService = {
       return null
     }
 
-    return data
+    return data as Quote
   },
 
   /**
@@ -203,7 +251,7 @@ export const quotesService = {
       .update({
         ...updates,
         updated_at: new Date().toISOString(),
-      })
+      } as any)
       .eq('id', quoteId)
       .eq('organization_id', organizationId)
       .select()
@@ -214,7 +262,7 @@ export const quotesService = {
       return null
     }
 
-    return data
+    return data as Quote
   },
 
   /**
@@ -229,7 +277,7 @@ export const quotesService = {
         status: 'sent',
         sent_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      })
+      } as any)
       .eq('id', quoteId)
       .eq('organization_id', organizationId)
 
@@ -255,7 +303,7 @@ export const quotesService = {
         status: 'accepted',
         accepted_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      })
+      } as any)
       .eq('id', quoteId)
       .eq('organization_id', organizationId)
 
@@ -275,7 +323,7 @@ export const quotesService = {
         rejected_at: new Date().toISOString(),
         rejection_reason: reason,
         updated_at: new Date().toISOString(),
-      })
+      } as any)
       .eq('id', quoteId)
       .eq('organization_id', organizationId)
 
@@ -314,11 +362,11 @@ export const quotesService = {
         status: 'draft',
         notes: `Converted from Quote ${quote.quote_number}`,
         from_quote_id: quoteId,
-      })
+      } as any)
       .select('id')
       .single()
 
-    if (invoiceError) {
+    if (invoiceError || !invoice) {
       console.error('Failed to create invoice from quote:', invoiceError)
       return null
     }
@@ -331,7 +379,7 @@ export const quotesService = {
         converted_to_invoice_id: invoice.id,
         converted_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      })
+      } as any)
       .eq('id', quoteId)
 
     return invoice.id
