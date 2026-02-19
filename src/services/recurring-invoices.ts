@@ -33,13 +33,19 @@ export interface RecurringInvoice {
 
 export interface CreateRecurringInput {
   customerId: string
+  customerName?: string
+  customerEmail?: string
   frequency: RecurringFrequency
   startDate: string
   endDate?: string
+  daysUntilDue?: number
+  taxProvince?: string
+  subtotal?: number
   items: {
     description: string
     quantity: number
     unitPrice: number
+    amount?: number
     taxRate?: number
     discount?: number
   }[]

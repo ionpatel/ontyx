@@ -30,7 +30,17 @@ import {
 import { formatCurrency, cn } from "@/lib/utils"
 import { useRecurringInvoices } from "@/hooks/use-recurring-invoices"
 import { useCustomers } from "@/hooks/use-contacts"
-import type { RecurringFrequency, CreateRecurringInput, RecurringInvoiceItem } from "@/services/recurring-invoices"
+import type { RecurringFrequency, CreateRecurringInput, RecurringInvoice } from "@/services/recurring-invoices"
+
+// Line item type for the form
+interface RecurringInvoiceItem {
+  id: string
+  description: string
+  quantity: number
+  unitPrice: number
+  taxRate: number
+  discount: number
+}
 
 const FREQUENCIES: { value: RecurringFrequency; label: string }[] = [
   { value: 'weekly', label: 'Weekly' },
@@ -62,7 +72,7 @@ export default function RecurringInvoicesPage() {
     toggleActive, 
     deleteRecurring 
   } = useRecurringInvoices()
-  const { customers } = useCustomers()
+  const { contacts: customers } = useCustomers()
   
   const [showCreate, setShowCreate] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -454,7 +464,7 @@ export default function RecurringInvoicesPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {recurring.isActive ? (
+                      {recurring.status === 'active' ? (
                         <Badge className="bg-green-100 text-green-700">Active</Badge>
                       ) : (
                         <Badge variant="secondary">Paused</Badge>
@@ -466,9 +476,9 @@ export default function RecurringInvoicesPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => toggleActive(recurring.id)}
-                          title={recurring.isActive ? 'Pause' : 'Activate'}
+                          title={recurring.status === 'active' ? 'Pause' : 'Activate'}
                         >
-                          {recurring.isActive ? (
+                          {recurring.status === 'active' ? (
                             <Pause className="h-4 w-4" />
                           ) : (
                             <Play className="h-4 w-4" />
