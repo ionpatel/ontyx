@@ -123,30 +123,26 @@ export async function POST(request: Request) {
         }
 
         // Check for duplicates by email or (name + phone)
+        // Using limit(1) instead of single() to handle when duplicates already exist
         let existingContact = null
         if (contact.email) {
           const { data } = await supabase
             .from('contacts')
             .select('id')
             .eq('organization_id', member.organization_id)
-            .ilike('email', contact.email)
-            .single()
-          existingContact = data
+            .ilike('email', contact.email.trim())
+            .limit(1)
+          existingContact = data?.[0] || null
         }
         
         if (!existingContact && contact.display_name) {
-          const query = supabase
+          const { data } = await supabase
             .from('contacts')
             .select('id')
             .eq('organization_id', member.organization_id)
-            .ilike('display_name', contact.display_name)
-          
-          if (contact.phone) {
-            query.eq('phone', contact.phone)
-          }
-          
-          const { data } = await query.single()
-          existingContact = data
+            .ilike('display_name', contact.display_name.trim())
+            .limit(1)
+          existingContact = data?.[0] || null
         }
 
         let error

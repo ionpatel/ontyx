@@ -68,12 +68,13 @@ export async function POST(request: Request) {
               break
             case 'category':
               // Look up or create expense category
-              let { data: existingCat } = await supabase
+              const { data: existingCatArr } = await supabase
                 .from('expense_categories')
                 .select('id')
                 .eq('organization_id', member.organization_id)
                 .ilike('name', value)
-                .single()
+                .limit(1)
+              let existingCat = existingCatArr?.[0] || null
 
               if (!existingCat) {
                 const { data: newCat } = await supabase
@@ -96,16 +97,16 @@ export async function POST(request: Request) {
               expense.merchant = value
               
               // Optionally link to vendor contact
-              const { data: vendor } = await supabase
+              const { data: vendorArr } = await supabase
                 .from('contacts')
                 .select('id')
                 .eq('organization_id', member.organization_id)
                 .eq('is_vendor', true)
                 .ilike('display_name', value)
-                .single()
+                .limit(1)
               
-              if (vendor) {
-                expense.contact_id = vendor.id
+              if (vendorArr?.[0]) {
+                expense.contact_id = vendorArr[0].id
               }
               break
             case 'payment_method':
@@ -147,15 +148,17 @@ export async function POST(request: Request) {
         }
 
         // Check for duplicates by date + amount + description (first 50 chars)
+        // Using limit(1) instead of single() to handle when duplicates already exist
         const descPrefix = expense.description?.slice(0, 50) || ''
-        const { data: existing } = await supabase
+        const { data: existingArr } = await supabase
           .from('expenses')
           .select('id')
           .eq('organization_id', member.organization_id)
           .eq('expense_date', expense.expense_date)
           .eq('total_amount', expense.total_amount)
           .ilike('description', `${descPrefix}%`)
-          .single()
+          .limit(1)
+        const existing = existingArr?.[0] || null
 
         let error
         if (existing) {

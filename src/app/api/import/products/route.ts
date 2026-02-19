@@ -84,15 +84,15 @@ export async function POST(request: Request) {
               break
             case 'category':
               // Look up or create category
-              const { data: existingCat } = await supabase
+              const { data: existingCatArr } = await supabase
                 .from('product_categories')
                 .select('id')
                 .eq('organization_id', member.organization_id)
                 .ilike('name', value)
-                .single()
+                .limit(1)
 
-              if (existingCat) {
-                product.category_id = existingCat.id
+              if (existingCatArr?.[0]) {
+                product.category_id = existingCatArr[0].id
               } else {
                 // Create new category
                 const { data: newCat } = await supabase
@@ -137,24 +137,25 @@ export async function POST(request: Request) {
         }
 
         // Check for duplicates by SKU or name
+        // Using limit(1) instead of single() to handle when duplicates already exist
         let existingProduct = null
         
         const { data: bySku } = await supabase
           .from('products')
           .select('id')
           .eq('organization_id', member.organization_id)
-          .ilike('sku', product.sku)
-          .single()
-        existingProduct = bySku
+          .ilike('sku', product.sku.trim())
+          .limit(1)
+        existingProduct = bySku?.[0] || null
         
         if (!existingProduct) {
           const { data: byName } = await supabase
             .from('products')
             .select('id')
             .eq('organization_id', member.organization_id)
-            .ilike('name', product.name)
-            .single()
-          existingProduct = byName
+            .ilike('name', product.name.trim())
+            .limit(1)
+          existingProduct = byName?.[0] || null
         }
 
         let insertedProduct

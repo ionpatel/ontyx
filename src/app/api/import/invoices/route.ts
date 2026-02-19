@@ -108,12 +108,13 @@ export async function POST(request: Request) {
         }
 
         // Look up or create customer
-        let { data: contact } = await supabase
+        const { data: contactArr } = await supabase
           .from('contacts')
           .select('id')
           .eq('organization_id', member.organization_id)
           .ilike('display_name', customerName)
-          .single()
+          .limit(1)
+        let contact = contactArr?.[0] || null
 
         if (!contact) {
           // Create contact
@@ -150,12 +151,14 @@ export async function POST(request: Request) {
         }
 
         // Check for duplicate by invoice number
-        const { data: existing } = await supabase
+        // Using limit(1) instead of single() to handle when duplicates already exist
+        const { data: existingArr } = await supabase
           .from('invoices')
           .select('id')
           .eq('organization_id', member.organization_id)
           .ilike('invoice_number', invoice.invoice_number)
-          .single()
+          .limit(1)
+        const existing = existingArr?.[0] || null
 
         let error
         if (existing) {
