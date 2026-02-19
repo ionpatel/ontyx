@@ -6,6 +6,7 @@ import {
   type DateRange,
   type ProfitAndLossReport,
   type BalanceSheetReport,
+  type CashFlowReport,
   type TaxSummaryReport,
   type AccountsAgingReport 
 } from '@/services/reports'
@@ -61,6 +62,30 @@ export function useBalanceSheet(asOfDate: string) {
       })
       .finally(() => setLoading(false))
   }, [organizationId, asOfDate, authLoading])
+
+  return { report, loading: loading || authLoading, error }
+}
+
+export function useCashFlow(dateRange: DateRange) {
+  const { organizationId, loading: authLoading } = useAuth()
+  const [report, setReport] = useState<CashFlowReport | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!organizationId || authLoading) return
+    
+    setLoading(true)
+    setError(null)
+    
+    reportsService.getCashFlow(organizationId, dateRange)
+      .then(data => setReport(data))
+      .catch(err => {
+        setError('Failed to generate Cash Flow Statement')
+        console.error(err)
+      })
+      .finally(() => setLoading(false))
+  }, [organizationId, dateRange.startDate, dateRange.endDate, authLoading])
 
   return { report, loading: loading || authLoading, error }
 }

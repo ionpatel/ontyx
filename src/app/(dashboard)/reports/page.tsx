@@ -4,7 +4,7 @@ import { useState } from "react"
 import { 
   BarChart3, TrendingUp, TrendingDown, DollarSign, 
   FileText, Download, Calendar, Loader2, AlertCircle,
-  PieChart, ArrowUpRight, ArrowDownRight, Wallet
+  PieChart, ArrowUpRight, ArrowDownRight, Wallet, Activity
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,7 +25,8 @@ import {
 import { formatCurrency, cn } from "@/lib/utils"
 import { 
   useProfitAndLoss, 
-  useBalanceSheet, 
+  useBalanceSheet,
+  useCashFlow,
   useTaxSummary, 
   useAccountsAging,
   useFinancialSummary 
@@ -79,6 +80,7 @@ export default function ReportsPage() {
   const { summary, loading: summaryLoading } = useFinancialSummary()
   const { report: pnl, loading: pnlLoading } = useProfitAndLoss(dateRange)
   const { report: balance, loading: balanceLoading } = useBalanceSheet(asOfDate)
+  const { report: cashFlow, loading: cashFlowLoading } = useCashFlow(dateRange)
   const { report: tax, loading: taxLoading } = useTaxSummary(dateRange)
   const { report: aging, loading: agingLoading } = useAccountsAging(asOfDate)
 
@@ -214,6 +216,7 @@ export default function ReportsPage() {
         <TabsList>
           <TabsTrigger value="pnl">Profit & Loss</TabsTrigger>
           <TabsTrigger value="balance">Balance Sheet</TabsTrigger>
+          <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
           <TabsTrigger value="tax">Tax Summary</TabsTrigger>
           <TabsTrigger value="aging">Accounts Aging</TabsTrigger>
         </TabsList>
@@ -374,6 +377,167 @@ export default function ReportsPage() {
                           {formatCurrency(balance.liabilities.totalLiabilities + balance.equity.totalEquity)}
                         </span>
                       </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  No data available
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Cash Flow Statement Tab */}
+        <TabsContent value="cashflow">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Cash Flow Statement</CardTitle>
+                  <CardDescription>
+                    {formatDate(dateRange.startDate)} to {formatDate(dateRange.endDate)}
+                  </CardDescription>
+                </div>
+                <Button variant="outline" size="sm">
+                  <Download className="mr-2 h-4 w-4" /> Export
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {cashFlowLoading ? (
+                <div className="flex items-center justify-center h-64">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : cashFlow ? (
+                <div className="space-y-6">
+                  {/* Operating Activities */}
+                  <div>
+                    <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-primary" />
+                      Cash Flows from Operating Activities
+                    </h3>
+                    <div className="space-y-2 ml-7">
+                      <div className="flex justify-between py-2 border-b">
+                        <span>Net Income</span>
+                        <span className={cn(
+                          "font-medium",
+                          cashFlow.operating.netIncome >= 0 ? "text-green-600" : "text-red-600"
+                        )}>
+                          {formatCurrency(cashFlow.operating.netIncome)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span>Add: Depreciation & Amortization</span>
+                        <span className="font-medium">{formatCurrency(cashFlow.operating.depreciation)}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span>Changes in Accounts Receivable</span>
+                        <span className="font-medium">{formatCurrency(cashFlow.operating.accountsReceivableChange)}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span>Changes in Inventory</span>
+                        <span className="font-medium">{formatCurrency(cashFlow.operating.inventoryChange)}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span>Changes in Accounts Payable</span>
+                        <span className="font-medium">{formatCurrency(cashFlow.operating.accountsPayableChange)}</span>
+                      </div>
+                      <div className="flex justify-between py-2 bg-muted/30 px-2 rounded font-semibold">
+                        <span>Net Cash from Operating Activities</span>
+                        <span className={cn(
+                          cashFlow.operating.total >= 0 ? "text-green-600" : "text-red-600"
+                        )}>
+                          {formatCurrency(cashFlow.operating.total)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Investing Activities */}
+                  <div>
+                    <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-blue-600" />
+                      Cash Flows from Investing Activities
+                    </h3>
+                    <div className="space-y-2 ml-7">
+                      <div className="flex justify-between py-2 border-b">
+                        <span>Equipment Purchases</span>
+                        <span className="font-medium text-red-600">
+                          ({formatCurrency(cashFlow.investing.equipmentPurchases)})
+                        </span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span>Asset Sales</span>
+                        <span className="font-medium text-green-600">{formatCurrency(cashFlow.investing.assetSales)}</span>
+                      </div>
+                      <div className="flex justify-between py-2 bg-muted/30 px-2 rounded font-semibold">
+                        <span>Net Cash from Investing Activities</span>
+                        <span className={cn(
+                          cashFlow.investing.total >= 0 ? "text-green-600" : "text-red-600"
+                        )}>
+                          {cashFlow.investing.total >= 0 ? '' : '('}{formatCurrency(Math.abs(cashFlow.investing.total))}{cashFlow.investing.total >= 0 ? '' : ')'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Financing Activities */}
+                  <div>
+                    <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                      <Wallet className="h-5 w-5 text-purple-600" />
+                      Cash Flows from Financing Activities
+                    </h3>
+                    <div className="space-y-2 ml-7">
+                      <div className="flex justify-between py-2 border-b">
+                        <span>Loan Proceeds</span>
+                        <span className="font-medium text-green-600">{formatCurrency(cashFlow.financing.loanProceeds)}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span>Loan Payments</span>
+                        <span className="font-medium text-red-600">
+                          ({formatCurrency(cashFlow.financing.loanPayments)})
+                        </span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span>Owner Contributions</span>
+                        <span className="font-medium text-green-600">{formatCurrency(cashFlow.financing.ownerContributions)}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span>Owner Drawings</span>
+                        <span className="font-medium text-red-600">
+                          ({formatCurrency(cashFlow.financing.ownerDrawings)})
+                        </span>
+                      </div>
+                      <div className="flex justify-between py-2 bg-muted/30 px-2 rounded font-semibold">
+                        <span>Net Cash from Financing Activities</span>
+                        <span className={cn(
+                          cashFlow.financing.total >= 0 ? "text-green-600" : "text-red-600"
+                        )}>
+                          {cashFlow.financing.total >= 0 ? '' : '('}{formatCurrency(Math.abs(cashFlow.financing.total))}{cashFlow.financing.total >= 0 ? '' : ')'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Summary */}
+                  <div className="border-t-2 pt-4 space-y-3">
+                    <div className="flex justify-between text-lg font-semibold">
+                      <span>Net Change in Cash</span>
+                      <span className={cn(
+                        cashFlow.netCashChange >= 0 ? "text-green-600" : "text-red-600"
+                      )}>
+                        {formatCurrency(cashFlow.netCashChange)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Beginning Cash Balance</span>
+                      <span className="font-medium">{formatCurrency(cashFlow.beginningCash)}</span>
+                    </div>
+                    <div className="flex justify-between text-lg font-bold border-t pt-2">
+                      <span>Ending Cash Balance</span>
+                      <span className="text-primary">{formatCurrency(cashFlow.endingCash)}</span>
                     </div>
                   </div>
                 </div>

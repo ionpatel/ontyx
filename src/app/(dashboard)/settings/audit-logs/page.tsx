@@ -1,17 +1,18 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { format } from "date-fns"
 import {
   ArrowLeft, Search, Filter, Download, RefreshCw,
   User, FileText, Package, ShoppingCart, Building2,
   Settings, Shield, LogIn, LogOut, UserPlus, Edit,
-  Trash2, Eye, Upload
+  Trash2, Eye, Upload, ChevronLeft, ChevronRight,
+  Activity, Clock, AlertCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
@@ -20,90 +21,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
-
-// Mock audit logs data
-const mockAuditLogs = [
-  {
-    id: "1",
-    user: { name: "John Doe", email: "john@example.com", avatar: "JD" },
-    action: "create",
-    resource_type: "invoice",
-    resource_id: "INV-001",
-    details: { amount: 1500, customer: "Acme Corp" },
-    ip_address: "192.168.1.100",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    user: { name: "Jane Smith", email: "jane@example.com", avatar: "JS" },
-    action: "update",
-    resource_type: "product",
-    resource_id: "PRD-042",
-    details: { field: "price", old_value: 29.99, new_value: 34.99 },
-    ip_address: "192.168.1.101",
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: "3",
-    user: { name: "Mike Johnson", email: "mike@example.com", avatar: "MJ" },
-    action: "login",
-    resource_type: "user",
-    resource_id: null,
-    details: { method: "password" },
-    ip_address: "10.0.0.55",
-    created_at: new Date(Date.now() - 7200000).toISOString(),
-  },
-  {
-    id: "4",
-    user: { name: "Sarah Wilson", email: "sarah@example.com", avatar: "SW" },
-    action: "delete",
-    resource_type: "contact",
-    resource_id: "CNT-089",
-    details: { name: "Old Vendor Inc" },
-    ip_address: "192.168.1.102",
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: "5",
-    user: { name: "John Doe", email: "john@example.com", avatar: "JD" },
-    action: "export",
-    resource_type: "report",
-    resource_id: "RPT-FIN-2024",
-    details: { format: "PDF", records: 1250 },
-    ip_address: "192.168.1.100",
-    created_at: new Date(Date.now() - 172800000).toISOString(),
-  },
-  {
-    id: "6",
-    user: { name: "Admin User", email: "admin@example.com", avatar: "AU" },
-    action: "settings_change",
-    resource_type: "settings",
-    resource_id: null,
-    details: { setting: "tax_rate", old_value: "13%", new_value: "15%" },
-    ip_address: "192.168.1.1",
-    created_at: new Date(Date.now() - 259200000).toISOString(),
-  },
-  {
-    id: "7",
-    user: { name: "Admin User", email: "admin@example.com", avatar: "AU" },
-    action: "invite",
-    resource_type: "user",
-    resource_id: "USR-NEW",
-    details: { email: "newuser@example.com", role: "member" },
-    ip_address: "192.168.1.1",
-    created_at: new Date(Date.now() - 345600000).toISOString(),
-  },
-  {
-    id: "8",
-    user: { name: "Jane Smith", email: "jane@example.com", avatar: "JS" },
-    action: "role_change",
-    resource_type: "user",
-    resource_id: "USR-005",
-    details: { user: "Mike Johnson", old_role: "member", new_role: "manager" },
-    ip_address: "192.168.1.101",
-    created_at: new Date(Date.now() - 432000000).toISOString(),
-  },
-]
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { useAuditLogs, useAuditStats } from "@/hooks/use-audit-logs"
+import { cn } from "@/lib/utils"
 
 const actionIcons: Record<string, any> = {
   create: FileText,
@@ -119,16 +39,16 @@ const actionIcons: Record<string, any> = {
 }
 
 const actionColors: Record<string, string> = {
-  create: "bg-success-light text-success",
-  update: "bg-info-light text-info",
-  delete: "bg-error-light text-error",
-  view: "bg-secondary text-text-secondary",
-  export: "bg-warning-light text-warning",
-  login: "bg-success-light text-success",
-  logout: "bg-secondary text-text-secondary",
-  invite: "bg-info-light text-info",
-  role_change: "bg-warning-light text-warning",
-  settings_change: "bg-primary-light text-primary",
+  create: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  update: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  delete: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  view: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  export: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  login: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  logout: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  invite: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  role_change: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  settings_change: "bg-primary/10 text-primary",
 }
 
 const resourceIcons: Record<string, any> = {
@@ -140,35 +60,101 @@ const resourceIcons: Record<string, any> = {
   settings: Settings,
   report: FileText,
   organization: Building2,
+  expense: FileText,
+  employee: User,
+  payroll: FileText,
 }
 
+const resourceLabels: Record<string, string> = {
+  invoice: 'Invoice',
+  product: 'Product',
+  contact: 'Contact',
+  order: 'Order',
+  user: 'User',
+  settings: 'Settings',
+  report: 'Report',
+  organization: 'Organization',
+  expense: 'Expense',
+  employee: 'Employee',
+  payroll: 'Payroll',
+}
+
+const PAGE_SIZE = 20
+
 export default function AuditLogsPage() {
-  const [logs, setLogs] = useState(mockAuditLogs)
-  const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState("")
   const [actionFilter, setActionFilter] = useState("all")
   const [resourceFilter, setResourceFilter] = useState("all")
+  const [page, setPage] = useState(0)
 
-  const filteredLogs = logs.filter(log => {
-    const matchesSearch = 
-      log.user.name.toLowerCase().includes(search.toLowerCase()) ||
-      log.user.email.toLowerCase().includes(search.toLowerCase()) ||
-      (log.resource_id?.toLowerCase().includes(search.toLowerCase()) || false)
-    
-    const matchesAction = actionFilter === "all" || log.action === actionFilter
-    const matchesResource = resourceFilter === "all" || log.resource_type === resourceFilter
-    
-    return matchesSearch && matchesAction && matchesResource
+  const { logs, loading, error, totalCount, refetch } = useAuditLogs({
+    action: actionFilter,
+    entityType: resourceFilter,
+    limit: PAGE_SIZE,
+    offset: page * PAGE_SIZE,
   })
 
-  const handleRefresh = () => {
-    setLoading(true)
-    setTimeout(() => setLoading(false), 1000)
+  const { stats } = useAuditStats()
+
+  // Client-side search filter
+  const filteredLogs = logs.filter(log => {
+    if (!search) return true
+    const q = search.toLowerCase()
+    const userName = log.user?.full_name || log.user?.email || ''
+    const userEmail = log.user?.email || ''
+    const entityId = log.entity_id || ''
+    return (
+      userName.toLowerCase().includes(q) ||
+      userEmail.toLowerCase().includes(q) ||
+      entityId.toLowerCase().includes(q) ||
+      log.entity_type.toLowerCase().includes(q) ||
+      log.action.toLowerCase().includes(q)
+    )
+  })
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+
+  const handleExport = async () => {
+    // Generate CSV
+    const headers = ['Timestamp', 'User', 'Action', 'Resource Type', 'Resource ID', 'Details']
+    const rows = filteredLogs.map(log => [
+      log.created_at,
+      log.user?.full_name || log.user?.email || 'Unknown',
+      log.action,
+      log.entity_type,
+      log.entity_id || '',
+      JSON.stringify(log.new_values || log.metadata || {}),
+    ])
+
+    const csv = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
-  const handleExport = () => {
-    // In production, this would generate a CSV/PDF
-    alert("Export functionality coming soon!")
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
+  const formatDetails = (log: typeof logs[0]) => {
+    const details = log.new_values || log.metadata || {}
+    if (Object.keys(details).length === 0) return '—'
+    
+    // Show a summary of changes
+    const entries = Object.entries(details).slice(0, 2)
+    return entries.map(([key, value]) => {
+      const displayValue = typeof value === 'object' ? JSON.stringify(value).slice(0, 30) : String(value).slice(0, 30)
+      return `${key}: ${displayValue}`
+    }).join(', ') + (Object.keys(details).length > 2 ? '...' : '')
   }
 
   return (
@@ -183,21 +169,69 @@ export default function AuditLogsPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Audit Logs</h1>
-            <p className="text-text-secondary">
+            <p className="text-muted-foreground">
               Track all user activity and changes in your organization
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={loading}>
+            <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
             Refresh
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExport}>
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={logs.length === 0}>
             <Download className="h-4 w-4 mr-2" />
-            Export
+            Export CSV
           </Button>
         </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Logs</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.totalLogs || totalCount}</div>
+            <p className="text-xs text-muted-foreground">All time</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Today</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.todayLogs || 0}</div>
+            <p className="text-xs text-muted-foreground">Actions today</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Most Common</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold capitalize">
+              {stats?.actionCounts ? Object.entries(stats.actionCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—' : '—'}
+            </div>
+            <p className="text-xs text-muted-foreground">Action type</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Top Resource</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold capitalize">
+              {stats?.entityCounts ? Object.entries(stats.entityCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—' : '—'}
+            </div>
+            <p className="text-xs text-muted-foreground">Entity type</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
@@ -205,7 +239,7 @@ export default function AuditLogsPage() {
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by user, email, or resource ID..."
                 className="pl-10"
@@ -213,7 +247,7 @@ export default function AuditLogsPage() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <Select value={actionFilter} onValueChange={setActionFilter}>
+            <Select value={actionFilter} onValueChange={(v) => { setActionFilter(v); setPage(0); }}>
               <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Action" />
@@ -232,7 +266,7 @@ export default function AuditLogsPage() {
                 <SelectItem value="settings_change">Settings</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={resourceFilter} onValueChange={setResourceFilter}>
+            <Select value={resourceFilter} onValueChange={(v) => { setResourceFilter(v); setPage(0); }}>
               <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Resource" />
               </SelectTrigger>
@@ -241,6 +275,7 @@ export default function AuditLogsPage() {
                 <SelectItem value="invoice">Invoices</SelectItem>
                 <SelectItem value="product">Products</SelectItem>
                 <SelectItem value="contact">Contacts</SelectItem>
+                <SelectItem value="expense">Expenses</SelectItem>
                 <SelectItem value="user">Users</SelectItem>
                 <SelectItem value="settings">Settings</SelectItem>
                 <SelectItem value="report">Reports</SelectItem>
@@ -250,15 +285,54 @@ export default function AuditLogsPage() {
         </CardContent>
       </Card>
 
+      {/* Error State */}
+      {error && (
+        <Card className="border-destructive bg-destructive/10">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              <span>{error}</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Logs Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">
-            Activity Log
-            <Badge variant="secondary" className="ml-2">
-              {filteredLogs.length} entries
-            </Badge>
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">
+                Activity Log
+              </CardTitle>
+              <CardDescription>
+                {totalCount} total entries
+              </CardDescription>
+            </div>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.max(0, p - 1))}
+                  disabled={page === 0 || loading}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {page + 1} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                  disabled={page >= totalPages - 1 || loading}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -274,6 +348,16 @@ export default function AuditLogsPage() {
                 </div>
               ))}
             </div>
+          ) : filteredLogs.length === 0 ? (
+            <div className="text-center py-12">
+              <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">No logs found</h3>
+              <p className="text-muted-foreground">
+                {search || actionFilter !== 'all' || resourceFilter !== 'all'
+                  ? 'Try adjusting your filters or search query'
+                  : 'Activity will appear here as users interact with the system'}
+              </p>
+            </div>
           ) : (
             <Table>
               <TableHeader>
@@ -282,60 +366,59 @@ export default function AuditLogsPage() {
                   <TableHead>Action</TableHead>
                   <TableHead>Resource</TableHead>
                   <TableHead>Details</TableHead>
-                  <TableHead>IP Address</TableHead>
                   <TableHead>Timestamp</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredLogs.map((log) => {
                   const ActionIcon = actionIcons[log.action] || FileText
-                  const ResourceIcon = resourceIcons[log.resource_type] || FileText
+                  const ResourceIcon = resourceIcons[log.entity_type] || FileText
+                  const userName = log.user?.full_name || log.user?.email || 'System'
                   
                   return (
                     <TableRow key={log.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-xs font-medium text-primary-foreground">
-                            {log.user.avatar}
-                          </div>
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                              {getInitials(userName)}
+                            </AvatarFallback>
+                          </Avatar>
                           <div>
-                            <p className="font-medium text-sm">{log.user.name}</p>
-                            <p className="text-xs text-text-muted">{log.user.email}</p>
+                            <p className="font-medium text-sm">{userName}</p>
+                            {log.user?.email && log.user.email !== userName && (
+                              <p className="text-xs text-muted-foreground">{log.user.email}</p>
+                            )}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={actionColors[log.action]}>
-                          <ActionIcon className="h-3 w-3 mr-1" />
+                        <Badge className={cn("gap-1", actionColors[log.action] || actionColors.view)}>
+                          <ActionIcon className="h-3 w-3" />
                           {log.action.replace('_', ' ')}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <ResourceIcon className="h-4 w-4 text-text-muted" />
-                          <span className="capitalize">{log.resource_type}</span>
-                          {log.resource_id && (
-                            <code className="text-xs bg-secondary px-1.5 py-0.5 rounded">
-                              {log.resource_id}
+                          <ResourceIcon className="h-4 w-4 text-muted-foreground" />
+                          <span className="capitalize">{resourceLabels[log.entity_type] || log.entity_type}</span>
+                          {log.entity_id && (
+                            <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                              {log.entity_id.slice(0, 8)}...
                             </code>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <code className="text-xs bg-secondary px-2 py-1 rounded max-w-[200px] truncate block">
-                          {JSON.stringify(log.details)}
-                        </code>
-                      </TableCell>
-                      <TableCell>
-                        <code className="text-xs text-text-muted">
-                          {log.ip_address}
-                        </code>
+                      <TableCell className="max-w-[200px]">
+                        <span className="text-xs text-muted-foreground truncate block">
+                          {formatDetails(log)}
+                        </span>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
                           <p>{format(new Date(log.created_at), 'MMM d, yyyy')}</p>
-                          <p className="text-xs text-text-muted">
-                            {format(new Date(log.created_at), 'h:mm a')}
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(log.created_at), 'h:mm:ss a')}
                           </p>
                         </div>
                       </TableCell>
@@ -344,16 +427,6 @@ export default function AuditLogsPage() {
                 })}
               </TableBody>
             </Table>
-          )}
-
-          {filteredLogs.length === 0 && !loading && (
-            <div className="text-center py-12">
-              <Shield className="h-12 w-12 mx-auto text-text-muted mb-4" />
-              <h3 className="text-lg font-medium mb-2">No logs found</h3>
-              <p className="text-text-secondary">
-                Try adjusting your filters or search query
-              </p>
-            </div>
           )}
         </CardContent>
       </Card>

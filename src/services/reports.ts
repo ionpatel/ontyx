@@ -459,6 +459,105 @@ export const reportsService = {
   },
   
   /**
+   * Generate Cash Flow Statement
+   */
+  async getCashFlow(organizationId: string, dateRange: DateRange): Promise<CashFlowReport> {
+    const supabase = createClient()
+    
+    // Get P&L data for net income
+    const pnl = await this.getProfitAndLoss(organizationId, dateRange)
+    const netIncome = pnl.netIncome
+    
+    // Get bank transactions for the period
+    const { data: transactions } = await supabase
+      .from('bank_transactions')
+      .select('amount, transaction_type, category, transaction_date')
+      .eq('organization_id', organizationId)
+      .gte('transaction_date', dateRange.startDate)
+      .lte('transaction_date', dateRange.endDate)
+    
+    // Calculate cash flows by category
+    let operatingInflows = 0
+    let operatingOutflows = 0
+    let investingInflows = 0
+    let investingOutflows = 0
+    let financingInflows = 0
+    let financingOutflows = 0
+    
+    const investingCategories = ['Equipment', 'Vehicles', 'Assets', 'Investment']
+    const financingCategories = ['Loan', 'Owner Draw', 'Owner Contribution', 'Capital']
+    
+    ;(transactions || []).forEach(tx => {
+      const amount = Math.abs(tx.amount || 0)
+      const isInflow = tx.transaction_type === 'credit'
+      const category = tx.category || ''
+      
+      // Check if investing
+      if (investingCategories.some(c => category.toLowerCase().includes(c.toLowerCase()))) {
+        if (isInflow) investingInflows += amount
+        else investingOutflows += amount
+      }
+      // Check if financing
+      else if (financingCategories.some(c => category.toLowerCase().includes(c.toLowerCase()))) {
+        if (isInflow) financingInflows += amount
+        else financingOutflows += amount
+      }
+      // Default to operating
+      else {
+        if (isInflow) operatingInflows += amount
+        else operatingOutflows += amount
+      }
+    })
+    
+    // Get beginning and ending cash balances
+    const startDate = new Date(dateRange.startDate)
+    startDate.setDate(startDate.getDate() - 1)
+    const prevDate = startDate.toISOString().split('T')[0]
+    
+    // Get bank balances (simplified - using current balance as ending)
+    const { data: bankAccounts } = await supabase
+      .from('bank_accounts')
+      .select('current_balance, opening_balance')
+      .eq('organization_id', organizationId)
+      .eq('is_active', true)
+    
+    const endingCash = (bankAccounts || []).reduce((sum, acc) => sum + (acc.current_balance || 0), 0)
+    const beginningCash = (bankAccounts || []).reduce((sum, acc) => sum + (acc.opening_balance || 0), 0)
+    
+    const operatingTotal = operatingInflows - operatingOutflows
+    const investingTotal = investingInflows - investingOutflows
+    const financingTotal = financingInflows - financingOutflows
+    const netCashChange = operatingTotal + investingTotal + financingTotal
+    
+    return {
+      period: dateRange,
+      operating: {
+        netIncome,
+        depreciation: 0, // Would need depreciation tracking
+        accountsReceivableChange: 0, // Would need period comparison
+        inventoryChange: 0,
+        accountsPayableChange: 0,
+        total: operatingTotal,
+      },
+      investing: {
+        equipmentPurchases: investingOutflows,
+        assetSales: investingInflows,
+        total: investingTotal,
+      },
+      financing: {
+        loanProceeds: financingCategories.includes('Loan') ? financingInflows : 0,
+        loanPayments: financingOutflows,
+        ownerDrawings: 0,
+        ownerContributions: 0,
+        total: financingTotal,
+      },
+      netCashChange,
+      beginningCash,
+      endingCash,
+    }
+  },
+
+  /**
    * Get quick financial summary for dashboard
    */
   async getFinancialSummary(organizationId: string): Promise<{
