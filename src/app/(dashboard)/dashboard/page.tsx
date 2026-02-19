@@ -24,6 +24,8 @@ import { useOrganization } from "@/hooks/use-organization"
 import { AIInsightsCard } from "@/components/ai/insights-card"
 import { RevenueChart } from "@/components/charts/revenue-chart"
 import { GettingStartedChecklist } from "@/components/onboarding/getting-started"
+import { usePlanAccess } from "@/hooks/use-plan-access"
+import type { FeatureKey } from "@/lib/plan-features"
 
 const invoiceStatusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   draft: { label: "Draft", color: "bg-slate-100 text-slate-700", icon: FileText },
@@ -48,6 +50,19 @@ export default function DashboardPage() {
   const { orders, loading: ordersLoading } = useRecentOrders(5)
   const { activity, loading: activityLoading } = useRecentActivity(8)
   const { organization } = useOrganization()
+  const { hasFeature, tier } = usePlanAccess()
+  
+  // Quick Actions config with feature requirements
+  const quickActions = [
+    { label: 'Quick Invoice', href: null, icon: Zap, feature: 'invoices' as FeatureKey, isModal: true, variant: 'default' as const, className: 'bg-green-600 hover:bg-green-700' },
+    { label: 'Full Invoice', href: '/invoices/new', icon: Plus, feature: 'invoices' as FeatureKey },
+    { label: 'Sale', href: '/sales/new', icon: ShoppingCart, feature: 'crm' as FeatureKey },
+    { label: 'Purchase', href: '/purchases/new', icon: Truck, feature: 'purchases' as FeatureKey },
+    { label: 'Contact', href: '/contacts/new', icon: UserPlus, feature: 'contacts' as FeatureKey },
+    { label: 'Appointment', href: '/appointments/new', icon: Calendar, feature: 'appointments' as FeatureKey },
+    { label: 'Open POS', href: '/pos', icon: Receipt, feature: 'pos' as FeatureKey },
+    { label: 'Import Data', href: '/settings/import', icon: Upload, feature: 'import_export' as FeatureKey },
+  ].filter(action => hasFeature(action.feature))
   
   // Get tier from organization (default to starter)
   const currentTier = (organization?.tier as 'starter' | 'growth' | 'enterprise') || 'starter'
@@ -152,41 +167,31 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Quick Actions Bar - Like Odoo */}
+      {/* Quick Actions Bar - Plan-based filtering */}
       <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
         <CardContent className="py-3">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium text-muted-foreground whitespace-nowrap flex items-center gap-2">
               <Zap className="h-4 w-4" /> Quick Actions:
             </span>
-            <QuickInvoiceModal 
-              trigger={
-                <Button variant="default" size="sm" className="whitespace-nowrap bg-green-600 hover:bg-green-700">
-                  <Zap className="h-3 w-3 mr-1" /> Quick Invoice
+            {quickActions.map((action) => (
+              action.isModal ? (
+                <QuickInvoiceModal 
+                  key={action.label}
+                  trigger={
+                    <Button variant="default" size="sm" className={action.className}>
+                      <action.icon className="h-3 w-3 mr-1" /> {action.label}
+                    </Button>
+                  }
+                />
+              ) : (
+                <Button key={action.label} variant="outline" size="sm" asChild>
+                  <Link href={action.href!}>
+                    <action.icon className="h-3 w-3 mr-1" /> {action.label}
+                  </Link>
                 </Button>
-              }
-            />
-            <Button variant="outline" size="sm" asChild className="whitespace-nowrap">
-              <Link href="/invoices/new"><Plus className="h-3 w-3 mr-1" /> Full Invoice</Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild className="whitespace-nowrap">
-              <Link href="/sales/new"><ShoppingCart className="h-3 w-3 mr-1" /> Sale</Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild className="whitespace-nowrap">
-              <Link href="/purchases/new"><Truck className="h-3 w-3 mr-1" /> Purchase</Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild className="whitespace-nowrap">
-              <Link href="/contacts/new"><UserPlus className="h-3 w-3 mr-1" /> Contact</Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild className="whitespace-nowrap">
-              <Link href="/appointments/new"><Calendar className="h-3 w-3 mr-1" /> Appointment</Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild className="whitespace-nowrap">
-              <Link href="/pos"><Receipt className="h-3 w-3 mr-1" /> Open POS</Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild className="whitespace-nowrap">
-              <Link href="/settings/import"><Upload className="h-3 w-3 mr-1" /> Import Data</Link>
-            </Button>
+              )
+            ))}
           </div>
         </CardContent>
       </Card>

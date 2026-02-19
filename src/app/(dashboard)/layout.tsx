@@ -20,6 +20,7 @@ import { KeyboardShortcuts, useNavigationShortcuts } from '@/components/keyboard
 import { NotificationCenter } from '@/components/notifications'
 import { MobileBottomNav, MobileNavSpacer } from '@/components/mobile-nav'
 import { cn } from "@/lib/utils"
+import { usePlanAccess } from "@/hooks/use-plan-access"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -130,6 +131,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const { profile, loading: profileLoading } = useUserProfile()
   const { organization, loading: orgLoading, needsOnboarding } = useOrganization()
   const { signOut, loading: authLoading, user } = useAuth()
+  const { canAccessRoute, tier, loading: planLoading } = usePlanAccess()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   
@@ -142,6 +144,14 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       router.push('/onboarding')
     }
   }, [needsOnboarding, pathname, router])
+
+  // Check plan access for current route - redirect if unauthorized
+  useEffect(() => {
+    if (!planLoading && pathname && !canAccessRoute(pathname)) {
+      // Redirect to dashboard with upgrade message
+      router.push('/dashboard?upgrade=true')
+    }
+  }, [pathname, canAccessRoute, planLoading, router])
 
   // Get filtered navigation based on enabled modules
   const navigation = getNavigation(organization?.enabledModules || [])
