@@ -41,7 +41,7 @@ export async function POST(request: Request) {
           organization_id: member.organization_id,
           currency: 'CAD',
           status: 'approved', // Historical imports are assumed approved
-          created_by: user.id,
+          submitted_by: user.id,
           created_at: new Date().toISOString(),
         }
 
@@ -58,12 +58,12 @@ export async function POST(request: Request) {
               break
             case 'description':
               expense.description = value
-              expense.title = value.slice(0, 100) // Short title
               break
             case 'amount':
               const amount = parseFloat(value.replace(/[^0-9.-]/g, ''))
               if (!isNaN(amount)) {
-                expense.amount = Math.round(Math.abs(amount) * 100) // Store in cents, always positive
+                expense.total_amount = Math.abs(amount) // Store as decimal
+                expense.subtotal = Math.abs(amount) // Same for now
               }
               break
             case 'category':
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
               }
               break
             case 'vendor':
-              expense.vendor_name = value
+              expense.merchant = value
               
               // Optionally link to vendor contact
               const { data: vendor } = await supabase
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
                 .single()
               
               if (vendor) {
-                expense.vendor_id = vendor.id
+                expense.contact_id = vendor.id
               }
               break
             case 'payment_method':
@@ -131,19 +131,16 @@ export async function POST(request: Request) {
         }
 
         // Validate required fields
-        if (!expense.description && !expense.title) {
+        if (!expense.description) {
           throw new Error('Description is required')
         }
-        if (!expense.amount) {
+        if (!expense.total_amount) {
           throw new Error('Amount is required')
         }
 
         // Set defaults
         if (!expense.expense_date) {
           expense.expense_date = new Date().toISOString().split('T')[0]
-        }
-        if (!expense.title) {
-          expense.title = expense.description?.slice(0, 100) || 'Imported Expense'
         }
         if (!expense.payment_method) {
           expense.payment_method = 'other'

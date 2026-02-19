@@ -40,6 +40,7 @@ export async function POST(request: Request) {
         const invoice: Record<string, any> = {
           organization_id: member.organization_id,
           currency: 'CAD',
+          created_by: user.id,
           created_at: new Date().toISOString(),
         }
 
@@ -72,9 +73,10 @@ export async function POST(request: Request) {
             case 'total':
               const total = parseFloat(value.replace(/[^0-9.-]/g, ''))
               if (!isNaN(total)) {
-                invoice.total = Math.round(total * 100)
-                invoice.subtotal = Math.round(total * 100 / 1.13) // Assume HST was included
-                invoice.tax_amount = invoice.total - invoice.subtotal
+                invoice.total = total
+                invoice.subtotal = total / 1.13 // Assume HST was included
+                invoice.tax_amount = total - invoice.subtotal
+                invoice.amount_due = total
               }
               break
             case 'status':

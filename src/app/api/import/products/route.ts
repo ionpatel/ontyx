@@ -67,13 +67,13 @@ export async function POST(request: Request) {
             case 'price':
               const price = parseFloat(value.replace(/[^0-9.-]/g, ''))
               if (!isNaN(price)) {
-                product.price = Math.round(price * 100) // Store in cents
+                product.sell_price = price // Store as decimal
               }
               break
             case 'cost':
               const cost = parseFloat(value.replace(/[^0-9.-]/g, ''))
               if (!isNaN(cost)) {
-                product.cost = Math.round(cost * 100)
+                product.cost_price = cost // Store as decimal
               }
               break
             case 'quantity':
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
         if (!product.name) {
           throw new Error('Product name is required')
         }
-        if (product.price === undefined) {
+        if (product.sell_price === undefined) {
           throw new Error('Price is required')
         }
 

@@ -71,10 +71,10 @@ export async function POST(request: Request) {
               contact.company_name = value
               break
             case 'address':
-              contact.address_line1 = value
+              contact.billing_address_line1 = value
               break
             case 'city':
-              contact.city = value
+              contact.billing_city = value
               break
             case 'province':
               // Normalize province codes
@@ -93,10 +93,10 @@ export async function POST(request: Request) {
                 'yukon': 'YT', 'yt': 'YT',
                 'nunavut': 'NU', 'nu': 'NU',
               }
-              contact.state = provinceMap[value.toLowerCase()] || value.toUpperCase().slice(0, 2)
+              contact.billing_state = provinceMap[value.toLowerCase()] || value.toUpperCase().slice(0, 2)
               break
             case 'postal_code':
-              contact.postal_code = value.toUpperCase().replace(/[^A-Z0-9]/g, '')
+              contact.billing_postal_code = value.toUpperCase().replace(/[^A-Z0-9]/g, '')
               break
             case 'type':
               const typeLower = value.toLowerCase()
