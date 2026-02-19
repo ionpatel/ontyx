@@ -21,6 +21,13 @@ const statusConfig: Record<LeadStatus, { label: string; color: string; bg: strin
   contacted: { label: 'Contacted', color: 'text-yellow-600', bg: 'bg-yellow-100' },
   qualified: { label: 'Qualified', color: 'text-green-600', bg: 'bg-green-100' },
   unqualified: { label: 'Unqualified', color: 'text-gray-600', bg: 'bg-gray-100' },
+  converted: { label: 'Converted', color: 'text-purple-600', bg: 'bg-purple-100' },
+}
+
+// Helper to get full name from Lead
+const getLeadName = (lead: Lead) => {
+  const parts = [lead.first_name, lead.last_name].filter(Boolean)
+  return parts.length > 0 ? parts.join(' ') : 'Unknown'
 }
 
 function LeadScoreBadge({ score }: { score: number }) {
@@ -46,6 +53,7 @@ function LeadScoreBadge({ score }: { score: number }) {
 
 function LeadCard({ lead }: { lead: Lead }) {
   const status = statusConfig[lead.status]
+  const leadName = getLeadName(lead)
   
   return (
     <Card className="hover:shadow-md transition-shadow cursor-pointer">
@@ -53,14 +61,14 @@ function LeadCard({ lead }: { lead: Lead }) {
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
-              <AvatarFallback>{getInitials(lead.name)}</AvatarFallback>
+              <AvatarFallback>{getInitials(leadName)}</AvatarFallback>
             </Avatar>
             <div>
-              <h4 className="font-medium">{lead.name}</h4>
-              {lead.company && (
+              <h4 className="font-medium">{leadName}</h4>
+              {lead.company_name && (
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
                   <Building2 className="h-3 w-3" />
-                  {lead.company}
+                  {lead.company_name}
                 </p>
               )}
             </div>
@@ -87,14 +95,14 @@ function LeadCard({ lead }: { lead: Lead }) {
           <LeadScoreBadge score={lead.score} />
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="px-2 py-1 bg-muted rounded">{lead.source}</span>
-            <span>{formatDate(lead.createdAt)}</span>
+            <span>{formatDate(lead.created_at)}</span>
           </div>
         </div>
 
-        {lead.assignedTo && (
+        {lead.assigned_to && (
           <div className="mt-4 pt-4 border-t flex items-center justify-between">
             <span className="text-sm text-muted-foreground">
-              Assigned to: <span className="font-medium text-foreground">{lead.assignedTo}</span>
+              Assigned to: <span className="font-medium text-foreground">{lead.assigned_user?.full_name || lead.assigned_to}</span>
             </span>
             <Button size="sm" variant="ghost">
               <ArrowRight className="h-4 w-4" />
@@ -111,9 +119,10 @@ export default function LeadsPage() {
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all')
 
   const filteredLeads = mockLeads.filter(lead => {
-    const matchesSearch = lead.name.toLowerCase().includes(search.toLowerCase()) ||
-      lead.email.toLowerCase().includes(search.toLowerCase()) ||
-      lead.company?.toLowerCase().includes(search.toLowerCase())
+    const leadName = getLeadName(lead).toLowerCase()
+    const matchesSearch = leadName.includes(search.toLowerCase()) ||
+      (lead.email?.toLowerCase() || '').includes(search.toLowerCase()) ||
+      (lead.company_name?.toLowerCase() || '').includes(search.toLowerCase())
     
     const matchesStatus = statusFilter === 'all' || lead.status === statusFilter
     

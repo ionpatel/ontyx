@@ -164,7 +164,8 @@ export default function ContactsPage() {
   const handleBulkDelete = async () => {
     setIsDeleting(true)
     try {
-      for (const id of selectedContacts) {
+      const idsToDelete = Array.from(selectedContacts)
+      for (const id of idsToDelete) {
         await deleteContact(id)
       }
       setSelectedContacts(new Set())

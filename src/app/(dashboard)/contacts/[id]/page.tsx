@@ -59,7 +59,7 @@ export default function ContactDetailPage() {
     setLoading(true);
     try {
       const [contactData, related] = await Promise.all([
-        contactsService.getContact(contactId),
+        contactsService.getContact(contactId, organizationId),
         automations.getContactRelatedRecords(organizationId, contactId),
       ]);
       setContact(contactData);
@@ -76,7 +76,7 @@ export default function ContactDetailPage() {
   const handleDelete = async () => {
     if (!confirm('Delete this contact? This cannot be undone.')) return;
     try {
-      await contactsService.deleteContact(contactId);
+      await contactsService.deleteContact(contactId, organizationId!);
       toast({ title: 'Contact deleted' });
       router.push('/contacts');
     } catch (err) {

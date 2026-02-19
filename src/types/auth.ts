@@ -22,7 +22,27 @@ export interface Organization {
   slug: string
   logo_url: string | null
   industry: string | null
+  
+  // Address
+  addressLine1: string | null
+  addressLine2: string | null
+  city: string | null
   province: string | null
+  postalCode: string | null
+  country: string
+  
+  // Contact
+  phone: string | null
+  email: string | null
+  website: string | null
+  
+  // Tax
+  taxNumber: string | null // GST/HST registration number
+  
+  // Tier
+  tier: 'starter' | 'growth' | 'enterprise'
+  onboardingCompleted: boolean
+  
   timezone: string
   currency: string
   fiscal_year_start: number // Month (1-12)
