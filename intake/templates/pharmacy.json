@@ -1,0 +1,44 @@
+{
+  "id": "pharmacy",
+  "name": "Pharmacy",
+  "emoji": "💊",
+  "description": "Complete pharmacy management with DIN tracking and NAPRA compliance",
+  "modules": {
+    "enabled": [
+      "dashboard",
+      "contacts",
+      "inventory",
+      "pos",
+      "invoicing",
+      "reports",
+      "employees"
+    ],
+    "optional": [
+      "payroll",
+      "banking"
+    ]
+  },
+  "features": {
+    "din_tracking": true,
+    "napra_schedules": true,
+    "narcotic_logs": true,
+    "prescription_labels": true,
+    "drug_interactions": false,
+    "insurance_billing": false
+  },
+  "inventory_config": {
+    "track_expiry": true,
+    "lot_numbers": true,
+    "reorder_alerts": true,
+    "supplier_management": true
+  },
+  "pos_config": {
+    "prescription_mode": true,
+    "otc_mode": true,
+    "insurance_capture": true
+  },
+  "compliance": {
+    "canada_health": true,
+    "provincial_college": true
+  }
+}

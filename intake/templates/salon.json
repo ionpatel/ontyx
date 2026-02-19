@@ -1,0 +1,40 @@
+{
+  "id": "salon",
+  "name": "Salon & Spa",
+  "emoji": "💇",
+  "description": "Beauty salon and spa management with online booking",
+  "modules": {
+    "enabled": [
+      "dashboard",
+      "contacts",
+      "appointments",
+      "pos",
+      "invoicing",
+      "employees"
+    ],
+    "optional": [
+      "inventory",
+      "payroll",
+      "reports"
+    ]
+  },
+  "features": {
+    "online_booking": true,
+    "staff_scheduling": true,
+    "service_catalog": true,
+    "vip_memberships": true,
+    "commission_tracking": true,
+    "loyalty_points": true
+  },
+  "appointment_config": {
+    "buffer_time": 15,
+    "allow_double_booking": false,
+    "send_reminders": true,
+    "reminder_hours": 24
+  },
+  "pos_config": {
+    "tip_suggestions": [15, 18, 20],
+    "product_sales": true,
+    "gift_cards": true
+  }
+}

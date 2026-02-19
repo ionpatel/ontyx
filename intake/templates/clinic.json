@@ -1,0 +1,44 @@
+{
+  "id": "clinic",
+  "name": "Medical Clinic",
+  "emoji": "🏥",
+  "description": "Medical clinic management with OHIP billing",
+  "modules": {
+    "enabled": [
+      "dashboard",
+      "contacts",
+      "appointments",
+      "patients",
+      "invoicing",
+      "reports"
+    ],
+    "optional": [
+      "employees",
+      "payroll",
+      "inventory"
+    ]
+  },
+  "features": {
+    "patient_records": true,
+    "ohip_billing": true,
+    "provider_management": true,
+    "referral_tracking": true,
+    "lab_results": false,
+    "prescription_writing": false
+  },
+  "appointment_config": {
+    "slot_duration": 15,
+    "provider_schedules": true,
+    "waitlist": true,
+    "no_show_tracking": true
+  },
+  "billing_config": {
+    "ohip_codes": true,
+    "private_billing": true,
+    "insurance_direct": false
+  },
+  "compliance": {
+    "phipa": true,
+    "college_requirements": true
+  }
+}

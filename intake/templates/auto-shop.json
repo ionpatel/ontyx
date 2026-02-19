@@ -1,0 +1,40 @@
+{
+  "id": "auto-shop",
+  "name": "Auto Shop",
+  "emoji": "🚗",
+  "description": "Auto repair and service shop management",
+  "modules": {
+    "enabled": [
+      "dashboard",
+      "contacts",
+      "inventory",
+      "work_orders",
+      "invoicing",
+      "reports"
+    ],
+    "optional": [
+      "employees",
+      "payroll",
+      "pos"
+    ]
+  },
+  "features": {
+    "vin_lookup": true,
+    "license_plate_lookup": true,
+    "parts_catalog": true,
+    "labor_rates": true,
+    "vehicle_history": true,
+    "service_reminders": true
+  },
+  "work_order_config": {
+    "track_technician": true,
+    "time_tracking": true,
+    "photo_attachments": true,
+    "customer_approval": true
+  },
+  "inventory_config": {
+    "parts_database": true,
+    "core_returns": true,
+    "vendor_pricing": true
+  }
+}

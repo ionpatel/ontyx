@@ -1,0 +1,41 @@
+{
+  "id": "wholesaler",
+  "name": "Wholesaler",
+  "emoji": "📦",
+  "description": "B2B wholesale distribution management",
+  "modules": {
+    "enabled": [
+      "dashboard",
+      "contacts",
+      "inventory",
+      "sales_orders",
+      "invoicing",
+      "reports"
+    ],
+    "optional": [
+      "employees",
+      "payroll",
+      "shipping"
+    ]
+  },
+  "features": {
+    "b2b_ordering": true,
+    "volume_pricing": true,
+    "customer_tiers": true,
+    "backorders": true,
+    "min_order_qty": true,
+    "credit_terms": true
+  },
+  "inventory_config": {
+    "multi_warehouse": true,
+    "pick_pack_ship": true,
+    "lot_tracking": true,
+    "serial_numbers": false
+  },
+  "pricing_config": {
+    "price_lists": true,
+    "customer_specific": true,
+    "contract_pricing": true,
+    "quantity_breaks": true
+  }
+}

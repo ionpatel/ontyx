@@ -1,0 +1,40 @@
+{
+  "id": "retail",
+  "name": "Retail Store",
+  "emoji": "🛒",
+  "description": "Retail store management with POS and inventory",
+  "modules": {
+    "enabled": [
+      "dashboard",
+      "contacts",
+      "inventory",
+      "pos",
+      "invoicing",
+      "reports"
+    ],
+    "optional": [
+      "employees",
+      "payroll"
+    ]
+  },
+  "features": {
+    "barcode_scanning": true,
+    "loyalty_program": true,
+    "gift_cards": true,
+    "price_rules": true,
+    "promotions": true,
+    "returns_exchanges": true
+  },
+  "pos_config": {
+    "quick_keys": true,
+    "cash_drawer": true,
+    "receipt_customization": true,
+    "end_of_day": true
+  },
+  "inventory_config": {
+    "multi_location": false,
+    "stock_counts": true,
+    "reorder_points": true,
+    "purchase_orders": true
+  }
+}

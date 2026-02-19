@@ -1,0 +1,40 @@
+{
+  "id": "contractor",
+  "name": "Contractor",
+  "emoji": "🔧",
+  "description": "Field service and contractor management",
+  "modules": {
+    "enabled": [
+      "dashboard",
+      "contacts",
+      "projects",
+      "invoicing",
+      "field_service",
+      "reports"
+    ],
+    "optional": [
+      "inventory",
+      "employees",
+      "payroll"
+    ]
+  },
+  "features": {
+    "job_scheduling": true,
+    "gps_dispatch": true,
+    "job_photos": true,
+    "time_tracking": true,
+    "estimates": true,
+    "customer_signatures": true
+  },
+  "field_config": {
+    "mobile_app": true,
+    "offline_mode": true,
+    "route_optimization": false,
+    "equipment_tracking": true
+  },
+  "invoicing_config": {
+    "progress_billing": true,
+    "change_orders": true,
+    "deposit_requests": true
+  }
+}

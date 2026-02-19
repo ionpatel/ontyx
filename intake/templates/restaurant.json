@@ -1,0 +1,39 @@
+{
+  "id": "restaurant",
+  "name": "Restaurant",
+  "emoji": "🍽️",
+  "description": "Restaurant and food service management",
+  "modules": {
+    "enabled": [
+      "dashboard",
+      "pos",
+      "inventory",
+      "employees",
+      "reports"
+    ],
+    "optional": [
+      "payroll",
+      "contacts",
+      "invoicing"
+    ]
+  },
+  "features": {
+    "table_management": true,
+    "kitchen_display": true,
+    "menu_builder": true,
+    "modifier_groups": true,
+    "split_checks": true,
+    "tip_pooling": true
+  },
+  "pos_config": {
+    "table_layout": true,
+    "course_firing": true,
+    "bar_tab": true,
+    "quick_service": true
+  },
+  "inventory_config": {
+    "recipe_costing": true,
+    "waste_tracking": true,
+    "vendor_orders": true
+  }
+}
