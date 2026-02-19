@@ -73,6 +73,7 @@ const getNavigation = (enabledModules: string[]): NavSection[] => {
       name: "Sales",
       items: [
         { name: "Point of Sale", href: "/pos", icon: Store, moduleId: "pos" },
+        { name: "Quotes", href: "/quotes", icon: FileText, moduleId: "quotes" },
         { name: "Sales Orders", href: "/sales", icon: ShoppingCart, moduleId: "sales" },
         { name: "Contacts", href: "/contacts", icon: Users, moduleId: "contacts" },
       ],
