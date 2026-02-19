@@ -146,9 +146,30 @@ export async function POST(request: Request) {
           expense.payment_method = 'other'
         }
 
-        const { error } = await supabase.from('expenses').insert(expense)
-        
-        if (error) throw error
+        // Check for duplicates by date + amount + description (first 50 chars)
+        const descPrefix = expense.description?.slice(0, 50) || ''
+        const { data: existing } = await supabase
+          .from('expenses')
+          .select('id')
+          .eq('organization_id', member.organization_id)
+          .eq('expense_date', expense.expense_date)
+          .eq('total_amount', expense.total_amount)
+          .ilike('description', `${descPrefix}%`)
+          .single()
+
+        let error
+        if (existing) {
+          // Update existing expense
+          const { error: updateError } = await supabase
+            .from('expenses')
+            .update({ ...expense, updated_at: new Date().toISOString() })
+            .eq('id', existing.id)
+          error = updateError
+        } else {
+          // Insert new expense
+          const { error: insertError } = await supabase.from('expenses').insert(expense)
+          error = insertError
+        }
         success++
       } catch (err: any) {
         failed++

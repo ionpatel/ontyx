@@ -149,9 +149,27 @@ export async function POST(request: Request) {
           invoice.status = 'paid'
         }
 
-        const { error } = await supabase.from('invoices').insert(invoice)
-        
-        if (error) throw error
+        // Check for duplicate by invoice number
+        const { data: existing } = await supabase
+          .from('invoices')
+          .select('id')
+          .eq('organization_id', member.organization_id)
+          .ilike('invoice_number', invoice.invoice_number)
+          .single()
+
+        let error
+        if (existing) {
+          // Update existing invoice
+          const { error: updateError } = await supabase
+            .from('invoices')
+            .update({ ...invoice, updated_at: new Date().toISOString() })
+            .eq('id', existing.id)
+          error = updateError
+        } else {
+          // Insert new invoice
+          const { error: insertError } = await supabase.from('invoices').insert(invoice)
+          error = insertError
+        }
         success++
       } catch (err: any) {
         failed++

@@ -133,17 +133,51 @@ export async function POST(request: Request) {
 
         // Generate SKU if not provided
         if (!product.sku) {
-          product.sku = `SKU-${Date.now().toString(36).toUpperCase()}`
+          product.sku = `SKU-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 5)}`
         }
 
-        // Insert product
-        const { data: insertedProduct, error } = await supabase
-          .from('products')
-          .insert(product)
-          .select('id')
-          .single()
+        // Check for duplicates by SKU or name
+        let existingProduct = null
         
-        if (error) throw error
+        const { data: bySku } = await supabase
+          .from('products')
+          .select('id')
+          .eq('organization_id', member.organization_id)
+          .ilike('sku', product.sku)
+          .single()
+        existingProduct = bySku
+        
+        if (!existingProduct) {
+          const { data: byName } = await supabase
+            .from('products')
+            .select('id')
+            .eq('organization_id', member.organization_id)
+            .ilike('name', product.name)
+            .single()
+          existingProduct = byName
+        }
+
+        let insertedProduct
+        if (existingProduct) {
+          // Update existing product
+          const { data, error } = await supabase
+            .from('products')
+            .update({ ...product, updated_at: new Date().toISOString() })
+            .eq('id', existingProduct.id)
+            .select('id')
+            .single()
+          if (error) throw error
+          insertedProduct = data || existingProduct
+        } else {
+          // Insert new product
+          const { data, error } = await supabase
+            .from('products')
+            .insert(product)
+            .select('id')
+            .single()
+          if (error) throw error
+          insertedProduct = data
+        }
 
         // Create initial inventory level if quantity provided
         if (stockQuantity > 0 && insertedProduct) {

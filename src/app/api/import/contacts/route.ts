@@ -122,7 +122,46 @@ export async function POST(request: Request) {
           contact.is_customer = true
         }
 
-        const { error } = await supabase.from('contacts').insert(contact)
+        // Check for duplicates by email or (name + phone)
+        let existingContact = null
+        if (contact.email) {
+          const { data } = await supabase
+            .from('contacts')
+            .select('id')
+            .eq('organization_id', member.organization_id)
+            .ilike('email', contact.email)
+            .single()
+          existingContact = data
+        }
+        
+        if (!existingContact && contact.display_name) {
+          const query = supabase
+            .from('contacts')
+            .select('id')
+            .eq('organization_id', member.organization_id)
+            .ilike('display_name', contact.display_name)
+          
+          if (contact.phone) {
+            query.eq('phone', contact.phone)
+          }
+          
+          const { data } = await query.single()
+          existingContact = data
+        }
+
+        let error
+        if (existingContact) {
+          // Update existing contact
+          const { error: updateError } = await supabase
+            .from('contacts')
+            .update({ ...contact, updated_at: new Date().toISOString() })
+            .eq('id', existingContact.id)
+          error = updateError
+        } else {
+          // Insert new contact
+          const { error: insertError } = await supabase.from('contacts').insert(contact)
+          error = insertError
+        }
         
         if (error) throw error
         success++

@@ -135,26 +135,92 @@ export default function ImportPage() {
     return { headers, rows, totalRows: rows.length }
   }
 
+  // Smart column mapping with support for QuickBooks, Odoo, Wave, Xero, FreshBooks formats
+  const COLUMN_ALIASES: Record<string, string[]> = {
+    // Contact fields
+    name: ['name', 'contact name', 'customer name', 'vendor name', 'company', 'business name', 'full name', 'display name', 'customer', 'vendor', 'client', 'supplier', 'payee', 'payer', 'bill to', 'ship to', 'customer/vendor'],
+    email: ['email', 'e-mail', 'email address', 'contact email', 'primary email'],
+    phone: ['phone', 'telephone', 'phone number', 'tel', 'work phone', 'mobile', 'cell', 'contact phone', 'primary phone'],
+    company: ['company', 'company name', 'business', 'business name', 'organization', 'org'],
+    address: ['address', 'street', 'street address', 'address 1', 'address1', 'billing address', 'address line 1', 'line1'],
+    city: ['city', 'town', 'billing city', 'ship city'],
+    province: ['province', 'state', 'region', 'state/province', 'billing state', 'billing province', 'prov'],
+    postal_code: ['postal', 'postal code', 'zip', 'zip code', 'postcode', 'billing postal', 'billing zip'],
+    type: ['type', 'contact type', 'customer type', 'category', 'classification'],
+    notes: ['notes', 'memo', 'comments', 'description', 'remarks'],
+    
+    // Product fields  
+    sku: ['sku', 'item code', 'product code', 'code', 'item number', 'part number', 'upc', 'item id', 'product id', 'internal id'],
+    description: ['description', 'item description', 'product description', 'details', 'long description'],
+    price: ['price', 'sell price', 'selling price', 'sales price', 'unit price', 'retail price', 'rate', 'amount'],
+    cost: ['cost', 'cost price', 'purchase price', 'buy price', 'unit cost', 'cogs'],
+    quantity: ['quantity', 'qty', 'stock', 'stock quantity', 'on hand', 'qty on hand', 'inventory', 'available'],
+    category: ['category', 'product category', 'item category', 'type', 'group', 'class', 'department'],
+    barcode: ['barcode', 'upc', 'ean', 'gtin', 'isbn'],
+    reorder_point: ['reorder point', 'reorder level', 'min stock', 'minimum', 'low stock alert'],
+    
+    // Invoice fields
+    invoice_number: ['invoice', 'invoice number', 'invoice #', 'inv #', 'inv no', 'document number', 'doc number', 'number', 'ref', 'reference'],
+    customer_name: ['customer', 'customer name', 'client', 'client name', 'bill to', 'sold to', 'name'],
+    date: ['date', 'invoice date', 'issue date', 'created', 'created date', 'trans date', 'transaction date', 'doc date'],
+    due_date: ['due date', 'due', 'payment due', 'due by', 'net date'],
+    total: ['total', 'amount', 'invoice total', 'grand total', 'total amount', 'balance', 'amount due', 'total due'],
+    status: ['status', 'state', 'payment status', 'invoice status'],
+    
+    // Expense fields
+    amount: ['amount', 'total', 'expense amount', 'cost', 'value', 'debit', 'charge'],
+    vendor: ['vendor', 'payee', 'merchant', 'supplier', 'paid to', 'store', 'company'],
+    payment_method: ['payment method', 'payment type', 'method', 'paid by', 'payment', 'account'],
+    receipt_number: ['receipt', 'receipt number', 'receipt #', 'ref', 'reference', 'check number', 'cheque number'],
+  }
+
   const autoMapColumns = (headers: string[], type: ImportType): ColumnMapping[] => {
     const targetFields = TARGET_FIELDS[type]
     const mappings: ColumnMapping[] = []
 
     headers.forEach(header => {
-      const headerLower = header.toLowerCase().replace(/[_\s-]/g, '')
+      const headerClean = header.toLowerCase().replace(/[_\-\s]+/g, ' ').trim()
       
-      const match = targetFields.find(field => {
-        const fieldLower = field.field.toLowerCase().replace(/[_\s-]/g, '')
-        const labelLower = field.label.toLowerCase().replace(/[_\s-]/g, '')
+      let bestMatch: { field: string; score: number } = { field: 'skip', score: 0 }
+      
+      for (const field of targetFields) {
+        const aliases = COLUMN_ALIASES[field.field] || [field.field, field.label.toLowerCase()]
         
-        return headerLower.includes(fieldLower) || 
-               fieldLower.includes(headerLower) ||
-               headerLower.includes(labelLower) ||
-               labelLower.includes(headerLower)
-      })
+        for (const alias of aliases) {
+          const aliasClean = alias.toLowerCase().replace(/[_\-\s]+/g, ' ').trim()
+          
+          // Exact match
+          if (headerClean === aliasClean) {
+            bestMatch = { field: field.field, score: 100 }
+            break
+          }
+          
+          // Header contains alias or vice versa
+          if (headerClean.includes(aliasClean) || aliasClean.includes(headerClean)) {
+            const score = Math.min(headerClean.length, aliasClean.length) / Math.max(headerClean.length, aliasClean.length) * 80
+            if (score > bestMatch.score) {
+              bestMatch = { field: field.field, score }
+            }
+          }
+          
+          // Word overlap
+          const headerWords = headerClean.split(' ')
+          const aliasWords = aliasClean.split(' ')
+          const overlap = headerWords.filter(w => aliasWords.includes(w)).length
+          if (overlap > 0) {
+            const score = (overlap / Math.max(headerWords.length, aliasWords.length)) * 60
+            if (score > bestMatch.score) {
+              bestMatch = { field: field.field, score }
+            }
+          }
+        }
+        
+        if (bestMatch.score === 100) break
+      }
 
       mappings.push({
         sourceColumn: header,
-        targetField: match?.field || 'skip',
+        targetField: bestMatch.score > 30 ? bestMatch.field : 'skip',
       })
     })
 
@@ -344,12 +410,21 @@ export default function ImportPage() {
                 )}
               </div>
 
-              <div className="mt-4 flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Need a template?</span>
-                <Button variant="outline" size="sm" onClick={() => downloadTemplate(importType)}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Template
-                </Button>
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Need a template?</span>
+                  <Button variant="outline" size="sm" onClick={() => downloadTemplate(importType)}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Template
+                  </Button>
+                </div>
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <p className="text-sm text-blue-800 font-medium">✨ Smart Import</p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Works with exports from QuickBooks, Odoo, Wave, Xero, FreshBooks, and most other software. 
+                    We auto-detect columns. Duplicates are automatically updated, not created twice.
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
