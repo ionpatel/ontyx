@@ -1,415 +1,420 @@
 import { createClient } from '@/lib/supabase/client'
-import type { 
-  PurchaseOrder, 
-  PurchaseOrderItem, 
-  CreatePurchaseOrderInput, 
-  UpdatePurchaseOrderInput,
-  PurchaseOrderSummary,
-  OrderStatus
-} from '@/types/purchase-orders'
+import type { PurchaseOrder, POStatus, CreatePOInput, POStats, POLineItem, ReceiveItemInput } from '@/types/purchase-orders'
 
-// Generate order number
-async function generateOrderNumber(organizationId: string): Promise<string> {
-  const supabase = createClient()
-  const year = new Date().getFullYear()
-  const prefix = `PO-${year}-`
-  
-  const { data } = await supabase
-    .from('purchase_orders')
-    .select('order_number')
-    .eq('organization_id', organizationId)
-    .ilike('order_number', `${prefix}%`)
-    .order('order_number', { ascending: false })
-    .limit(1)
-    .single()
-  
-  if (data?.order_number) {
-    const lastNum = parseInt(data.order_number.replace(prefix, ''), 10) || 0
-    return `${prefix}${String(lastNum + 1).padStart(4, '0')}`
-  }
-  return `${prefix}0001`
+// Generate PO number
+function generatePONumber(): string {
+  const prefix = 'PO'
+  const date = new Date()
+  const year = date.getFullYear().toString().slice(-2)
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
+  return `${prefix}-${year}${month}-${random}`
 }
 
-// Calculate totals from items
-function calculateTotals(items: CreatePurchaseOrderInput['items']) {
-  let subtotal = 0
-  let taxAmount = 0
-  
-  for (const item of items) {
-    const lineTotal = item.quantity * item.unit_price
-    const lineTax = lineTotal * ((item.tax_rate || 0) / 100)
-    subtotal += lineTotal
-    taxAmount += lineTax
-  }
-  
-  return {
-    subtotal,
-    tax_amount: taxAmount,
-    total: subtotal + taxAmount
-  }
-}
+export const purchaseOrdersService = {
+  /**
+   * Get all purchase orders
+   */
+  async getPurchaseOrders(organizationId: string, status?: POStatus): Promise<PurchaseOrder[]> {
+    const supabase = createClient()
 
-// Get all purchase orders
-export async function getPurchaseOrders(organizationId: string): Promise<PurchaseOrder[]> {
-  const supabase = createClient()
-  
-  const { data, error } = await supabase
-    .from('purchase_orders')
-    .select(`
-      *,
-      contact:contacts!contact_id (
-        id,
-        display_name,
-        email,
-        phone
-      ),
-      warehouse:warehouses!warehouse_id (
-        id,
-        name,
-        code
-      )
-    `)
-    .eq('organization_id', organizationId)
-    .order('created_at', { ascending: false })
-  
-  if (error) throw error
-  return data || []
-}
+    let query = supabase
+      .from('purchase_orders')
+      .select(`
+        *,
+        vendor:contacts(id, display_name, email, phone)
+      `)
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false })
 
-// Get single purchase order with items
-export async function getPurchaseOrder(id: string): Promise<PurchaseOrder | null> {
-  const supabase = createClient()
-  
-  const { data: po, error: poError } = await supabase
-    .from('purchase_orders')
-    .select(`
-      *,
-      contact:contacts!contact_id (
-        id,
-        display_name,
-        email,
-        phone,
-        billing_address_line1,
-        billing_city,
-        billing_state,
-        billing_postal_code
-      ),
-      warehouse:warehouses!warehouse_id (
-        id,
-        name,
-        code
-      )
-    `)
-    .eq('id', id)
-    .single()
-  
-  if (poError) throw poError
-  if (!po) return null
-  
-  // Get items
-  const { data: items, error: itemsError } = await supabase
-    .from('purchase_order_items')
-    .select(`
-      *,
-      product:products!product_id (
-        id,
-        name,
-        sku
-      )
-    `)
-    .eq('purchase_order_id', id)
-    .order('line_number')
-  
-  if (itemsError) throw itemsError
-  
-  return { ...po, items: items || [] }
-}
+    if (status) {
+      query = query.eq('status', status)
+    }
 
-// Create purchase order
-export async function createPurchaseOrder(
-  organizationId: string,
-  input: CreatePurchaseOrderInput
-): Promise<PurchaseOrder> {
-  const supabase = createClient()
-  
-  // Get current user
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
-  
-  // Generate order number
-  const orderNumber = await generateOrderNumber(organizationId)
-  
-  // Calculate totals
-  const totals = calculateTotals(input.items)
-  
-  // Create PO
-  const { data: po, error: poError } = await supabase
-    .from('purchase_orders')
-    .insert({
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Failed to fetch POs:', error)
+      return []
+    }
+
+    return (data || []).map(po => ({
+      ...po,
+      vendor_name: po.vendor?.display_name || po.vendor_name,
+      vendor_email: po.vendor?.email || po.vendor_email,
+      items: po.items || [],
+    }))
+  },
+
+  /**
+   * Get a single PO
+   */
+  async getPurchaseOrder(poId: string, organizationId: string): Promise<PurchaseOrder | null> {
+    const supabase = createClient()
+
+    const { data, error } = await supabase
+      .from('purchase_orders')
+      .select(`
+        *,
+        vendor:contacts(id, display_name, email, phone, billing_address_line1, billing_city, billing_state, billing_postal_code)
+      `)
+      .eq('id', poId)
+      .eq('organization_id', organizationId)
+      .single()
+
+    if (error) {
+      console.error('Failed to fetch PO:', error)
+      return null
+    }
+
+    return {
+      ...data,
+      vendor_name: data.vendor?.display_name || data.vendor_name,
+      items: data.items || [],
+    }
+  },
+
+  /**
+   * Create a new purchase order
+   */
+  async createPO(organizationId: string, userId: string, input: CreatePOInput): Promise<PurchaseOrder | null> {
+    const supabase = createClient()
+
+    // Calculate items with amounts
+    const items: POLineItem[] = input.items.map((item, idx) => {
+      const base = item.quantity * item.unit_price
+      const taxAmount = base * (item.tax_rate / 100)
+      return {
+        id: `item-${idx + 1}`,
+        product_id: item.product_id,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        tax_rate: item.tax_rate || 0,
+        received_qty: 0,
+        amount: base + taxAmount,
+      }
+    })
+
+    const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0)
+    const taxTotal = items.reduce((sum, item) => {
+      const base = item.quantity * item.unit_price
+      return sum + (base * item.tax_rate / 100)
+    }, 0)
+    const shipping = input.shipping || 0
+    const total = subtotal + taxTotal + shipping
+
+    const po = {
       organization_id: organizationId,
-      order_number: orderNumber,
-      contact_id: input.contact_id,
+      po_number: generatePONumber(),
+      vendor_id: input.vendor_id,
+      vendor_name: input.vendor_name,
+      vendor_email: input.vendor_email,
       order_date: input.order_date || new Date().toISOString().split('T')[0],
       expected_date: input.expected_date,
-      vendor_ref: input.vendor_ref,
-      currency: input.currency || 'CAD',
-      warehouse_id: input.warehouse_id,
-      ship_to_address: input.ship_to_address,
+      items,
+      subtotal,
+      tax_total: taxTotal,
+      shipping,
+      total,
+      currency: 'CAD',
+      status: 'draft' as POStatus,
+      shipping_method: input.shipping_method,
       notes: input.notes,
       internal_notes: input.internal_notes,
-      status: 'draft',
-      subtotal: totals.subtotal,
-      tax_amount: totals.tax_amount,
-      total: totals.total,
-      discount_amount: 0,
-      shipping_amount: 0,
-      created_by: user.id
-    })
-    .select()
-    .single()
-  
-  if (poError) throw poError
-  
-  // Create items
-  const itemsToInsert = input.items.map((item, index) => {
-    const lineTotal = item.quantity * item.unit_price
-    const taxAmount = lineTotal * ((item.tax_rate || 0) / 100)
-    
-    return {
-      purchase_order_id: po.id,
-      line_number: index + 1,
-      product_id: item.product_id,
-      description: item.description,
-      quantity: item.quantity,
-      quantity_received: 0,
-      unit_price: item.unit_price,
-      tax_rate: item.tax_rate || 0,
-      tax_amount: taxAmount,
-      line_total: lineTotal + taxAmount
+      created_by: userId,
     }
-  })
-  
-  const { error: itemsError } = await supabase
-    .from('purchase_order_items')
-    .insert(itemsToInsert)
-  
-  if (itemsError) throw itemsError
-  
-  return getPurchaseOrder(po.id) as Promise<PurchaseOrder>
-}
 
-// Update purchase order (header only)
-export async function updatePurchaseOrder(
-  id: string,
-  input: UpdatePurchaseOrderInput
-): Promise<PurchaseOrder> {
-  const supabase = createClient()
-  
-  const { error } = await supabase
-    .from('purchase_orders')
-    .update({
-      ...input,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', id)
-  
-  if (error) throw error
-  return getPurchaseOrder(id) as Promise<PurchaseOrder>
-}
+    const { data, error } = await supabase
+      .from('purchase_orders')
+      .insert(po)
+      .select()
+      .single()
 
-// Update PO status
-export async function updatePurchaseOrderStatus(
-  id: string,
-  status: OrderStatus
-): Promise<void> {
-  const supabase = createClient()
-  
-  const updateData: Record<string, unknown> = {
-    status,
-    updated_at: new Date().toISOString()
-  }
-  
-  // If confirming, get current user for approval
-  if (status === 'confirmed') {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      updateData.approved_by = user.id
-      updateData.approved_at = new Date().toISOString()
+    if (error) {
+      console.error('Failed to create PO:', error)
+      return null
     }
-  }
-  
-  const { error } = await supabase
-    .from('purchase_orders')
-    .update(updateData)
-    .eq('id', id)
-  
-  if (error) throw error
-}
 
-// Record items received
-export async function receiveItems(
-  purchaseOrderId: string,
-  itemsReceived: { item_id: string; quantity_received: number }[]
-): Promise<void> {
-  const supabase = createClient()
-  
-  // Update each item
-  for (const item of itemsReceived) {
+    return data
+  },
+
+  /**
+   * Update a PO
+   */
+  async updatePO(poId: string, organizationId: string, updates: Partial<PurchaseOrder>): Promise<PurchaseOrder | null> {
+    const supabase = createClient()
+
+    // Recalculate totals if items changed
+    if (updates.items) {
+      const items = updates.items.map(item => ({
+        ...item,
+        amount: (item.quantity * item.unit_price) * (1 + item.tax_rate / 100),
+      }))
+
+      const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0)
+      const taxTotal = items.reduce((sum, item) => {
+        const base = item.quantity * item.unit_price
+        return sum + (base * item.tax_rate / 100)
+      }, 0)
+
+      updates.items = items
+      updates.subtotal = subtotal
+      updates.tax_total = taxTotal
+      updates.total = subtotal + taxTotal + (updates.shipping || 0)
+    }
+
+    const { data, error } = await supabase
+      .from('purchase_orders')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', poId)
+      .eq('organization_id', organizationId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Failed to update PO:', error)
+      return null
+    }
+
+    return data
+  },
+
+  /**
+   * Send PO to vendor
+   */
+  async sendPO(poId: string, organizationId: string): Promise<boolean> {
+    const supabase = createClient()
+
     const { error } = await supabase
-      .from('purchase_order_items')
-      .update({ quantity_received: item.quantity_received })
-      .eq('id', item.item_id)
-    
-    if (error) throw error
-  }
-  
-  // Check if all items fully received
-  const { data: items } = await supabase
-    .from('purchase_order_items')
-    .select('quantity, quantity_received')
-    .eq('purchase_order_id', purchaseOrderId)
-  
-  if (items) {
-    const allReceived = items.every(i => i.quantity_received >= i.quantity)
-    const someReceived = items.some(i => i.quantity_received > 0)
-    
-    let newStatus: OrderStatus = 'processing'
-    if (allReceived) newStatus = 'completed'
-    else if (someReceived) newStatus = 'partial'
-    
-    await updatePurchaseOrderStatus(purchaseOrderId, newStatus)
-  }
-}
+      .from('purchase_orders')
+      .update({
+        status: 'sent',
+        sent_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', poId)
+      .eq('organization_id', organizationId)
 
-// Delete purchase order (only drafts)
-export async function deletePurchaseOrder(id: string): Promise<void> {
-  const supabase = createClient()
-  
-  // Check status first
-  const { data: po } = await supabase
-    .from('purchase_orders')
-    .select('status')
-    .eq('id', id)
-    .single()
-  
-  if (po?.status !== 'draft') {
-    throw new Error('Only draft purchase orders can be deleted')
-  }
-  
-  // Items deleted via cascade
-  const { error } = await supabase
-    .from('purchase_orders')
-    .delete()
-    .eq('id', id)
-  
-  if (error) throw error
-}
+    // TODO: Send email to vendor
 
-// Get purchase order summary
-export async function getPurchaseOrderSummary(organizationId: string): Promise<PurchaseOrderSummary> {
-  const supabase = createClient()
-  
-  const { data, error } = await supabase
-    .from('purchase_orders')
-    .select('status, total')
-    .eq('organization_id', organizationId)
-  
-  if (error) throw error
-  
-  const orders = data || []
-  
-  return {
-    total_orders: orders.length,
-    draft_count: orders.filter(o => o.status === 'draft').length,
-    pending_count: orders.filter(o => ['confirmed', 'processing', 'partial'].includes(o.status)).length,
-    completed_count: orders.filter(o => o.status === 'completed').length,
-    total_value: orders.reduce((sum, o) => sum + (o.total || 0), 0),
-    pending_value: orders
-      .filter(o => ['confirmed', 'processing', 'partial'].includes(o.status))
-      .reduce((sum, o) => sum + (o.total || 0), 0)
-  }
-}
+    return !error
+  },
 
-// Convert PO to Bill
-export async function convertToBill(purchaseOrderId: string): Promise<string> {
-  const supabase = createClient()
-  
-  // Get PO with items
-  const po = await getPurchaseOrder(purchaseOrderId)
-  if (!po) throw new Error('Purchase order not found')
-  
-  // Generate bill number
-  const year = new Date().getFullYear()
-  const prefix = `BILL-${year}-`
-  
-  const { data: lastBill } = await supabase
-    .from('bills')
-    .select('bill_number')
-    .eq('organization_id', po.organization_id)
-    .ilike('bill_number', `${prefix}%`)
-    .order('bill_number', { ascending: false })
-    .limit(1)
-    .single()
-  
-  let billNumber = `${prefix}0001`
-  if (lastBill?.bill_number) {
-    const lastNum = parseInt(lastBill.bill_number.replace(prefix, ''), 10) || 0
-    billNumber = `${prefix}${String(lastNum + 1).padStart(4, '0')}`
-  }
-  
-  // Get current user
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  // Create bill
-  const { data: bill, error: billError } = await supabase
-    .from('bills')
-    .insert({
-      organization_id: po.organization_id,
-      bill_number: billNumber,
-      vendor_ref: po.vendor_ref || po.order_number,
-      contact_id: po.contact_id,
-      bill_date: new Date().toISOString().split('T')[0],
-      due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      currency: po.currency,
-      subtotal: po.subtotal,
-      tax_amount: po.tax_amount,
-      total: po.total,
-      amount_due: po.total,
-      status: 'pending',
-      notes: `Created from PO ${po.order_number}`,
-      created_by: user?.id
+  /**
+   * Confirm PO (vendor accepted)
+   */
+  async confirmPO(poId: string, organizationId: string, expectedDate?: string): Promise<boolean> {
+    const supabase = createClient()
+
+    const updates: any = {
+      status: 'confirmed',
+      confirmed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
+    if (expectedDate) {
+      updates.expected_date = expectedDate
+    }
+
+    const { error } = await supabase
+      .from('purchase_orders')
+      .update(updates)
+      .eq('id', poId)
+      .eq('organization_id', organizationId)
+
+    return !error
+  },
+
+  /**
+   * Receive items
+   */
+  async receiveItems(poId: string, organizationId: string, receivedItems: ReceiveItemInput[]): Promise<boolean> {
+    const supabase = createClient()
+
+    // Get current PO
+    const po = await this.getPurchaseOrder(poId, organizationId)
+    if (!po) return false
+
+    // Update received quantities
+    const updatedItems = po.items.map(item => {
+      const received = receivedItems.find(r => r.line_item_id === item.id)
+      if (received) {
+        return { ...item, received_qty: item.received_qty + received.quantity }
+      }
+      return item
     })
-    .select()
-    .single()
-  
-  if (billError) throw billError
-  
-  // Create bill items
-  if (po.items && po.items.length > 0) {
-    const billItems = po.items.map(item => ({
-      bill_id: bill.id,
-      line_number: item.line_number,
-      product_id: item.product_id,
-      description: item.description,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      tax_rate: item.tax_rate,
-      tax_amount: item.tax_amount,
-      line_total: item.line_total
-    }))
+
+    // Check if fully received
+    const allReceived = updatedItems.every(item => item.received_qty >= item.quantity)
+    const anyReceived = updatedItems.some(item => item.received_qty > 0)
+
+    let newStatus: POStatus = po.status
+    if (allReceived) {
+      newStatus = 'received'
+    } else if (anyReceived) {
+      newStatus = 'partial'
+    }
+
+    const { error } = await supabase
+      .from('purchase_orders')
+      .update({
+        items: updatedItems,
+        status: newStatus,
+        received_date: allReceived ? new Date().toISOString().split('T')[0] : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', poId)
+      .eq('organization_id', organizationId)
+
+    if (error) return false
+
+    // Update inventory quantities for received items
+    for (const item of updatedItems) {
+      if (item.product_id) {
+        const received = receivedItems.find(r => r.line_item_id === item.id)
+        if (received && received.quantity > 0) {
+          // Increment product inventory
+          await supabase.rpc('increment_inventory', {
+            p_product_id: item.product_id,
+            p_quantity: received.quantity,
+          })
+        }
+      }
+    }
+
+    return true
+  },
+
+  /**
+   * Create bill from PO
+   */
+  async createBill(poId: string, organizationId: string): Promise<string | null> {
+    const supabase = createClient()
+
+    const po = await this.getPurchaseOrder(poId, organizationId)
+    if (!po) return null
+
+    // Create bill
+    const billNumber = `BILL-${Date.now().toString().slice(-8)}`
     
-    const { error: itemsError } = await supabase
-      .from('bill_items')
-      .insert(billItems)
-    
-    if (itemsError) throw itemsError
-  }
-  
-  // Link bill to PO
-  await supabase
-    .from('purchase_orders')
-    .update({ bill_id: bill.id })
-    .eq('id', purchaseOrderId)
-  
-  return bill.id
+    const { data: bill, error: billError } = await supabase
+      .from('bills')
+      .insert({
+        organization_id: organizationId,
+        bill_number: billNumber,
+        vendor_id: po.vendor_id,
+        vendor_name: po.vendor_name,
+        bill_date: new Date().toISOString().split('T')[0],
+        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        items: po.items,
+        subtotal: po.subtotal,
+        tax_amount: po.tax_total,
+        total: po.total,
+        amount_due: po.total,
+        currency: po.currency,
+        status: 'pending',
+        from_po_id: poId,
+      })
+      .select('id')
+      .single()
+
+    if (billError) {
+      console.error('Failed to create bill from PO:', billError)
+      return null
+    }
+
+    // Update PO status
+    await supabase
+      .from('purchase_orders')
+      .update({
+        status: 'billed',
+        bill_id: bill.id,
+        billed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', poId)
+
+    return bill.id
+  },
+
+  /**
+   * Cancel PO
+   */
+  async cancelPO(poId: string, organizationId: string): Promise<boolean> {
+    const supabase = createClient()
+
+    const { error } = await supabase
+      .from('purchase_orders')
+      .update({
+        status: 'cancelled',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', poId)
+      .eq('organization_id', organizationId)
+
+    return !error
+  },
+
+  /**
+   * Delete a PO (draft only)
+   */
+  async deletePO(poId: string, organizationId: string): Promise<boolean> {
+    const supabase = createClient()
+
+    const { error } = await supabase
+      .from('purchase_orders')
+      .delete()
+      .eq('id', poId)
+      .eq('organization_id', organizationId)
+      .eq('status', 'draft')
+
+    return !error
+  },
+
+  /**
+   * Get PO statistics
+   */
+  async getPOStats(organizationId: string): Promise<POStats> {
+    const supabase = createClient()
+    const today = new Date().toISOString().split('T')[0]
+
+    const { data: pos } = await supabase
+      .from('purchase_orders')
+      .select('status, total, expected_date')
+      .eq('organization_id', organizationId)
+
+    if (!pos) {
+      return {
+        total: 0,
+        draft: 0,
+        pending: 0,
+        received: 0,
+        total_value: 0,
+        pending_value: 0,
+        overdue: 0,
+      }
+    }
+
+    return {
+      total: pos.length,
+      draft: pos.filter(p => p.status === 'draft').length,
+      pending: pos.filter(p => ['sent', 'confirmed', 'partial'].includes(p.status)).length,
+      received: pos.filter(p => p.status === 'received').length,
+      total_value: pos.reduce((sum, p) => sum + (p.total || 0), 0),
+      pending_value: pos
+        .filter(p => ['sent', 'confirmed', 'partial'].includes(p.status))
+        .reduce((sum, p) => sum + (p.total || 0), 0),
+      overdue: pos.filter(p => 
+        ['sent', 'confirmed'].includes(p.status) && 
+        p.expected_date && 
+        p.expected_date < today
+      ).length,
+    }
+  },
 }
+
+export default purchaseOrdersService

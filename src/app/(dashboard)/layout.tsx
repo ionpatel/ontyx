@@ -11,7 +11,7 @@ import {
   LayoutDashboard, FileText, Receipt, Building2, BookOpen,
   BarChart3, Package, ShoppingCart, Users, Briefcase,
   Settings, Menu, X, ChevronDown, LogOut, User,
-  Factory, FolderKanban, Store,
+  Factory, FolderKanban, Store, Truck,
   Clock, Wallet, UserCircle, Loader2
 } from "lucide-react"
 import { GlobalSearch } from '@/components/global-search'
@@ -82,6 +82,7 @@ const getNavigation = (enabledModules: string[]): NavSection[] => {
       name: "Operations",
       items: [
         { name: "Inventory", href: "/inventory", icon: Package, moduleId: "inventory" },
+        { name: "Purchases", href: "/purchases", icon: Truck, moduleId: "purchases" },
         { name: "Projects", href: "/projects", icon: FolderKanban, moduleId: "projects" },
         { name: "Appointments", href: "/appointments", icon: Clock, moduleId: "appointments" },
         { name: "Manufacturing", href: "/manufacturing", icon: Factory, moduleId: "manufacturing" },

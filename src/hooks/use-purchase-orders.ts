@@ -1,218 +1,170 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import * as purchaseOrderService from '@/services/purchase-orders'
-import { useAuth } from '@/components/providers/auth-provider'
-import type { 
-  PurchaseOrder, 
-  CreatePurchaseOrderInput, 
-  UpdatePurchaseOrderInput,
-  PurchaseOrderSummary,
-  OrderStatus
-} from '@/types/purchase-orders'
+import { purchaseOrdersService } from '@/services/purchase-orders'
+import { useAuth } from './use-auth'
+import type { PurchaseOrder, POStatus, CreatePOInput, POStats, ReceiveItemInput } from '@/types/purchase-orders'
 
-export function usePurchaseOrders() {
-  const { organizationId, loading: authLoading } = useAuth()
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([])
+export function usePurchaseOrders(status?: POStatus) {
+  const { organizationId, user, loading: authLoading } = useAuth()
+  const [orders, setOrders] = useState<PurchaseOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchPurchaseOrders = useCallback(async () => {
-    if (!organizationId) {
-      setPurchaseOrders([])
-      setLoading(false)
-      return
-    }
-    
+  const fetchOrders = useCallback(async () => {
+    if (!organizationId || authLoading) return
+
     setLoading(true)
     setError(null)
-    
+
     try {
-      const data = await purchaseOrderService.getPurchaseOrders(organizationId)
-      setPurchaseOrders(data)
-    } catch (err) {
-      setError('Failed to fetch purchase orders')
-      console.error(err)
+      const data = await purchaseOrdersService.getPurchaseOrders(organizationId, status)
+      setOrders(data)
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch purchase orders')
     } finally {
       setLoading(false)
     }
-  }, [organizationId])
+  }, [organizationId, status, authLoading])
 
   useEffect(() => {
-    if (authLoading) return
-    fetchPurchaseOrders()
-  }, [fetchPurchaseOrders, authLoading])
+    fetchOrders()
+  }, [fetchOrders])
+
+  const createPO = async (input: CreatePOInput): Promise<PurchaseOrder | null> => {
+    if (!organizationId || !user) return null
+
+    const po = await purchaseOrdersService.createPO(organizationId, user.id, input)
+    if (po) {
+      setOrders(prev => [po, ...prev])
+    }
+    return po
+  }
+
+  const updatePO = async (poId: string, updates: Partial<PurchaseOrder>): Promise<PurchaseOrder | null> => {
+    if (!organizationId) return null
+
+    const updated = await purchaseOrdersService.updatePO(poId, organizationId, updates)
+    if (updated) {
+      setOrders(prev => prev.map(p => p.id === poId ? updated : p))
+    }
+    return updated
+  }
+
+  const sendPO = async (poId: string): Promise<boolean> => {
+    if (!organizationId) return false
+
+    const success = await purchaseOrdersService.sendPO(poId, organizationId)
+    if (success) {
+      setOrders(prev => prev.map(p => 
+        p.id === poId ? { ...p, status: 'sent' as POStatus, sent_at: new Date().toISOString() } : p
+      ))
+    }
+    return success
+  }
+
+  const confirmPO = async (poId: string, expectedDate?: string): Promise<boolean> => {
+    if (!organizationId) return false
+
+    const success = await purchaseOrdersService.confirmPO(poId, organizationId, expectedDate)
+    if (success) {
+      setOrders(prev => prev.map(p => 
+        p.id === poId ? { ...p, status: 'confirmed' as POStatus, confirmed_at: new Date().toISOString() } : p
+      ))
+    }
+    return success
+  }
+
+  const receiveItems = async (poId: string, items: ReceiveItemInput[]): Promise<boolean> => {
+    if (!organizationId) return false
+
+    const success = await purchaseOrdersService.receiveItems(poId, organizationId, items)
+    if (success) {
+      await fetchOrders() // Refresh to get updated status
+    }
+    return success
+  }
+
+  const createBill = async (poId: string): Promise<string | null> => {
+    if (!organizationId) return null
+
+    const billId = await purchaseOrdersService.createBill(poId, organizationId)
+    if (billId) {
+      setOrders(prev => prev.map(p => 
+        p.id === poId ? { ...p, status: 'billed' as POStatus, bill_id: billId } : p
+      ))
+    }
+    return billId
+  }
+
+  const cancelPO = async (poId: string): Promise<boolean> => {
+    if (!organizationId) return false
+
+    const success = await purchaseOrdersService.cancelPO(poId, organizationId)
+    if (success) {
+      setOrders(prev => prev.map(p => 
+        p.id === poId ? { ...p, status: 'cancelled' as POStatus } : p
+      ))
+    }
+    return success
+  }
+
+  const deletePO = async (poId: string): Promise<boolean> => {
+    if (!organizationId) return false
+
+    const success = await purchaseOrdersService.deletePO(poId, organizationId)
+    if (success) {
+      setOrders(prev => prev.filter(p => p.id !== poId))
+    }
+    return success
+  }
 
   return {
-    data: purchaseOrders,
-    isLoading: loading || authLoading,
+    orders,
+    loading: loading || authLoading,
     error,
-    refetch: fetchPurchaseOrders
+    refetch: fetchOrders,
+    createPO,
+    updatePO,
+    sendPO,
+    confirmPO,
+    receiveItems,
+    createBill,
+    cancelPO,
+    deletePO,
   }
 }
 
-export function usePurchaseOrder(id: string | undefined) {
-  const [purchaseOrder, setPurchaseOrder] = useState<PurchaseOrder | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchPurchaseOrder = useCallback(async () => {
-    if (!id) {
-      setPurchaseOrder(null)
-      setLoading(false)
-      return
-    }
-    
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const data = await purchaseOrderService.getPurchaseOrder(id)
-      setPurchaseOrder(data)
-    } catch (err) {
-      setError('Failed to fetch purchase order')
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }, [id])
-
-  useEffect(() => {
-    fetchPurchaseOrder()
-  }, [fetchPurchaseOrder])
-
-  return {
-    data: purchaseOrder,
-    isLoading: loading,
-    error,
-    refetch: fetchPurchaseOrder
-  }
-}
-
-export function usePurchaseOrderSummary() {
+export function usePurchaseOrder(poId: string) {
   const { organizationId, loading: authLoading } = useAuth()
-  const [summary, setSummary] = useState<PurchaseOrderSummary | null>(null)
+  const [order, setOrder] = useState<PurchaseOrder | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchSummary = useCallback(async () => {
-    if (!organizationId) {
-      setSummary(null)
-      setLoading(false)
-      return
-    }
-    
-    try {
-      const data = await purchaseOrderService.getPurchaseOrderSummary(organizationId)
-      setSummary(data)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }, [organizationId])
+  useEffect(() => {
+    if (!organizationId || !poId || authLoading) return
+
+    setLoading(true)
+    purchaseOrdersService.getPurchaseOrder(poId, organizationId)
+      .then(data => setOrder(data))
+      .finally(() => setLoading(false))
+  }, [organizationId, poId, authLoading])
+
+  return { order, loading: loading || authLoading }
+}
+
+export function usePOStats() {
+  const { organizationId, loading: authLoading } = useAuth()
+  const [stats, setStats] = useState<POStats | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (authLoading) return
-    fetchSummary()
-  }, [fetchSummary, authLoading])
+    if (!organizationId || authLoading) return
 
-  return { data: summary, isLoading: loading }
-}
+    setLoading(true)
+    purchaseOrdersService.getPOStats(organizationId)
+      .then(data => setStats(data))
+      .finally(() => setLoading(false))
+  }, [organizationId, authLoading])
 
-export function useCreatePurchaseOrder() {
-  const { organizationId } = useAuth()
-  const [isPending, setIsPending] = useState(false)
-
-  const mutateAsync = async (input: CreatePurchaseOrderInput): Promise<PurchaseOrder> => {
-    if (!organizationId) throw new Error('No organization')
-    setIsPending(true)
-    try {
-      return await purchaseOrderService.createPurchaseOrder(organizationId, input)
-    } finally {
-      setIsPending(false)
-    }
-  }
-
-  return { mutateAsync, isPending }
-}
-
-export function useUpdatePurchaseOrder() {
-  const [isPending, setIsPending] = useState(false)
-
-  const mutateAsync = async ({ id, input }: { id: string; input: UpdatePurchaseOrderInput }): Promise<PurchaseOrder> => {
-    setIsPending(true)
-    try {
-      return await purchaseOrderService.updatePurchaseOrder(id, input)
-    } finally {
-      setIsPending(false)
-    }
-  }
-
-  return { mutateAsync, isPending }
-}
-
-export function useUpdatePurchaseOrderStatus() {
-  const [isPending, setIsPending] = useState(false)
-
-  const mutateAsync = async ({ id, status }: { id: string; status: OrderStatus }): Promise<void> => {
-    setIsPending(true)
-    try {
-      await purchaseOrderService.updatePurchaseOrderStatus(id, status)
-    } finally {
-      setIsPending(false)
-    }
-  }
-
-  return { mutateAsync, isPending }
-}
-
-export function useReceiveItems() {
-  const [isPending, setIsPending] = useState(false)
-
-  const mutateAsync = async ({ 
-    purchaseOrderId, 
-    items 
-  }: { 
-    purchaseOrderId: string
-    items: { item_id: string; quantity_received: number }[] 
-  }): Promise<void> => {
-    setIsPending(true)
-    try {
-      await purchaseOrderService.receiveItems(purchaseOrderId, items)
-    } finally {
-      setIsPending(false)
-    }
-  }
-
-  return { mutateAsync, isPending }
-}
-
-export function useDeletePurchaseOrder() {
-  const [isPending, setIsPending] = useState(false)
-
-  const mutateAsync = async (id: string): Promise<void> => {
-    setIsPending(true)
-    try {
-      await purchaseOrderService.deletePurchaseOrder(id)
-    } finally {
-      setIsPending(false)
-    }
-  }
-
-  return { mutateAsync, isPending }
-}
-
-export function useConvertToBill() {
-  const [isPending, setIsPending] = useState(false)
-
-  const mutateAsync = async (purchaseOrderId: string): Promise<string> => {
-    setIsPending(true)
-    try {
-      return await purchaseOrderService.convertToBill(purchaseOrderId)
-    } finally {
-      setIsPending(false)
-    }
-  }
-
-  return { mutateAsync, isPending }
+  return { stats, loading: loading || authLoading }
 }
