@@ -548,53 +548,26 @@ function StepComplete({ onBack, data, updateData }: StepProps) {
     setError(null)
     
     try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) {
-        setError("Please log in to continue")
-        setLoading(false)
-        return
-      }
+      // Call API route which uses service role to bypass RLS
+      const response = await fetch('/api/onboarding/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessName: data.businessName,
+          businessType: data.businessType,
+          businessSubtype: data.businessSubtype,
+          businessSize: data.businessSize,
+          province: data.province,
+          enabledModules: enabledModules,
+          tier: data.selectedTier || 'starter'
+        })
+      })
 
-      // Get organization ID from organization_members (the correct way)
-      const { data: memberData, error: memberError } = await supabase
-        .from('organization_members')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .single()
+      const result = await response.json()
 
-      if (memberError || !memberData?.organization_id) {
-        console.error("No organization found for user:", memberError)
-        setError("Organization not found. Please contact support.")
-        setLoading(false)
-        return
-      }
-
-      const organizationId = memberData.organization_id
-
-      // Update organization with onboarding data
-      const orgUpdate: Record<string, unknown> = {
-        name: data.businessName,
-        business_type: data.businessType,
-        business_subtype: data.businessSubtype,
-        business_size: data.businessSize,
-        province: data.province,
-        enabled_modules: enabledModules,
-        tier: data.selectedTier || 'starter',
-        onboarding_completed: true,
-        updated_at: new Date().toISOString(),
-      }
-      
-      const { error: updateError } = await supabase
-        .from('organizations')
-        .update(orgUpdate as any)
-        .eq('id', organizationId)
-
-      if (updateError) {
-        console.error("Error updating organization:", updateError)
-        setError("Failed to save settings. Please try again.")
+      if (!response.ok) {
+        console.error("API error:", result)
+        setError(result.error || "Failed to save settings. Please try again.")
         setLoading(false)
         return
       }
