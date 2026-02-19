@@ -4,7 +4,7 @@ import { useState, useRef } from "react"
 import { 
   Receipt, Plus, Search, MoreHorizontal, Upload,
   DollarSign, Clock, CheckCircle, XCircle, Loader2,
-  Edit, Trash2, Send, Eye, Download, Filter, Calendar
+  Edit, Trash2, Send, Eye, Download, Filter, Calendar, FileUp
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -44,6 +44,7 @@ import type { CreateExpenseInput, ExpenseStatus, PaymentMethod } from "@/service
 import { useToast } from "@/components/ui/toast"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/hooks/use-auth"
+import { ImportDialog } from "@/components/import/import-dialog"
 
 const statusConfig: Record<ExpenseStatus, { label: string; color: string; icon: any }> = {
   draft: { label: 'Draft', color: 'bg-slate-100 text-slate-600', icon: Edit },
@@ -73,6 +74,7 @@ export default function ExpensesPage() {
 
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [showEdit, setShowEdit] = useState<string | null>(null)
   const [showReject, setShowReject] = useState<string | null>(null)
   const [showReimburse, setShowReimburse] = useState<string | null>(null)
@@ -284,6 +286,9 @@ export default function ExpensesPage() {
             Track and manage business expenses
           </p>
         </div>
+        <Button variant="outline" onClick={() => setImportOpen(true)}>
+          <FileUp className="mr-2 h-4 w-4" /> Import
+        </Button>
         <Button onClick={() => setShowAdd(true)}>
           <Plus className="mr-2 h-4 w-4" /> New Expense
         </Button>
@@ -800,6 +805,14 @@ export default function ExpensesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Import Dialog */}
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        type="expenses"
+        onSuccess={() => refetch()}
+      />
     </div>
   )
 }

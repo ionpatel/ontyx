@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Plus, Package, AlertTriangle, DollarSign, TrendingDown, RefreshCw, Search } from "lucide-react"
+import { Plus, Package, AlertTriangle, DollarSign, TrendingDown, RefreshCw, Search, FileUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,10 +12,12 @@ import { formatCurrency } from "@/lib/utils"
 import { ProductStatus } from "@/types/operations"
 
 import { motion } from "framer-motion"
+import { ImportDialog } from "@/components/import/import-dialog"
 
 export default function InventoryPage() {
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [importOpen, setImportOpen] = useState(false)
   
   // Debounce search
   useEffect(() => {
@@ -108,6 +110,10 @@ export default function InventoryPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <FileUp className="mr-2 h-4 w-4" />
+            Import
+          </Button>
           <Button variant="outline" onClick={refetch} disabled={loading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
@@ -183,6 +189,14 @@ export default function InventoryPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Import Dialog */}
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        type="products"
+        onSuccess={() => refetch()}
+      />
     </div>
   )
 }

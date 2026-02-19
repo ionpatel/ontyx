@@ -6,7 +6,7 @@ import {
   Plus, FileText, DollarSign, AlertCircle, Clock, 
   Send, CheckCircle, MoreHorizontal, Search, Filter,
   Eye, Edit, Trash2, Copy, Download, CreditCard, RefreshCw,
-  FileDown
+  FileDown, FileUp
 } from "lucide-react"
 import { exportInvoicesToCSV } from "@/lib/export"
 import { Button } from "@/components/ui/button"
@@ -39,6 +39,7 @@ import {
 import { useInvoices, useInvoiceStats } from "@/hooks/use-invoices"
 import type { InvoiceStatus } from "@/services/invoices"
 import { formatCurrency, cn } from "@/lib/utils"
+import { ImportDialog } from "@/components/import/import-dialog"
 
 const statusConfig: Record<InvoiceStatus, { label: string; color: string; icon: React.ElementType }> = {
   draft: { label: "Draft", color: "bg-slate-100 text-slate-700", icon: FileText },
@@ -54,6 +55,7 @@ const statusConfig: Record<InvoiceStatus, { label: string; color: string; icon: 
 export default function InvoicesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | "all">("all")
+  const [importOpen, setImportOpen] = useState(false)
   
   const { invoices, loading, updateInvoiceStatus } = useInvoices(
     statusFilter !== "all" ? { status: statusFilter } : undefined
@@ -123,6 +125,12 @@ export default function InvoicesPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setImportOpen(true)}
+          >
+            <FileUp className="mr-2 h-4 w-4" /> Import
+          </Button>
           <Button 
             variant="outline" 
             onClick={() => exportInvoicesToCSV(invoices)}
@@ -359,6 +367,14 @@ export default function InvoicesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Import Dialog */}
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        type="invoices"
+        onSuccess={() => window.location.reload()}
+      />
     </div>
   )
 }

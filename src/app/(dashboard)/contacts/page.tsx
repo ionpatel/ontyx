@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { 
   Search, Plus, Building2, User, Phone, Mail, 
   MoreHorizontal, ArrowUpRight, Users, TrendingUp, 
-  UserPlus, Edit, Trash2, Eye, MapPin, FileDown, AlertTriangle
+  UserPlus, Edit, Trash2, Eye, MapPin, FileDown, FileUp, AlertTriangle
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { exportContactsToCSV } from '@/lib/export'
@@ -42,6 +42,7 @@ import {
 import { useContacts } from '@/hooks/use-contacts'
 import type { Contact, ContactType, CreateContactInput } from '@/services/contacts'
 import { cn, formatCurrency } from '@/lib/utils'
+import { ImportDialog } from '@/components/import/import-dialog'
 
 const typeFilters: { value: ContactType | 'all'; label: string; icon: React.ElementType }[] = [
   { value: 'all', label: 'All Contacts', icon: Users },
@@ -105,6 +106,7 @@ export default function ContactsPage() {
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set())
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [newContact, setNewContact] = useState<Partial<CreateContactInput>>({
     type: 'customer',
     name: '',
@@ -213,6 +215,13 @@ export default function ContactsPage() {
               Delete ({selectedContacts.size})
             </Button>
           )}
+          <Button 
+            variant="outline" 
+            onClick={() => setImportOpen(true)}
+          >
+            <FileUp className="h-4 w-4 mr-2" />
+            Import
+          </Button>
           <Button 
             variant="outline" 
             onClick={() => exportContactsToCSV(contacts)}
@@ -550,6 +559,14 @@ export default function ContactsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Import Dialog */}
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        type="contacts"
+        onSuccess={() => window.location.reload()}
+      />
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
