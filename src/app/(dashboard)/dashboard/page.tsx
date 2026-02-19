@@ -23,6 +23,7 @@ import { TierUpgradeBanner, WelcomeHero } from "@/components/dashboard/tier-bann
 import { useOrganization } from "@/hooks/use-organization"
 import { AIInsightsCard } from "@/components/ai/insights-card"
 import { RevenueChart } from "@/components/charts/revenue-chart"
+import { GettingStartedChecklist } from "@/components/onboarding/getting-started"
 
 const invoiceStatusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   draft: { label: "Draft", color: "bg-slate-100 text-slate-700", icon: FileText },
@@ -127,6 +128,9 @@ export default function DashboardPage() {
       {!isNewUser && currentTier !== 'enterprise' && (
         <TierUpgradeBanner currentTier={currentTier} />
       )}
+
+      {/* Getting Started Checklist for New Users */}
+      <GettingStartedChecklist />
 
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
