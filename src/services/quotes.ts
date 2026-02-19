@@ -338,30 +338,29 @@ export const quotesService = {
 
     // Get the quote
     const quote = await this.getQuote(quoteId, organizationId)
-    if (!quote) return null
+    if (!quote || !quote.contact_id) return null
 
-    // Create invoice from quote
-    const invoiceNumber = `INV-${Date.now().toString().slice(-8)}`
+    // Generate invoice number
+    const year = new Date().getFullYear()
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
+    const invoiceNumber = `INV-${year}-${random}`
     
+    // Create invoice (only fields that exist in invoices table)
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .insert({
         organization_id: organizationId,
         invoice_number: invoiceNumber,
         contact_id: quote.contact_id,
-        customer_name: quote.customer_name,
-        customer_email: quote.customer_email,
         issue_date: new Date().toISOString().split('T')[0],
         due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        items: quote.items,
         subtotal: quote.subtotal,
         tax_amount: quote.tax_total,
         total: quote.total,
         amount_due: quote.total,
-        currency: quote.currency,
+        currency: quote.currency || 'CAD',
         status: 'draft',
         notes: `Converted from Quote ${quote.quote_number}`,
-        from_quote_id: quoteId,
       } as any)
       .select('id')
       .single()
@@ -369,6 +368,29 @@ export const quotesService = {
     if (invoiceError || !invoice) {
       console.error('Failed to create invoice from quote:', invoiceError)
       return null
+    }
+
+    // Insert line items into invoice_items table
+    if (quote.items && quote.items.length > 0) {
+      const invoiceItems = quote.items.map((item, idx) => ({
+        invoice_id: invoice.id,
+        line_number: idx + 1,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        discount_percent: item.discount || 0,
+        tax_rate: item.taxRate || 0,
+        tax_amount: (item.quantity * item.unitPrice * (1 - (item.discount || 0) / 100)) * ((item.taxRate || 0) / 100),
+      }))
+
+      const { error: itemsError } = await supabase
+        .from('invoice_items')
+        .insert(invoiceItems as any)
+
+      if (itemsError) {
+        console.error('Failed to create invoice items:', itemsError)
+        // Don't fail the whole operation, invoice was created
+      }
     }
 
     // Update quote status
