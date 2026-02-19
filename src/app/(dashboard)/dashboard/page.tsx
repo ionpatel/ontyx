@@ -5,7 +5,7 @@ import {
   ArrowUpRight, Users, AlertCircle, Clock,
   Package, Activity, ShoppingCart, Building2,
   CheckCircle, Send, Eye, CreditCard, Plus,
-  Receipt, Truck, UserPlus, Calendar, Zap
+  Receipt, Truck, UserPlus, Calendar, Zap, Upload
 } from "lucide-react"
 import Link from "next/link"
 import { BusinessInsights } from './insights'
@@ -21,6 +21,7 @@ import { useDashboardStats, useRecentInvoices, useRecentOrders, useRecentActivit
 import { QuickInvoiceModal } from "@/components/quick-invoice-modal"
 import { TierUpgradeBanner, WelcomeHero } from "@/components/dashboard/tier-banner"
 import { useOrganization } from "@/hooks/use-organization"
+import { AIInsightsCard } from "@/components/ai/insights-card"
 
 const invoiceStatusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   draft: { label: "Draft", color: "bg-slate-100 text-slate-700", icon: FileText },
@@ -178,6 +179,9 @@ export default function DashboardPage() {
             <Button variant="outline" size="sm" asChild className="whitespace-nowrap">
               <Link href="/pos"><Receipt className="h-3 w-3 mr-1" /> Open POS</Link>
             </Button>
+            <Button variant="outline" size="sm" asChild className="whitespace-nowrap">
+              <Link href="/settings/import"><Upload className="h-3 w-3 mr-1" /> Import Data</Link>
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -245,6 +249,38 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* AI Insights + Recent Activity Row */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <AIInsightsCard />
+        
+        {/* This Week Overview */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              This Week
+            </CardTitle>
+            <CardDescription>Upcoming tasks and deadlines</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
+                <div className="h-2 w-2 rounded-full bg-green-500" />
+                <span className="text-sm">All invoices are up to date!</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
+                <div className="h-2 w-2 rounded-full bg-green-500" />
+                <span className="text-sm">All products are well stocked!</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
+                <div className="h-2 w-2 rounded-full bg-blue-500" />
+                <span className="text-sm">No upcoming appointments</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Main Content Grid */}
