@@ -25,34 +25,34 @@ interface UpgradePromptProps {
 const PLAN_DETAILS: Record<PlanTier, {
   name: string
   price: number
-  odooPrice: number
   icon: React.ElementType
   color: string
   description: string
+  highlight: string
 }> = {
   starter: {
     name: 'Starter',
     price: 29,
-    odooPrice: 58,
     icon: Zap,
     color: 'text-blue-600',
-    description: 'For small businesses getting started',
+    description: 'Everything you need to get started',
+    highlight: 'Unlimited users',
   },
   growth: {
-    name: 'Growth',
+    name: 'Professional',
     price: 49,
-    odooPrice: 98,
     icon: Rocket,
     color: 'text-purple-600',
-    description: 'For growing Canadian businesses',
+    description: 'Complete business operating system',
+    highlight: 'Most popular',
   },
   enterprise: {
     name: 'Enterprise',
     price: 199,
-    odooPrice: 398,
     icon: Crown,
     color: 'text-amber-600',
-    description: 'For large organizations',
+    description: 'For scaling organizations',
+    highlight: 'White-label available',
   },
 }
 
@@ -117,9 +117,6 @@ export function UpgradePrompt({ feature, currentTier, onClose, isModal = false }
   const planDetails = PLAN_DETAILS[requiredTier]
   const featureInfo = FEATURE_NAMES[feature]
   const PlanIcon = planDetails.icon
-  
-  const savings = planDetails.odooPrice - planDetails.price
-  const savingsPercent = Math.round((savings / planDetails.odooPrice) * 100)
 
   const content = (
     <div className="space-y-6">
@@ -146,8 +143,8 @@ export function UpgradePrompt({ feature, currentTier, onClose, isModal = false }
               <PlanIcon className={`h-6 w-6 ${planDetails.color}`} />
               <CardTitle>{planDetails.name} Plan</CardTitle>
             </div>
-            <Badge variant="secondary" className="bg-green-100 text-green-800">
-              Save {savingsPercent}% vs Odoo
+            <Badge variant="secondary" className="bg-primary/10 text-primary">
+              {planDetails.highlight}
             </Badge>
           </div>
           <CardDescription>{planDetails.description}</CardDescription>
@@ -157,9 +154,7 @@ export function UpgradePrompt({ feature, currentTier, onClose, isModal = false }
           <div className="flex items-baseline gap-2">
             <span className="text-4xl font-bold">${planDetails.price}</span>
             <span className="text-muted-foreground">/month</span>
-            <span className="text-sm text-muted-foreground line-through ml-2">
-              ${planDetails.odooPrice} Odoo
-            </span>
+            <Badge variant="outline" className="ml-2">Flat rate • No per-user fees</Badge>
           </div>
 
           {/* Key Features */}
@@ -179,15 +174,15 @@ export function UpgradePrompt({ feature, currentTier, onClose, isModal = false }
           <div className="bg-muted/50 rounded-lg p-3 space-y-1.5 text-sm">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-amber-500" />
-              <span><strong>50% cheaper</strong> than Odoo with the same features</span>
+              <span><strong>All apps included</strong> — no per-module pricing</span>
             </div>
             <div className="flex items-center gap-2">
               <Building2 className="h-4 w-4 text-blue-500" />
-              <span><strong>Built for Canada</strong> — GST/HST, CPP/EI, T4s included</span>
+              <span><strong>Built for Canada</strong> — GST/HST, CPP/EI, T4s, ROE included</span>
             </div>
             <div className="flex items-center gap-2">
               <Zap className="h-4 w-4 text-purple-500" />
-              <span><strong>No setup fees</strong> — start using immediately</span>
+              <span><strong>No setup fees</strong> — unlimited support & free hosting</span>
             </div>
           </div>
         </CardContent>
