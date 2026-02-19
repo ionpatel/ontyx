@@ -511,6 +511,7 @@ function StepDetails({ onNext, onBack, data, updateData }: StepProps) {
 // Step 7: Module Preview & Completion
 function StepComplete({ onBack, data, updateData }: StepProps) {
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const businessType = BUSINESS_TYPES.find(t => t.id === data.businessType)
   const selectedTierInfo = TIERS.find(t => t.id === data.selectedTier)
@@ -544,39 +545,71 @@ function StepComplete({ onBack, data, updateData }: StepProps) {
 
   const handleComplete = async () => {
     setLoading(true)
+    setError(null)
     
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       
-      if (user) {
-        // Update organization with onboarding data
-        const orgUpdate: Record<string, unknown> = {
-          name: data.businessName,
-          business_type: data.businessType,
-          business_subtype: data.businessSubtype,
-          business_size: data.businessSize,
-          province: data.province,
-          enabled_modules: enabledModules,
-          tier: data.selectedTier || 'starter',
-          onboarding_completed: true,
-          updated_at: new Date().toISOString(),
-        }
-        
-        const { error } = await supabase
-          .from('organizations')
-          .update(orgUpdate as any)
-          .eq('id', user.user_metadata?.organization_id)
+      if (!user) {
+        setError("Please log in to continue")
+        setLoading(false)
+        return
+      }
 
-        if (error) {
-          console.error("Error updating organization:", error)
-        }
+      // Get organization ID from organization_members (the correct way)
+      const { data: memberData, error: memberError } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .single()
+
+      if (memberError || !memberData?.organization_id) {
+        console.error("No organization found for user:", memberError)
+        setError("Organization not found. Please contact support.")
+        setLoading(false)
+        return
+      }
+
+      const organizationId = memberData.organization_id
+
+      // Update organization with onboarding data
+      const orgUpdate: Record<string, unknown> = {
+        name: data.businessName,
+        business_type: data.businessType,
+        business_subtype: data.businessSubtype,
+        business_size: data.businessSize,
+        province: data.province,
+        enabled_modules: enabledModules,
+        tier: data.selectedTier || 'starter',
+        onboarding_completed: true,
+        updated_at: new Date().toISOString(),
+      }
+      
+      const { error: updateError } = await supabase
+        .from('organizations')
+        .update(orgUpdate as any)
+        .eq('id', organizationId)
+
+      if (updateError) {
+        console.error("Error updating organization:", updateError)
+        setError("Failed to save settings. Please try again.")
+        setLoading(false)
+        return
+      }
+
+      // Clear any cached org data to force refresh
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('ontyx_org_id')
+        localStorage.removeItem('ontyx_profile_cache')
       }
 
       // Redirect to dashboard
       router.push('/dashboard')
     } catch (err) {
       console.error("Error completing onboarding:", err)
+      setError("An unexpected error occurred. Please try again.")
       setLoading(false)
     }
   }
@@ -678,6 +711,13 @@ function StepComplete({ onBack, data, updateData }: StepProps) {
           You can always change these later in Settings
         </p>
       </div>
+
+      {/* Error display */}
+      {error && (
+        <div className="max-w-md mx-auto p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-center">
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
+      )}
 
       <div className="flex justify-center gap-4">
         <Button variant="outline" size="lg" onClick={onBack} disabled={loading}>
