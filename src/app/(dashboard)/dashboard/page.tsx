@@ -22,6 +22,7 @@ import { QuickInvoiceModal } from "@/components/quick-invoice-modal"
 import { TierUpgradeBanner, WelcomeHero } from "@/components/dashboard/tier-banner"
 import { useOrganization } from "@/hooks/use-organization"
 import { AIInsightsCard } from "@/components/ai/insights-card"
+import { RevenueChart } from "@/components/charts/revenue-chart"
 
 const invoiceStatusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   draft: { label: "Draft", color: "bg-slate-100 text-slate-700", icon: FileText },
@@ -281,6 +282,14 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Revenue Chart */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <RevenueChart />
+        
+        {/* AI Insights */}
+        <AIInsightsCard />
       </div>
 
       {/* Main Content Grid */}
